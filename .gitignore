@@ -84,5 +84,12 @@ logs/
 tmp/
 temp/
 
+### 개인 에이전트 도구 설정 (커밋 금지 — 개인 로컬 경로가 들어 있다) ###
+CLAUDE.local.md
+.claude/settings.local.json
+orca.yaml
+.worktreeinclude
+_inbox/
+
 ### 빈 디렉토리 유지용 (절대 무시하지 말 것) ###
 !.gitkeep
