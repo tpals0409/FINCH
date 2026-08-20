@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+/*
+ * 등락 의미 토큰 (컨벤션 §6).
+ * 국내 관례를 따라 상승이 적색, 하락이 청색이다. 미국식과 반대다.
+ * 화면에서 text-red-500 처럼 색을 직접 쓰지 않고 이 토큰만 참조한다.
+ * 관례가 바뀌거나 색맹 대응이 필요해지면 여기 한 곳만 고친다.
+ */
+@theme {
+  --color-rise: oklch(0.62 0.21 25);
+  --color-fall: oklch(0.58 0.17 250);
+  --color-flat: oklch(0.55 0.01 260);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  /* 가로 스크롤은 버그로 본다 (컨벤션 §9). */
+  overflow-x: hidden;
+}
