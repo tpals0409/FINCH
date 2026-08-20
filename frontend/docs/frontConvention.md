@@ -22,7 +22,7 @@
 
 | 층                | 선택                        | 고른 이유                                                                                                               | 기각한 것과 이유                                                                                                                                           |
 | ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 번들러·프레임워크 | Vite + React SPA            | 로그인 이후 개인화 화면만 있어 SEO가 필요 없다. SSE·차트·실시간이 전부 클라이언트 몫이다                                | **Next.js** — RSC와 hydration 경계를 다루는 비용이 얻는 것보다 크다. 서버 렌더링으로 얻을 이득이 이 서비스에는 없다                                        |
+| 번들러·프레임워크 | Vite + React SPA            | 로그인 이후 개인화 화면만 있어 SEO가 필요 없다. 차트와 실시간 시세가 전부 클라이언트 몫이다                             | **Next.js** — RSC와 hydration 경계를 다루는 비용이 얻는 것보다 크다. 서버 렌더링으로 얻을 이득이 이 서비스에는 없다                                        |
 | 언어              | TypeScript                  | API 명세가 이미 유니온 타입으로 촘촘하다. 명세를 타입으로 그대로 옮기면 된다                                            | **JavaScript** — 명세의 유니온을 런타임 분기로 다시 쓰게 된다                                                                                              |
 | 서버 상태         | TanStack Query              | 명세가 캐시 TTL과 429 `Retry-After`를 못 박아 두었고, 이것이 `staleTime`·`retry`·`retryDelay`에 그대로 대응된다         | **직접 구현한 fetch 훅** — 캐시·중복 요청 제거·재시도를 손으로 다시 만들게 된다. **SWR** — 재시도 정책 제어가 얕다                                         |
 | 클라이언트 상태   | Zustand                     | 서버 상태를 TanStack Query가 가져가면 남는 것이 주문 입력 폼과 탭 선택 정도다                                           | **Redux Toolkit** — 이 규모에 과하다. 보일러플레이트가 상태의 양을 넘어선다. **Context만 사용** — 값이 바뀔 때 구독자 전체가 리렌더된다                    |
@@ -58,7 +58,7 @@ frontend/
     │       └── lib/         # 이 기능의 순수 함수
     ├── shared/
     │   ├── ui/              # 도메인을 모르는 컴포넌트 (Button, BottomSheet, Skeleton)
-    │   ├── api/             # HTTP 클라이언트, SSE 파서, 인터셉터, 쿼리 클라이언트 설정
+    │   ├── api/             # HTTP 클라이언트, 인터셉터, 쿼리 클라이언트 설정
     │   ├── lib/             # 포매터, 날짜, 숫자 등 순수 유틸
     │   ├── hooks/           # 도메인 무관 훅 (useDebounce, useMediaQuery)
     │   ├── config/          # 환경변수 접근, 상수, 쿼리 키 팩토리
@@ -103,19 +103,19 @@ ESLint의 `import-x/no-restricted-paths`가 이 방향을 강제한다.
 
 ## 3. 네이밍 규칙
 
-| 대상            | 규칙                                               | 예                                   |
-| --------------- | -------------------------------------------------- | ------------------------------------ |
-| 컴포넌트 파일   | PascalCase, `.tsx`                                 | `OrderSheet.tsx`                     |
-| 컴포넌트 이름   | PascalCase. 파일명과 동일                          | `export function OrderSheet()`       |
-| 훅 파일·이름    | camelCase, `use` 접두                              | `useOrderForm.ts` / `useOrderForm()` |
-| 유틸 파일       | camelCase                                          | `formatCurrency.ts`                  |
-| 유틸 함수       | 동사로 시작                                        | `formatPrice()`, `parseSSEChunk()`   |
-| 타입·인터페이스 | PascalCase. 접두사 `I`·접미사 `Type`을 쓰지 않는다 | `Order`, `StockQuote`                |
-| Zod 스키마      | PascalCase + `Schema`                              | `OrderSchema`                        |
-| 상수            | SCREAMING_SNAKE_CASE                               | `MAX_QUANTITY`                       |
-| 상수 파일       | camelCase                                          | `queryKeys.ts`                       |
-| 디렉토리        | camelCase                                          | `features/orderHistory/`             |
-| CSS 클래스      | Tailwind 유틸리티만. 커스텀 클래스는 만들지 않는다 | —                                    |
+| 대상            | 규칙                                               | 예                                        |
+| --------------- | -------------------------------------------------- | ----------------------------------------- |
+| 컴포넌트 파일   | PascalCase, `.tsx`                                 | `OrderSheet.tsx`                          |
+| 컴포넌트 이름   | PascalCase. 파일명과 동일                          | `export function OrderSheet()`            |
+| 훅 파일·이름    | camelCase, `use` 접두                              | `useOrderForm.ts` / `useOrderForm()`      |
+| 유틸 파일       | camelCase                                          | `formatCurrency.ts`                       |
+| 유틸 함수       | 동사로 시작                                        | `formatPrice()`, `createIdempotencyKey()` |
+| 타입·인터페이스 | PascalCase. 접두사 `I`·접미사 `Type`을 쓰지 않는다 | `Order`, `StockQuote`                     |
+| Zod 스키마      | PascalCase + `Schema`                              | `OrderSchema`                             |
+| 상수            | SCREAMING_SNAKE_CASE                               | `MAX_QUANTITY`                            |
+| 상수 파일       | camelCase                                          | `queryKeys.ts`                            |
+| 디렉토리        | camelCase                                          | `features/orderHistory/`                  |
+| CSS 클래스      | Tailwind 유틸리티만. 커스텀 클래스는 만들지 않는다 | —                                         |
 
 ### 세부 규칙
 
@@ -196,7 +196,7 @@ Refresh Token은 `HttpOnly` 쿠키라 JS에서 보이지 않으므로 프론트�
 나머지 전부다. **의심스러우면 `useState`로 시작한다.**
 끌어올리는 것은 쉽지만 내리는 것은 어렵다.
 
-SSE 스트리밍 중 누적되는 텍스트도 로컬 상태다. 완료 시점에만 쿼리 캐시에 반영한다.
+주문 수량 입력, 충전 금액 입력, 바텀시트 열림 여부가 여기 속한다.
 
 ---
 
@@ -278,19 +278,20 @@ SSE 스트리밍 중 누적되는 텍스트도 로컬 상태다. 완료 시점�
 - `size`는 기본 30, 최대 100. 화면에서 임의로 늘리지 않는다
 - 목록은 `useInfiniteQuery`로 다루고 `hasNext`로 종료를 판정한다. `items.length`로 판정하지 않는다
 
-### SSE 파싱 방침
+### AI 응답 처리 방침
 
-`POST /chat`과 `POST /stocks/{ticker}/analysis`가 SSE인데
-**브라우저 `EventSource`는 GET 전용이라 이 두 엔드포인트에 쓸 수 없다.**
+**AI 6종은 전부 일반 요청/응답이다.** `ai/docs/openapi.json`의 6개 엔드포인트가 모두 단일 JSON 봉투를 반환한다.
+AI 호출도 다른 쿼리·뮤테이션과 똑같이 다룬다. 별도 전송 계층을 만들지 않는다.
 
-- `fetch` + `ReadableStream` + `TextDecoder`로 직접 파싱한다
-- 파서는 `shared/api`에 하나만 두고 모든 SSE 소비처가 공유한다
-- `TextDecoder`는 `{ stream: true }`로 호출한다. 청크 경계가 멀티바이트 문자 중간에서 잘리기 때문이다
-- 이벤트 경계는 빈 줄(`\n\n`)이다. 청크가 이벤트 중간에서 끊길 수 있으므로 **미완성 조각을 버퍼에 남겨 다음 청크와 이어 붙인다**
-- 컴포넌트 언마운트와 사용자 중단은 `AbortController`로 처리한다. 중단하지 않으면 스트림이 백그라운드에서 계속 돈다
-- 스트리밍 중 누적 텍스트는 로컬 상태로 다루고, 완료 시점에 최종 결과만 쿼리 캐시에 반영한다
-- 스트림 중간 실패는 부분 응답을 화면에 남긴 채 에러 상태를 함께 표시한다. 이미 보여준 것을 지우지 않는다
-- **이벤트 이름과 종료 신호는 아직 확정이 아니다 (미확정 — AI 파트 회신 대기).** 파서는 이벤트 이름을 하드코딩하지 않고 `{event, data}` 쌍으로 올려보내고, 이름 해석은 소비하는 feature에서 한다. 확정되면 소비처만 고친다
+> **SSE 파싱 방침은 폐기됐다 (커밋 `34ed34a`, 2026-08-20).**
+> 이 자리에는 "`EventSource`가 GET 전용이라 `fetch` + `ReadableStream` + `TextDecoder`로 직접 파싱한다"는
+> 규약이 있었다. 설계에서 스트리밍이 빠졌으므로 함께 지웠다.
+> **`shared/api`에 스트림 파서를 만들지 않는다.** 다시 필요해지면 AI 파트의 구현을 먼저 확인하고 이 절을 되살린다.
+
+- AI 경로 문자열은 `shared/config` 상수 한 곳에 모은다. 백엔드 중계 경로가 확정되면 그 파일만 고친다
+- 응답의 `data_as_of`·`disclaimer`는 **Zod 스키마에서 optional로 둔다.** 백엔드 중계 후에도 남아 있을지 확인되지 않았다. 없으면 그 표기만 생략하고 화면은 정상 동작해야 한다
+- AI 요청은 느리다. `staleTime`을 길게 잡고 화면 진입마다 다시 부르지 않는다
+- **프론트는 AI 응답을 조립하지 않는다.** 수치 치환·검증은 AI 서버가 끝낸 상태로 온다
 
 ### 시세 구독 계층
 
@@ -370,7 +371,7 @@ SSE 스트리밍 중 누적되는 텍스트도 로컬 상태다. 완료 시점�
 **위젯 단위 경계를 반드시 두는 곳:**
 
 - 차트 — 라이브러리 초기화 실패가 화면 전체를 죽이지 않게 한다
-- AI 응답 블록 — SSE 실패와 스키마 불일치가 잦은 지점이다. AI 서비스가 죽어도 시세·주문은 살아 있어야 한다
+- AI 응답 블록 — 타임아웃과 스키마 불일치가 잦은 지점이다. AI 서비스가 죽어도 시세·주문은 살아 있어야 한다
 - 실시간 시세 영역 — WebSocket 끊김이 정적 정보까지 지우지 않게 한다
 
 ### 규칙
