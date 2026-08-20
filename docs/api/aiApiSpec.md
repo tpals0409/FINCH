@@ -1,4 +1,12 @@
-# AI 서비스 API 계약 — 0-5 협의용 제안
+# AI 서비스 API 명세
+
+- 문서 버전: v0.2 (0-5 협의용)
+- 최종 수정: 2026-08-20
+- 관련 문서: [백엔드 API 명세서](./apiSpec.md) · [기능 명세서 v2.1](../spec/featureSpec.md) · [AI 파트 컨벤션](../convention/aiConvention.md)
+- 범위: AI 서비스가 **프론트엔드·백엔드에 제공하는** 계약. 엔진 산식·프롬프트 정책 등 AI 내부 구현은 제외한다.
+
+> **방향에 주의하세요.** 반대 방향인 백엔드 → AI 읽기 전용 내부 API(`/internal/v1`)는
+> [백엔드 API 명세서 9장](./apiSpec.md)에 있습니다. 이 문서는 AI → 프론트/백엔드 방향입니다.
 
 > **이 문서는 제안이지 확정이 아닙니다.**
 > AI 서비스가 **이미 구현해 운영 중인** 규약을 그대로 정리한 것입니다.
@@ -253,8 +261,14 @@ AI 서버는 `X-User-Id` 를 **검증 없이 그대로 신뢰합니다.** 외부
 
 ## 참고
 
-- 실제 스키마 전문: `ai/docs/api-spec.md`, `ai/docs/openapi.json`
-- 에러 정의: `ai/app/core/errors.py`
-- 봉투 정의: `ai/app/core/schemas.py`
-- 인증 구현: `ai/app/api/deps.py`
-- 헤더 이름 설정: `ai/app/core/config.py` 의 `trusted_user_header`
+| 내용 | 경로 |
+|---|---|
+| 실제 스키마 전문 | [`ai/docs/api-spec.md`](../../ai/docs/api-spec.md) · [`ai/docs/openapi.json`](../../ai/docs/openapi.json) |
+| 에러 정의 | `ai/app/core/errors.py` |
+| 봉투 정의 | `ai/app/core/schemas.py` |
+| 인증 구현 | `ai/app/api/deps.py` |
+| 헤더 이름 설정 | `ai/app/core/config.py` 의 `trusted_user_header` |
+| AI 파트 작업 규칙 | [`docs/convention/aiConvention.md`](../convention/aiConvention.md) |
+
+> 이 문서가 **팀이 보는 계약본**이다. AI 파트 내부 문서(`ai/docs/`)와 어긋나면 구현과
+> `openapi.json` 이 기준이며, 이 문서를 먼저 고친다.
