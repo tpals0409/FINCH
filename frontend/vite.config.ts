@@ -6,6 +6,10 @@ import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
+  // 워크트리마다 node_modules 가 master 를 가리키는 심볼릭 링크라
+  // 기본 cacheDir(node_modules/.vite) 이 워크트리 사이에 공유된다.
+  // 워크트리 안쪽으로 분리해 config 차이·동시 dev 서버 충돌을 예방한다.
+  cacheDir: '.vite-cache',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
