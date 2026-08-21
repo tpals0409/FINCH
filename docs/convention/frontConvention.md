@@ -60,7 +60,11 @@ AI 서비스는 `snake_case`에 공통 봉투를 준다.
 | 에러 형식 | `{isSuccess, code, message, result}` | `{error:{code,message,detail}, request_id}` |
 | 요청 추적 | 응답 헤더 `X-Request-Id` | 본문 `request_id` |
 
-**프론트는 두 계열을 구분해 처리하고, 내부적으로 `{code, message}` 공통 모델로 정규화한다.**
+**프론트가 호출하는 Base URL은 `/api/v1` 하나다.** AI 기능도 백엔드를 경유하므로 프론트는 `/api/ai/v1`을 직접 부르지 않는다(§4).
+오른쪽 열은 백엔드가 AI를 중계할 때 마주치는 형태이고, 프론트에는 백엔드가 재포장한 결과가 온다.
+
+**중계된 AI 응답이 어느 계열의 형태로 오는지는 아직 확인되지 않았다.** 프론트는 백엔드 형식으로 온다고 가정하고,
+AI 봉투가 그대로 실려 오는 경우에 대비해 어댑터를 API 레이어 한 곳에 둔다. 내부적으로는 `{code, message}` 공통 모델로 정규화한다.
 정규화 어댑터는 프론트 API 레이어에 두므로, 서버 쪽에서 형태를 맞춰 줄 필요는 없다.
 
 ### 2.2 에러 처리
@@ -146,21 +150,18 @@ KIS 실시간 등록 한도는 **서버 전체 합산** 성격으로 전제한�
 
 ---
 
-## 3. 브라우저 제약 — POST + SSE
+## 3. AI 응답 전송 방식 — 일반 요청/응답
 
-**`POST /chat`과 `POST /stocks/{ticker}/analysis`는 SSE인데
-브라우저의 `EventSource` API는 GET 전용이라 이 두 엔드포인트에 쓸 수 없다.**
+**AI 6종은 전부 일반 요청/응답이다. 스트리밍이 아니다.**
+`ai/docs/openapi.json`의 6개 엔드포인트가 모두 단일 JSON 봉투(`Envelope`)를 반환한다.
 
-프론트는 `fetch` + `ReadableStream` + `TextDecoder`로 직접 파싱한다.
-이 사실이 서버 쪽에 남기는 요구는 아래 세 가지다.
+> **SSE는 폐기됐다 (커밋 `34ed34a`, 2026-08-20).**
+> 이전 판의 이 절은 "`POST` + SSE라 `EventSource`를 쓸 수 없으니
+> `fetch` + `ReadableStream` + `TextDecoder`로 직접 파싱한다"는 요구를 서버 쪽에 남기고 있었다.
+> 설계에서 스트리밍이 빠졌으므로 그 요구도 함께 사라졌다.
+> **다시 넣기 전에 AI 파트의 구현부터 확인한다.** 문서만 되돌리면 있지도 않은 스트림을 파싱하게 된다.
 
-- **응답을 청크 단위로 즉시 flush한다.** 버퍼링해서 한 번에 보내면 스트리밍의 의미가 없다
-- **이벤트 경계는 빈 줄(`\n\n`)이다.** 프론트 파서가 이 경계로 이벤트를 자르므로 규격을 지켜야 한다
-- **명시적인 종료 신호가 필요하다.** 연결 종료만으로 완료를 판정하면 중간 끊김과 정상 완료를 구분할 수 없다
-
-**SSE 이벤트 이름과 종료 신호의 최종 확정은 대기 중이다 — AI 파트 회신 대기.**
-AI 명세 §3에 `meta` · `tool_call` · `delta` · `citations` · `done` 예시가 있으나 회신에서 확정을 보류했다.
-프론트 파서는 이벤트 이름을 하드코딩하지 않고 `{event, data}` 쌍으로 올려보내는 구조로 만든다.
+프론트는 AI 응답도 일반 JSON 요청과 똑같이 다룬다. `shared/api`에 스트림 파서를 만들지 않는다.
 
 ---
 
@@ -169,15 +170,20 @@ AI 명세 §3에 `meta` · `tool_call` · `delta` · `citations` · `done` 예�
 AI 기능은 **6종 전부 MVP 범위**다(AI 파트 회신 ②).
 기능 명세서 v2.1의 10.2가 3종으로 적었으나 AI 명세 §1.1의 6종으로 간다.
 
-| 기능 | 화면 | 엔드포인트 | 전송 |
-|---|---|---|---|
-| AI 종목 분석 | 종목 상세 | `POST /stocks/{ticker}/analysis` | SSE |
-| Ask My Portfolio | 채팅 | `POST /chat` | SSE |
-| 포트폴리오 진단 | 포트폴리오 | `POST /portfolio/diagnosis` | 일반 |
-| 수익률 원인 분석 | 홈·포트폴리오 | `POST /portfolio/attribution` | 일반 |
-| 주문 전 점검 | 주문 | `POST /orders/preview` | 일반 |
-| 데일리 브리핑 | 홈 | `GET /briefing` | 일반 |
+| 기능 | 화면 | AI 서버 원본 경로 | 프론트가 호출하는 경로 | 전송 |
+|---|---|---|---|---|
+| AI 종목 분석 | 종목 상세 | `POST /api/ai/v1/stocks/{ticker}/analysis` | `POST /api/v1/ai/stocks/{stockCode}/analysis` (잠정) | 일반 |
+| Ask My Portfolio | 채팅 | `POST /api/ai/v1/chat` | `POST /api/v1/ai/chat` (잠정) | 일반 |
+| 포트폴리오 진단 | 포트폴리오 | `POST /api/ai/v1/portfolio/diagnosis` | `POST /api/v1/ai/portfolio/diagnosis` (잠정) | 일반 |
+| 수익률 원인 분석 | 홈·포트폴리오 | `POST /api/ai/v1/portfolio/attribution` | `POST /api/v1/ai/portfolio/attribution` (잠정) | 일반 |
+| 주문 전 점검 | 주문 | `POST /api/ai/v1/orders/preview` | `POST /api/v1/ai/orders/preview` (잠정) | 일반 |
+| 데일리 브리핑 | 홈 | `GET /api/ai/v1/briefing` | `GET /api/v1/ai/briefing` (잠정) | 일반 |
 
-**프론트가 AI 서버를 직접 호출할지 백엔드를 경유할지는 미확정이다 — 백엔드·AI 협의 대기.**
-프론트 영향 비교는 [`frontend/docs/contracts.md`](../../frontend/docs/contracts.md) §2에 정리했다.
-프론트는 어느 쪽으로 정해져도 살아남는 구조(서비스별 클라이언트 + 정규화 어댑터)로 먼저 만든다.
+**호출 경로는 프런트 → 백엔드 → AI로 확정됐다** (커밋 `34ed34a`, `aa613d7`).
+프론트가 쓰는 Base URL은 `/api/v1` 하나이고 AI 서버를 직접 호출하지 않는다.
+AI 서버는 사용자 식별을 백엔드의 신뢰 헤더로 받으므로 프론트의 JWT를 직접 검증하지 않는다.
+
+**아직 확정되지 않은 것은 백엔드가 AI를 중계할 때 붙일 경로 문자열이다.** 위 표의 오른쪽 열은 가정값이다.
+프론트는 그 경로를 `shared/config` 상수 한 곳에 모아 두고, 회신이 오면 그 파일만 고친다.
+
+**종목코드 파라미터는 `stockCode`로 통일한다.** AI 명세만 `ticker`를 쓰는데 프론트는 백엔드만 호출하므로 백엔드 이름을 따른다.
