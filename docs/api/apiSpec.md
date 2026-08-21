@@ -1,14 +1,19 @@
 # 백엔드 API 명세서
 
-- 문서 버전: v0.1 (초안)
-- 작성일: 2026-08-20
+- 문서 버전: v0.2 (확정판)
+- 작성일: 2026-08-20 / 최종 수정: 2026-08-21
 - 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md)
 - 범위: MVP 백엔드 API 전체. 프론트엔드가 Mock을 만들 수 있는 수준의 계약을 목표로 한다.
+- 변경 이력:
+  - v0.1 — 기능 명세서에서 도출한 초안
+  - v0.2 — 공통 API 규격 0-5 확정 반영: `[제안]` 항목 일괄 확정, 에러 형식 `{code, message, detail}` 확정,
+    토큰 정책 확정(Refresh 쿠키 전용), 등락률 단위 명문화, 페이징 기본/최대 크기 확정,
+    다건 시세 파라미터 `stockCodes`로 통일과 `stale` 스키마 정의, 재발급 401 코드 2종 분리,
+    AI 중계 API 장 신설(10장)
 
 > **이 문서의 성격**
-> 기능 명세서에서 도출한 **초안**이다. 명세에 근거가 있는 항목과, 구현을 위해 이 문서에서 처음 정한 항목을 구분해 표기했다.
-> `[제안]` 표시는 명세에 없어 이 문서가 제안하는 내용이며 Sprint 0에서 확정이 필요하다.
-> `[S0-N]` 표시는 Sprint 0 결정 항목에 의존해 아직 확정할 수 없는 부분이다.
+> 공통 API 규격(0-5)의 확정 내용을 담은 문서다. 프론트·AI 파트와 어긋나면 이 문서가 기준이며, 수정은 백엔드 파트가 한다.
+> `[S0-N]` 표시는 Sprint 0 결정 항목(8/26 결정 회의)에 의존해 아직 확정할 수 없는 부분이다.
 
 ---
 
@@ -24,7 +29,10 @@
 | 시각 | ISO 8601, KST 오프셋 포함 (`2026-08-20T14:30:00+09:00`) |
 | 금액 | 원 단위 정수 (`long`). 소수점·콤마 없이 숫자만 내려보낸다. 천 단위 콤마는 화면에서 처리 |
 | 수량 | 정수 (`long`) |
-| 등락률 | 소수 둘째 자리까지 (`number`, 예: `-1.24`) |
+| 등락률·수익률 | **백분율 값** (`number`, 소수 둘째 자리까지). `-1.21`은 −1.21%를 뜻한다. 프론트는 `%` 기호만 붙이고 100을 곱하지 않는다 |
+| 그 외 비율 | 0~1 소수 (예: 비중 `0.0512`). % 변환은 화면 표시 계층 담당 |
+| 종목코드 | 6자리 **문자열** (`"005930"`). 정수 금지 (앞자리 0 소실) |
+| 요청 추적 | 모든 응답에 `X-Request-Id` 헤더를 싣는다. 오류 리포트에 이 값을 포함한다 |
 
 ### 1.2 인증
 
@@ -35,16 +43,16 @@
 Authorization: Bearer {accessToken}
 ```
 
-| 토큰 | 만료 | 저장 위치 |
+| 토큰 | 만료 | 전달·저장 방식 |
 |---|---|---|
-| Access Token | 30분 `[제안]` | 메모리 또는 로컬 |
-| Refresh Token | 2주 `[제안]` | HttpOnly 쿠키 권장 `[제안]` |
+| Access Token | 30분 | 응답 **본문**으로 전달. 프론트는 **메모리에만 보관** (`localStorage` 저장 금지) |
+| Refresh Token | 14일 | **`HttpOnly + Secure + SameSite=Lax` 쿠키로만** 전달. 응답 본문에 싣지 않으며 JS에서 접근 불가 |
 
 인증 불필요 엔드포인트: `POST /auth/kakao`, `POST /auth/refresh`
 
 ### 1.3 응답 형식
 
-성공 시 **봉투 없이 리소스를 그대로** 내려준다. `[제안]`
+성공 시 **봉투 없이 리소스를 그대로** 내려준다.
 
 ```http
 HTTP/1.1 200 OK
@@ -65,15 +73,23 @@ HTTP/1.1 200 OK
 
 | 필드 | 설명 |
 |---|---|
-| `code` | 기계가 분기할 식별자 (7장 전체 목록) |
+| `code` | 기계가 분기할 식별자 (11장 전체 목록) |
 | `message` | 사용자에게 그대로 노출 가능한 한국어 문구 |
-| `detail` | 화면 표시에 필요한 부가 값. 없으면 생략 |
+| `detail` | 화면 표시에 필요한 부가 값. 없으면 생략. 검증 실패 시 `{필드명: 사유}` 맵 |
 
-> 프론트엔드는 `message`를 그대로 노출해도 되도록 서버가 문구를 완성해서 내려준다. 화면마다 문구를 다시 만들지 않는다.
+**성공/실패 판단 규칙 (확정)**
+
+1. **성공이냐 실패냐** — HTTP 상태 코드로 판단한다 (2xx = 성공).
+2. **어떤 실패냐** — 에러 본문의 **`code` 문자열로만** 분기한다. HTTP 상태 코드 숫자나 `message` 문구로 실패 종류를 분기하지 않는다.
+
+`isSuccess` 같은 성공 여부 필드는 두지 않는다. 성공 응답에 봉투가 없으므로 이 필드는 에러에서 항상
+`false`가 되어 정보가 없고, HTTP 상태와 어긋나는 모순 상태만 만들 수 있기 때문이다.
+
+> 프론트엔드는 `message`를 그대로 노출해도 되도록 서버가 문구를 완성해서 내려준다. 화면마다 문구를 다시 만들지 않는다. 배포된 `code`는 변경하지 않는다.
 
 ### 1.4 멱등성 (명세 11장)
 
-**충전과 주문**은 멱등성 키가 필수다.
+**충전과 주문**은 멱등성 키가 필수다. **키는 클라이언트가 UUID v4로 생성한다** — 같은 버튼 클릭의 재시도는 같은 키, 새 클릭은 새 키.
 
 ```http
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
@@ -83,16 +99,22 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 |---|---|
 | 헤더 누락 | `400 IDEMPOTENCY_KEY_REQUIRED` |
 | 처음 보는 키 | 정상 처리하고 결과를 키와 함께 저장 |
+| 이미 처리된 키, 처리 진행 중 | `409 IDEMPOTENCY_IN_PROGRESS` → 클라이언트는 짧게 대기 후 **동일 키로** 재시도 |
 | 이미 처리된 키, 동일 요청 | **재처리하지 않고 최초 결과를 그대로 반환** (동일 상태 코드) |
-| 이미 처리된 키, 다른 요청 본문 | `409 IDEMPOTENCY_CONFLICT` |
+| 이미 처리된 키, 다른 요청 본문 | `409 IDEMPOTENCY_CONFLICT` → 클라이언트 버그 신호. 재시도 금지 |
 
-키 보관 기간은 24시간으로 둔다. `[제안]`
+키 보관 기간은 24시간으로 확정한다.
 
 ### 1.5 페이징
 
-목록 조회는 커서 기반을 쓴다. (명세 10.3의 trades 규칙을 전체에 통일) `[제안]`
+목록 조회는 커서 기반을 쓴다. (명세 10.3의 trades 규칙을 전체에 통일)
 
-**요청**: `?cursor={nextCursor}&size=20`
+| 구분 | `size` 기본값 | `size` 최대값 |
+|---|---|---|
+| 공개 API (`/api/v1`) | 30 | 100 |
+| 내부 연동 API (`/internal/v1`) | 100 | 100 |
+
+**요청**: `?cursor={nextCursor}&size=30`
 **응답**:
 
 ```json
@@ -103,7 +125,8 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 }
 ```
 
-`nextCursor`가 `null`이면 마지막 페이지다.
+- `nextCursor`가 `null`이면 마지막 페이지다.
+- 커서는 **불투명 문자열**이다. 클라이언트는 파싱·조작·해석하지 않고 `nextCursor`를 그대로 되돌려 보낸다. 인코딩 방식은 서버 구현 상세이며 예고 없이 바뀔 수 있다.
 
 ### 1.6 투자 회차 규칙 (명세 2.3)
 
@@ -133,10 +156,12 @@ POST /api/v1/auth/kakao
 ```
 
 **Response `200 OK`**
+```http
+Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth; Max-Age=1209600
+```
 ```json
 {
   "accessToken": "eyJhbGciOi...",
-  "refreshToken": "eyJhbGciOi...",
   "isNewUser": true,
   "user": {
     "userId": 1,
@@ -145,6 +170,8 @@ POST /api/v1/auth/kakao
   }
 }
 ```
+
+**Refresh Token은 본문에 싣지 않는다.** `Set-Cookie` 헤더로만 내려간다 (§1.2).
 
 | 에러 | 상태 |
 |---|---|
@@ -156,18 +183,24 @@ POST /api/v1/auth/kakao
 POST /api/v1/auth/refresh
 ```
 
-**Request**
-```json
-{ "refreshToken": "eyJhbGciOi..." }
-```
+**요청 본문 없음.** Refresh Token은 쿠키에서 읽는다.
 
 **Response `200 OK`**
+```http
+Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth; Max-Age=1209600
+```
 ```json
-{ "accessToken": "eyJhbGciOi...", "refreshToken": "eyJhbGciOi..." }
+{ "accessToken": "eyJhbGciOi..." }
 ```
 
-Refresh Token도 함께 갱신한다(회전 방식). `[제안]`
-재발급 실패 시 `401 AUTH_INVALID_TOKEN` → 클라이언트는 로그인 화면으로 이동한다.
+Refresh Token도 함께 갱신한다(회전 방식). 새 토큰은 `Set-Cookie`로 내려간다.
+
+**실패 코드 2종을 구분한다** — Access Token이 메모리에만 있으므로 프론트는 **앱 부팅 시 이 API를 1회 호출**해 세션을 복구하는데, 최초 방문자(쿠키 없음)와 세션 만료(재로그인 필요)를 같은 코드로 주면 최초 방문자가 로그인 화면으로 튕긴다.
+
+| 에러 | 상태 | 조건 | 프론트 처리 |
+|---|---|---|---|
+| `AUTH_REFRESH_TOKEN_MISSING` | 401 | 쿠키 자체가 없음 (최초 방문, 로그아웃 후) | **비로그인 상태로 조용히 처리.** 로그인 화면으로 강제 이동하지 않는다 |
+| `AUTH_INVALID_TOKEN` | 401 | 쿠키는 있으나 만료·무효·회전 충돌 | 로그인 화면으로 이동 |
 
 ### 2.3 로그아웃
 
@@ -447,26 +480,38 @@ GET /api/v1/stocks/{stockCode}/price
 }
 ```
 
-`stale`: 시세 원천에서 수신이 끊겨 마지막 수신 값을 쓰고 있는 경우 `true`. 허용 시간은 `[S0-3]`.
+**`stale` 규칙 (확정)** — 시세가 정상이 아닌 상태는 두 가지이고, 필드 값이 다르다.
+
+| 상황 | `currentPrice`·`changeAmount`·`changeRate` | `asOf` | `stale` |
+|---|---|---|---|
+| 정상 수신 중 | 최신 값 | 최신 수신 시각 | `false` |
+| **수신 끊김** (허용 시간 초과) | **마지막 수신 값 유지** | **마지막 수신 시각** | `true` |
+| **값 없음** (캐시 미스, 수신 이력 없음) | **전부 `null`** | `null` | `true` |
+
+프론트는 `stale: true`면 "시세 지연"을 표시하고, 값이 `null`이면 가격 영역을 비운다. 허용 시간은 `[S0-3]`.
 
 ### 5.5 다건 현재가 조회
 
 ```
-GET /api/v1/stocks/prices?codes=005930,000660,035720
+GET /api/v1/stocks/prices?stockCodes=005930,000660,035720
 ```
 
-관심 종목 목록, 보유 종목 목록에서 N+1 호출을 막기 위한 벌크 조회다. `[제안]`
+관심 종목 목록, 보유 종목 목록에서 N+1 호출을 막기 위한 벌크 조회다.
+파라미터 이름은 필드 표기(`stockCode`)와 같은 계열인 **`stockCodes`로 확정**한다 (`codes`·`tickers` 아님).
 한 번에 최대 50건. `[S0-1]`의 실시간 등록 건수 제한과 관심 종목 50개 정책이 충돌하면 갱신 방식을 조정한다.
 
 **Response `200 OK`**
 ```json
 {
   "items": [
-    { "stockCode": "005930", "currentPrice": 73500, "changeAmount": -900, "changeRate": -1.21 }
-  ],
-  "asOf": "2026-08-20T14:30:00+09:00"
+    { "stockCode": "005930", "currentPrice": 73500, "changeAmount": -900, "changeRate": -1.21, "asOf": "2026-08-20T14:30:00+09:00", "stale": false },
+    { "stockCode": "000660", "currentPrice": null, "changeAmount": null, "changeRate": null, "asOf": null, "stale": true }
+  ]
 }
 ```
+
+- 항목 스키마는 5.4 단건 응답과 동일하며, `stale` 규칙도 5.4를 그대로 따른다. **항목별로** 판정한다 — 일부 종목만 지연이어도 나머지는 정상 값으로 내려간다.
+- 요청한 종목 중 존재하지 않는 코드는 `items`에서 제외한다 (전체 요청을 실패시키지 않는다).
 
 ### 5.6 실시간 시세 구독 `[S0-2]`
 
@@ -625,7 +670,7 @@ MVP는 시장가 즉시 체결만 존재한다. 접수와 체결이 분리되지
 
 ### 7.3 주문 가능 정보 조회
 
-주문 화면의 비율 버튼(10%/25%/50%/최대)과 거래 가능 여부 판단에 사용한다. `[제안]`
+주문 화면의 비율 버튼(10%/25%/50%/최대)과 거래 가능 여부 판단에 사용한다.
 
 ```
 GET /api/v1/orders/available?stockCode=005930&side=BUY
@@ -804,12 +849,59 @@ GET /internal/v1/trades?roundId=3&cursor=&size=100
 
 ---
 
-## 10. 에러 코드 목록
+## 10. AI 중계 API
+
+호출 경로는 **프론트 → 백엔드 → AI 서버**로 확정됐다. 프론트는 AI 서버를 직접 호출하지 않고, 백엔드가 `/api/v1/ai/**` 요청을 AI 서버(`/api/ai/v1/**`)로 중계한다.
+
+### 10.1 경로 매핑
+
+| 프론트가 부르는 경로 | 중계 대상 (AI 서버) | 용도 |
+|---|---|---|
+| `POST /api/v1/ai/stocks/{stockCode}/analysis` | `POST /api/ai/v1/stocks/{ticker}/analysis` | 종목 분석 |
+| `POST /api/v1/ai/chat` | `POST /api/ai/v1/chat` | 대화 에이전트 (용어 설명 포함) |
+| `POST /api/v1/ai/portfolio/diagnosis` | `POST /api/ai/v1/portfolio/diagnosis` | 포트폴리오 진단 |
+| `POST /api/v1/ai/portfolio/attribution` | `POST /api/ai/v1/portfolio/attribution` | 수익률 원인 분석 |
+| `POST /api/v1/ai/orders/preview` | `POST /api/ai/v1/orders/preview` | 주문 전 점검 |
+| `GET /api/v1/ai/briefing` | `GET /api/ai/v1/briefing` | 데일리 브리핑 |
+| `POST /api/v1/ai/feedback` | `POST /api/ai/v1/feedback` | 응답 피드백 (`requestId` 기반) |
+
+AI 서버의 사용자 위키 4종(`/wiki/**`)은 프론트 화면 범위가 확정되면 같은 규칙으로 추가한다.
+
+### 10.2 인증
+
+- 프론트 → 백엔드: 일반 API와 동일하게 `Authorization: Bearer {accessToken}`. **백엔드가 JWT를 검증**한다.
+- 백엔드 → AI 서버: 서비스 간 토큰과 사용자 식별 헤더를 싣는다 (AI 명세 §4의 백엔드 신뢰 헤더 방식). AI 서버는 외부에 직접 노출하지 않는다.
+
+### 10.3 응답 재포장 규칙
+
+백엔드는 AI 응답 봉투를 벗겨 **백엔드 형식(camelCase, 성공 시 봉투 없음)으로 재포장**해 내려준다. 단, 아래 필드는 화면 노출 필수이므로 **재포장 후에도 본문에 반드시 보존**한다.
+
+| 보존 필드 (camelCase 변환 후) | 이유 |
+|---|---|
+| `dataAsOf` | 시세·뉴스·거시 지표의 기준 시각. "몇 시 기준" 표기가 없으면 오해를 만든다 |
+| `citations` | 답변 근거 출처 |
+| `disclaimer` | 투자 자문 회피 문구. 모든 AI 응답에 노출한다 |
+| `requestId` | `POST /ai/feedback`이 이 값으로 원본 응답을 찾는다. **에러 응답에도 보존**한다 |
+
+### 10.4 에러 통과 규칙
+
+- **AI 서버가 반환한 에러는 `code`·`message`·`detail`과 HTTP 상태를 그대로 통과**시킨다. 백엔드가 자기 5xx로 뭉개지 않는다. 프론트가 코드별로 다른 화면 처리를 해야 하기 때문이다 — 특히 `INSUFFICIENT_DATA`(409, 재시도 무의미)·`GUARDRAIL_BLOCKED`(422, 재시도 유도 금지)·`RETRIEVAL_FAILED`(502, 재시도 가능)·`LLM_TIMEOUT`(504, 재시도 가능). 전체 목록은 [AI 서비스 API 명세 §3](./aiApiSpec.md)을 따른다.
+- **백엔드 자신이 AI 서버에 도달하지 못한 경우**는 아래 코드를 새로 내려준다. 프론트는 이 코드로 AI 위젯만 에러 처리하고 나머지 화면(시세·주문)은 살린다.
+
+| 에러 | 상태 | 조건 |
+|---|---|---|
+| `AI_UPSTREAM_UNAVAILABLE` | 502 | AI 서버 연결 실패·비정상 응답 |
+| `AI_UPSTREAM_TIMEOUT` | 504 | 중계 타임아웃. 타임아웃 값은 AI의 LLM 타임아웃보다 길게 잡아 AI가 먼저 `LLM_TIMEOUT`을 돌려주게 한다 |
+
+---
+
+## 11. 에러 코드 목록
 
 ### 인증
 | 코드 | 상태 |
 |---|---|
 | `AUTH_KAKAO_FAILED` | 401 |
+| `AUTH_REFRESH_TOKEN_MISSING` | 401 |
 | `AUTH_INVALID_TOKEN` | 401 |
 | `AUTH_EXPIRED_TOKEN` | 401 |
 | `AUTH_FORBIDDEN` | 403 |
@@ -820,9 +912,18 @@ GET /internal/v1/trades?roundId=3&cursor=&size=100
 | `INVALID_REQUEST` | 400 |
 | `RESOURCE_NOT_FOUND` | 404 |
 | `IDEMPOTENCY_KEY_REQUIRED` | 400 |
+| `IDEMPOTENCY_IN_PROGRESS` | 409 |
 | `IDEMPOTENCY_CONFLICT` | 409 |
 | `ROUND_READ_ONLY` | 409 |
 | `INTERNAL_ERROR` | 500 |
+
+### AI 중계 (백엔드 발행분)
+| 코드 | 상태 |
+|---|---|
+| `AI_UPSTREAM_UNAVAILABLE` | 502 |
+| `AI_UPSTREAM_TIMEOUT` | 504 |
+
+AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETRIEVAL_FAILED`, `LLM_TIMEOUT` 등)는 그대로 통과되며, 목록은 [AI 서비스 API 명세 §3](./aiApiSpec.md)이 관리한다.
 
 ### 충전
 | 코드 | 상태 |
@@ -851,7 +952,7 @@ GET /internal/v1/trades?roundId=3&cursor=&size=100
 
 ---
 
-## 11. 엔드포인트 요약
+## 12. 엔드포인트 요약
 
 | 분류 | Method | Path | 멱등성 키 |
 |---|---|---|:---:|
@@ -876,27 +977,35 @@ GET /internal/v1/trades?roundId=3&cursor=&size=100
 | 주문 | GET | `/api/v1/orders/available` | |
 | 잔고 | GET | `/api/v1/portfolio` | |
 | 내역 | GET | `/api/v1/transactions` | |
+| AI 중계 | POST | `/api/v1/ai/stocks/{stockCode}/analysis` | |
+| AI 중계 | POST | `/api/v1/ai/chat` | |
+| AI 중계 | POST | `/api/v1/ai/portfolio/diagnosis` | |
+| AI 중계 | POST | `/api/v1/ai/portfolio/attribution` | |
+| AI 중계 | POST | `/api/v1/ai/orders/preview` | |
+| AI 중계 | GET | `/api/v1/ai/briefing` | |
+| AI 중계 | POST | `/api/v1/ai/feedback` | |
 | AI 내부 | GET | `/internal/v1/portfolio` | |
 | AI 내부 | GET | `/internal/v1/trades` | |
 
 ---
 
-## 12. 확정이 필요한 항목
+## 13. 확정이 필요한 항목
+
+응답 봉투·에러 형식·토큰 정책·페이징 크기·멱등성 규칙은 v0.2에서 확정되어 이 목록에서 빠졌다.
 
 | # | 항목 | 의존 | 영향 |
 |---|---|---|---|
-| 1 | 응답 봉투 유무, Access/Refresh 만료 시간 | 팀 합의 | 전체 API, FE 인터셉터 |
-| 2 | 실시간 방식 (웹소켓 vs 폴링) → 5.4/5.5/5.6 중 무엇을 쓸지 | `[S0-2]` | 시세 관련 전부 |
-| 3 | `stale` 허용 시간과 주문 차단 기준 | `[S0-3]` | 7.2의 3번 단계 |
-| 4 | 다건 시세 조회 최대 건수 (관심 종목 50개와 KIS 등록 제한 충돌) | `[S0-1]` | 5.5, 관심 종목 화면 |
-| 5 | 분봉 도입 시 `candles`의 `period`/`interval` 확장 | `[S0-4]` | 5.3 |
-| 6 | AI 응답에 파생 지표를 백엔드가 포함할지 | `[S0-5]` | 9.1, 9.2 |
-| 7 | 커서 인코딩 방식 | 팀 합의 | 페이징 전체 |
+| 1 | 실시간 방식 (웹소켓 vs 폴링) → 5.4/5.5/5.6 중 무엇을 쓸지 | `[S0-2]` | 시세 관련 전부 |
+| 2 | `stale` 허용 시간과 주문 차단 기준 | `[S0-3]` | 5.4 규칙의 판정 시간, 7.2의 3번 단계 |
+| 3 | 다건 시세 조회 최대 건수 (관심 종목 50개와 KIS 등록 제한 충돌) | `[S0-1]` | 5.5, 관심 종목 화면 |
+| 4 | 분봉 도입 시 `candles`의 `period`/`interval` 확장 | `[S0-4]` | 5.3 |
+| 5 | AI 응답에 파생 지표를 백엔드가 포함할지 | `[S0-5]` | 9.1, 9.2 |
+| 6 | 실시간 구독·해제 신호 채널과 서버 하트비트 타임아웃 | `[S0-1]`·`[S0-2]` | 5.6, 프론트 구독 추상화 계층 |
 
 ---
 
-## 13. 다음 작업
+## 14. 다음 작업
 
-1. 위 12장 항목을 Sprint 0에서 확정한다.
+1. 위 13장 항목을 Sprint 0(8/26 결정 회의)에서 확정한다.
 2. 확정 후 **OpenAPI 3.0 문서(`openapi.yaml`)로 옮긴다.** 프론트엔드 Mock(MSW)은 이 문서가 아니라 OpenAPI 문서를 기준으로 생성한다.
 3. 예시 응답 JSON을 엔드포인트별로 고정해 Mock과 통합 테스트가 같은 값을 쓰게 한다.
