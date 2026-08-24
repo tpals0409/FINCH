@@ -1,7 +1,7 @@
 # 백엔드 API 명세서
 
-- 문서 버전: v0.2 (확정판)
-- 작성일: 2026-08-20 / 최종 수정: 2026-08-21
+- 문서 버전: v0.3 (확정판)
+- 작성일: 2026-08-20 / 최종 수정: 2026-08-24
 - 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md)
 - 범위: MVP 백엔드 API 전체. 프론트엔드가 Mock을 만들 수 있는 수준의 계약을 목표로 한다.
 - 변경 이력:
@@ -13,6 +13,8 @@
     실시간 시세 구독 방식 확정(§5.6 — STOMP + 폴링 무신호, KIS 한도는 백엔드 수집 계층이 흡수),
     리뷰 반영(Access 만료 코드 `AUTH_TOKEN_EXPIRED` 확정, AI 중계 에러 최상위 `requestId` 명시,
     STOMP CONNECT 프레임 인증, 다건 시세 최대 50건 확정, 서버 보장/프론트 권장값 표기 분리)
+  - v0.3 — 스프링 표준 예외를 정확한 상태 코드로 내리기 위해 공통 에러 코드 2종 추가
+    (`METHOD_NOT_ALLOWED` 405, `UNSUPPORTED_MEDIA_TYPE` 415). **기존 코드의 값·상태는 변경 없음**
 
 > **이 문서의 성격**
 > 공통 API 규격(0-5)의 확정 내용을 담은 문서다. 프론트·AI 파트와 어긋나면 이 문서가 기준이며, 수정은 백엔드 파트가 한다.
@@ -972,6 +974,8 @@ AI 서버의 사용자 위키 4종(`/wiki/**`)은 프론트 화면 범위가 확
 | `IDEMPOTENCY_IN_PROGRESS` | 409 |
 | `IDEMPOTENCY_CONFLICT` | 409 |
 | `ROUND_READ_ONLY` | 409 |
+| `METHOD_NOT_ALLOWED` | 405 |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 |
 | `INTERNAL_ERROR` | 500 |
 
 ### AI 중계 (백엔드 발행분)
