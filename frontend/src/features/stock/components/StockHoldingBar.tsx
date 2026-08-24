@@ -41,9 +41,10 @@ const DIRECTION_TEXT_CLASS: Record<PriceDirection, string> = {
  * 신호색 구역(현재가 등락·내 평가손익), 아래쪽은 액센트 구역(주문 버튼).
  * 여기에 조작을 얹는 순간 두 청색이 다시 한 시야에 들어온다.
  *
- * 아래 `StockHoldingSummary` 카드와 중복이 아니라 밀도 차이다. 이 줄은
- * 평가손익 하나만, 카드는 수량·평균 단가까지 본다. 다만 같은 값을 읽으므로
- * 포매터는 양쪽 모두 `shared/lib/formatNumber` 것을 그대로 쓴다.
+ * 보유 관련 카드는 따로 두지 않는다. 수량·평균 단가·평가손익·수익률을
+ * 이 줄 하나가 다 보여주므로 아래에 같은 값을 다시 카드로 두면 사용자가
+ * "이 둘이 다른 값인가" 확인하러 눈을 왕복한다. 카드를 새로 만들 일이
+ * 생기면 이 줄과 겹치지 않는 값(예: 실현손익)인지 먼저 확인한다.
  */
 export function StockHoldingBar({ stockCode }: StockHoldingBarProps) {
   const { data } = useStockDetail(stockCode);
@@ -63,12 +64,15 @@ export function StockHoldingBar({ stockCode }: StockHoldingBarProps) {
       className="sticky top-nav z-10 border-b border-border bg-ground/80 px-5 backdrop-blur-xl backdrop-saturate-150"
     >
       <div className="flex items-center justify-between gap-3 py-2.5">
-        {/* 수량·평균 단가는 보조 활자다. 좁은 폭에서 자리가 모자라면 이쪽이
-            먼저 줄어든다 — 같은 값이 아래 카드에 온전히 남아 있다.
+        {/* 수량·평균 단가는 보조 활자다. "평균"은 시각적으로 뺐다 — 옆에
+            수량이 있고 오른쪽에 손익이 있어 단가로 읽힌다. 스크린 리더에는
+            sr-only 로 남긴다. 320px 에서 수량 네 자리(`1,234주`)와 단가
+            일곱 자리(`1,234,500`)를 같이 둬도 잘리지 않는 걸 확인했다.
             `min-w-0` 이 없으면 flex 항목의 자동 최소 너비 때문에 줄지 않고
             오른쪽 손익을 밀어낸다. */}
         <p className="min-w-0 truncate text-meta text-text-muted">
-          {formatCount(holding.quantity)}주 · 평균{' '}
+          {formatCount(holding.quantity)}주 ·{' '}
+          <span className="sr-only">평균 </span>
           {formatKrw(holding.avgBuyPrice)}
         </p>
 
