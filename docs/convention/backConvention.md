@@ -12,13 +12,22 @@
 
 ### 1. 기술 스택과 선정 근거
 
-- Java 21 + Spring Boot 3.x
+- Java 21 + Spring Boot 4.1.x (착수 시점 최신 4.1.1)
+  - 3.x 기각 — 3.5가 2026-06-30 오픈소스 EOL(최종 패치 3.5.16)이라 신규 프로젝트가 고를 수 있는 지원 라인은 4.0(2026-12-31 EOL)과 4.1뿐이다
+  - Boot 4는 Spring Framework 7 기반이므로 3.x용 라이브러리를 그대로 가져오면 기동에 실패할 수 있다. 의존성 추가 시 Boot 4 호환 여부를 확인한다
+  - Java 21 유지 — Boot 4 최소 요구는 17이고 21은 LTS다
 - 영속성 Spring Data JPA
-- DB MySQL 8 / 마이그레이션 Flyway
+- DB PostgreSQL 17 / 마이그레이션 Flyway
+  - MySQL 8 기각 — AI 파트가 같은 인스턴스에서 pgvector를 필수로 쓴다(초기 마이그레이션이 `CREATE EXTENSION vector`를 실행하고, 벡터 검색은 종목 분석·채팅의 런타임 기능이다). MySQL을 따로 두면 2vCPU 노드에 DB 엔진이 둘 올라가고 EC2 이관 절차(`pg_dump` 일괄 덤프·복원)도 갈라진다
+  - 인스턴스 1개 + DB 2개 — 백엔드 `moutoss_db` / AI `ai_invest`. 스키마 관리 도구가 달라(Flyway vs Alembic) DB를 나눠야 마이그레이션 이력이 충돌 없이 공존한다
+  - 운영 이미지 `pgvector/pgvector:pg17` (infraSpec 결정 #10). `ddl-auto`는 `validate` 고정, 스키마 변경은 Flyway 전용 (infraSpec §3.2)
 - 캐시·멱등성 키 저장 Redis
 - 인증 Spring Security + JWT, 카카오 OAuth
+  - OAuth2 Client 기각 — apiSpec.md 2.1의 계약은 프론트가 인가 코드를 받아 `POST /auth/kakao`로 넘기는 구조다. Spring Security의 리다이렉트 로그인 플로우를 쓰지 않으므로, 카카오 토큰 교환은 HTTP 클라이언트로 직접 호출한다
 - 외부 연동(KIS·AI 서버) WebClient
-- API 문서 springdoc-openapi (→ `openapi.yaml` 산출, apiSpec.md 13장)
+- 실시간 시세 전송 Spring WebSocket + STOMP (apiSpec.md 5.6 확정)
+  - 폴링 전용 기각 — 폴링은 폴백 경로로 남기되 최종 구조는 STOMP다. 두 경로의 시세 페이로드 스키마는 동일하다
+- API 문서 springdoc-openapi (→ `openapi.yaml` 산출, apiSpec.md 13장) — Boot 4 호환 버전 확인 필요
 - 테스트 JUnit 5 + Testcontainers
 - **각 항목에 기각한 대안과 이유를 함께 적는다**
 
@@ -53,6 +62,8 @@
 - 멱등성 키(apiSpec.md 1.4): 처리 위치(인터셉터 vs 서비스), 저장소(Redis), 24시간 TTL, `IDEMPOTENCY_CONFLICT` 판정 기준(요청 본문 해시)
 - 커서 페이징(apiSpec.md 1.5): 공통 응답 타입, 커서 인코딩 방식 (12장 미확정 항목 — 여기서 제안하고 Sprint 0에서 확정)
 - 검증: Bean Validation 사용 기준, `INVALID_REQUEST` 매핑
+- 실시간 시세 STOMP(apiSpec.md 5.6): CONNECT 프레임의 `Authorization` 검증 위치(핸드셰이크가 아니다 — 브라우저 `WebSocket` 생성자가 커스텀 헤더를 못 붙인다), `/topic/prices/{stockCode}` 발행 주체, 하트비트 10초/10초와 30초 미수신 시 슬롯 회수 로직의 위치
+- **replica 2개 환경의 STOMP 팬아웃 방식 확정** — 내장 SimpleBroker는 각 인스턴스가 자기 연결에만 발행한다. 시세 캐시(Redis)를 각 인스턴스가 읽어 자기 구독자에게 발행하는 구조인지 Redis Pub/Sub으로 팬아웃하는지 명시하지 않으면, 단일 인스턴스에서는 되고 배포 후 절반의 사용자만 시세를 받는 형태로 깨진다 (infraSpec §3.2 — Spring Boot replicas 2)
 
 ### 6. 데이터 표기 규약
 
@@ -71,11 +82,11 @@
 
 ### 8. 외부 연동 규약
 
-- KIS 시세: 앱키 1개 기준 **동시 41슬롯** 관리 방식, 초과분 폴링 폴백 전환 로직의 위치
+- KIS 시세: 실시간 등록 한도 관리 방식(서버 전체 LRU 배정)과 초과분 REST 폴링 전환 로직의 위치. **한도 수치는 `[S0-1]` 실측 대기이고 41은 가정값이다** — 상수로 분리하고 수치에 의존하는 로직을 만들지 않는다 (apiSpec.md 5.6)
 - `stale` 판정: 마지막 수신 시각 기준, 허용 시간은 `[S0-3]` 확정 전까지 상수로 분리
 - 재시도·타임아웃: WebClient 공통 설정, 429 Retry-After 준수
 - AI 서버 내부 API(`/internal/v1`): `X-Internal-Token` 검증 위치, 외부 노출 차단 방법(네트워크 vs 필터), **읽기 전용 보장** (AI는 원장을 쓰지 않는다, 명세 10.1)
-- AI 명세 SSE: 백엔드가 프록시하는지 AI 서버 직결인지 확정하고, 프록시라면 버퍼링 없이 통과시키는 설정 명시
+- AI 중계(apiSpec.md 10장): **SSE는 폐기됐다** — AI 6종은 전부 일반 요청/응답이고 프론트는 AI 서버를 직접 부르지 않는다. 응답 정규화(AI `snake_case` + 공통 봉투 → 백엔드 `camelCase` + 봉투 없음) 위치와, **AI 장애를 백엔드 자체 장애와 구분할 에러 코드 체계**를 명시 (구분이 없으면 프론트가 AI 블록만 죽이는 에러 경계를 만들 수 없다)
 
 ## 완료 조건
 
@@ -89,7 +100,7 @@
 - `docs/convention/frontConvention.md` — 데이터 표기 규약(6장)은 FE 문서와 값이 일치해야 한다 (비율·금액·종목코드·등락 색)
 - `docs/api/apiSpec.md` — 응답 형식·멱등성·페이징·에러 코드의 계약 원본. 이 문서와 충돌 금지
 - 확정 조건: 시장가 즉시 체결(접수·체결 미분리), 거래 시간 09:00~15:30 KST, 초기 예수금 100만 원
-- 시세는 KIS 앱키 1개 기준 동시 41슬롯. 초과분은 폴링 폴백
+- 시세는 KIS 앱키 1개 기준 실시간 등록 한도 + 초과분 REST 폴링 폴백. 한도 수치는 `[S0-1]` 실측 대기 (41은 가정값)
 
 ## 범위 밖
 
