@@ -28,7 +28,7 @@ hs_err_pid*
 replay_pid*
 
 ### Node / Frontend ###
-node_modules/
+node_modules
 dist/
 dist-ssr/
 .next/
