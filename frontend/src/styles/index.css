@@ -1,15 +1,153 @@
 @import 'tailwindcss';
 
+/* 서체 3종. 역할이 서로 다르므로 셋을 함께 싣는다.
+ * 표제·라벨은 Wanted Sans, 본문·수치는 Pretendard, 종목코드·시각은 JetBrains Mono.
+ *
+ * 한글 가변 폰트 둘은 **분할(subset) 판**을 쓴다. 통합 파일은 Pretendard 2.0MB +
+ * Wanted Sans 1.3MB 로 합쳐 3.3MB 인데, 모바일 우선 서비스가 첫 화면에서 그만큼을
+ * 내려받는 것은 받아들일 수 없다. 분할 판은 `unicode-range` 로 92조각씩 나뉘어
+ * 화면에 실제로 나온 글자가 든 조각만 내려온다.
+ *
+ * 모노는 라틴 서브셋 두 굵기만 싣는다. 종목코드와 시각에만 쓰므로 키릴·그리스가 필요 없다. */
+@import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+
 /*
- * 등락 의미 토큰 (컨벤션 §6).
- * 국내 관례를 따라 상승이 적색, 하락이 청색이다. 미국식과 반대다.
- * 화면에서 text-red-500 처럼 색을 직접 쓰지 않고 이 토큰만 참조한다.
- * 관례가 바뀌거나 색맹 대응이 필요해지면 여기 한 곳만 고친다.
+ * ── 디자인 토큰 ────────────────────────────────────────────────────────────
+ *
+ * 야외 도감(field guide) 지면이 이 제품의 비주얼 월드다.
+ * 회백 지면 위의 먹 잉크, 그리고 1px 괘선이 곧 레이아웃 그리드다.
+ * 카드 컨테이너를 만들지 않는다. 구획은 괘선으로만 나눈다.
+ *
+ * 색은 값이 아니라 **의미**로 참조한다. `text-red-500` 이 아니라 `text-rise` 다.
+ * 관례가 바뀌거나 색맹 대응이 필요해지면 이 파일 한 곳만 고친다.
+ *
+ * 램프는 라이트가 주(主)다. 사용 장면이 장중 낮·실외·한 손이라 라이트가 기본이고,
+ * 다크는 **같은 토큰 이름의 값만 반전**한다. 다크 전용 토큰을 새로 만들지 않는다.
+ *
+ * ── 대비 측정값 (WCAG 2.1 상대휘도 공식으로 계산, 2026-08-24) ──────────────
+ *
+ * 라이트 (지면 #F2F1ED 기준)
+ *   ink          #14161A  16.03:1   본문·수치 ✔ 4.5:1
+ *   ink-muted    #5A5E66   5.76:1   레이블 ✔ 4.5:1
+ *   rise-ink     #C41E24   5.22:1   본문 크기 상승 수치 ✔ 4.5:1
+ *   fall-ink     #0F55C0   6.03:1   본문 크기 하락 수치 ✔ 4.5:1
+ *   rise         #D6252B   4.47:1   24px 이상 대형 수치 전용 ✔ 3:1 (본문 크기에 쓰지 않는다)
+ *   fall         #1364DF   4.74:1   대형 수치 ✔ 3:1 (본문 크기도 통과하지만 쌍을 맞춰 -ink 를 쓴다)
+ *   specimen-ink #54612C   5.95:1   종 표지 라벨 텍스트 ✔ 4.5:1
+ *   rule         #8D8878   3.14:1   구획 괘선. 의미를 가진 비텍스트 ✔ 3:1
+ *   rule-faint   #BFBBAE   1.70:1   표 안쪽 행 구분선. 구조가 아니라 리듬만 담당
+ *   specimen     #6B7A3A   4.16:1   표지 채움·마크 전용. **작은 텍스트를 얹지 않는다**
+ *
+ * 다크 (지면 #141619 기준)
+ *   ink          #EDEBE4  15.20:1 ✔    ink-muted  #9A968E  6.15:1 ✔
+ *   rise-ink     #FF6165   6.17:1 ✔    fall-ink   #6FA8FF  7.53:1 ✔
+ *   rise         #F0555B   5.31:1 ✔    fall       #5FA0FF  6.87:1 ✔
+ *   specimen-ink #A8B96B   8.47:1 ✔    rule       #666B73  3.38:1 ✔
+ *
+ * 다크에서 -ink 계열이 더 밝다. 밝기 방향이 반대여도 규칙은 하나다 —
+ * 본문 크기 수치가 항상 더 큰 대비를 갖는다.
  */
-@theme {
-  --color-rise: oklch(0.62 0.21 25);
-  --color-fall: oklch(0.58 0.17 250);
-  --color-flat: oklch(0.55 0.01 260);
+:root {
+  --finch-ground: #f2f1ed;
+  --finch-ink: #14161a;
+  --finch-ink-muted: #5a5e66;
+  --finch-rule: #8d8878;
+  --finch-rule-faint: #bfbbae;
+  --finch-rise: #d6252b;
+  --finch-rise-ink: #c41e24;
+  --finch-fall: #1364df;
+  --finch-fall-ink: #0f55c0;
+  --finch-specimen: #6b7a3a;
+  --finch-specimen-ink: #54612c;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --finch-ground: #141619;
+    --finch-ink: #edebe4;
+    --finch-ink-muted: #9a968e;
+    --finch-rule: #666b73;
+    --finch-rule-faint: #3a3f45;
+    --finch-rise: #f0555b;
+    --finch-rise-ink: #ff6165;
+    --finch-fall: #5fa0ff;
+    --finch-fall-ink: #6fa8ff;
+    --finch-specimen: #8b9c4a;
+    --finch-specimen-ink: #a8b96b;
+    color-scheme: dark;
+  }
+}
+
+/* `inline` 이어야 Tailwind 가 var() 를 그대로 유틸리티에 심는다.
+ * 값을 복사하지 않으므로 위 미디어 쿼리의 반전이 유틸리티에도 따라온다. */
+@theme inline {
+  --color-ground: var(--finch-ground);
+  --color-ink: var(--finch-ink);
+  --color-ink-muted: var(--finch-ink-muted);
+  --color-rule: var(--finch-rule);
+  --color-rule-faint: var(--finch-rule-faint);
+
+  /* 등락 의미 토큰. 국내 관례를 따라 상승이 적색, 하락이 청색이다. 미국식과 반대다.
+   * `-ink` 접미는 본문 크기 수치용(4.5:1 이상), 접미 없는 쪽은 대형 수치용이다. */
+  --color-rise: var(--finch-rise);
+  --color-rise-ink: var(--finch-rise-ink);
+  --color-fall: var(--finch-fall);
+  --color-fall-ink: var(--finch-fall-ink);
+  --color-flat: var(--finch-ink-muted);
+
+  /* 종 표지색. 브랜드 액센트는 이 올리브 하나뿐이다. */
+  --color-specimen: var(--finch-specimen);
+  --color-specimen-ink: var(--finch-specimen-ink);
+
+  --font-display: 'Wanted Sans Variable', 'Wanted Sans', system-ui, sans-serif;
+  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* 지면 폭. 도감 한 판(plate)의 너비다. 데스크톱은 이 폭으로 중앙 정렬만 한다. */
+  --container-plate: 26rem;
+
+  /* 현재가는 화면에서 가장 큰 물질이다. 320px 에서도 한 줄에 들어가야 한다. */
+  --text-quote: clamp(2.5rem, 13.5vw, 3.375rem);
+  --text-quote--line-height: 1;
+  --text-quote--letter-spacing: -0.03em;
+
+  /* 표제 종명. 현재가와 같은 급으로 읽히도록 굵기로 무게를 맞춘다. */
+  --text-plate-title: clamp(1.5rem, 7vw, 1.875rem);
+  --text-plate-title--line-height: 1.15;
+  --text-plate-title--letter-spacing: -0.02em;
+
+  /*
+   * 지면이 인쇄되듯 한 번 앉는다. 이 화면의 유일한 연출이고 반복하지 않는다.
+   * 괘선은 좌에서 우로 그어지고 표제 묶음은 6px 아래에서 올라온다.
+   * 감쇠는 지수 ease-out 이라 처음이 빠르고 끝이 길다.
+   * 호출부는 `motion-safe:` 변형과 함께 쓴다.
+   */
+  --animate-rule-draw: rule-draw 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-plate-settle: plate-settle 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  @keyframes rule-draw {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @keyframes plate-settle {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 html,
@@ -19,6 +157,36 @@ body,
 }
 
 body {
-  /* 가로 스크롤은 버그로 본다 (컨벤션 §9). */
+  /* 가로 스크롤은 버그로 본다 (컨벤션 §8). */
   overflow-x: hidden;
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* 수치가 갱신될 때 자릿수 폭이 흔들리면 레이아웃이 요동친다.
+   * 지면 전체에 고정폭 숫자를 걸어 두고 예외를 두지 않는다. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 내가 그리지 않은 브라우저 표면도 이 지면의 일부다.
+ * 기본값으로 두면 어느 디자인 시스템에도 속하지 않는 색이 화면에 남는다. */
+::selection {
+  background-color: color-mix(in srgb, var(--color-specimen) 28%, transparent);
+  color: var(--color-ink);
+}
+
+:root {
+  caret-color: var(--color-ink);
+  scrollbar-color: var(--color-rule) transparent;
+  scrollbar-width: thin;
+}
+
+:focus-visible {
+  /* 라운드를 주지 않는다. 초점 표시도 괘선 어휘를 따른다. */
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+a {
+  text-underline-offset: 0.2em;
 }
