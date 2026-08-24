@@ -1,80 +1,54 @@
-import {
-  formatCompactKrw,
-  formatCount,
-  formatKrw,
-} from '@/shared/lib/formatNumber';
-import { DataCell } from '@/shared/ui/DataCell';
+import { formatCount, formatKrw } from '@/shared/lib/formatNumber';
+import { Skeleton } from '@/shared/ui/Skeleton';
+import { StatCell } from '@/shared/ui/StatCell';
 
-import { useStockDetail, useStockProfile } from '../api/useStockDetail';
+import { useStockProfile } from '../api/useStockDetail';
 
-type StockMeasurementsProps = {
+type StockDayStatsProps = {
   stockCode: string;
 };
 
 /**
- * 표제부에 붙는 계측치 격자.
+ * 오늘 하루의 수치 넷. 차트 바로 아래에 붙는다.
  *
- * 구획 표제를 달지 않는다. 칸마다 이름이 붙어 있어 표제가 같은 말을 두 번 하고,
- * 40px 을 더 먹어 도판을 첫 화면 밖으로 밀어낸다. 도감의 계측표도 표 위에
- * "계측치"라고 다시 쓰지 않는다.
+ * 차트와 같은 카드 안에 두는 이유는 둘이 같은 것을 말하기 때문이다 —
+ * 차트가 형태로 보여준 하루를 숫자로 한 번 적는다. 따로 떼면 사용자가
+ * 두 구획을 오가며 같은 날을 두 번 읽는다.
  *
- * 고가·저가는 여기 없다. 바로 위 일중 범위 막대가 그 둘을 이미 축으로 쓰고
- * 양끝에 수치를 적는다. 같은 값을 두 번 적으면 어느 쪽을 봐야 하는지 물어야 한다.
+ * **넷만 남겼다.** 전일종가는 현재가에서 등락액을 빼면 나오고, 거래대금은
+ * 거래량이 이미 말한 것을 원 단위로 다시 말한다. 시가총액·PER·PBR 은
+ * 하루의 수치가 아니라 기업의 수치라 `기업` 탭에 있다. 증권 화면은 지표를
+ * 채워 넣으려는 압력이 강해서, 남길 이유를 대지 못한 칸은 지웠다.
  */
-export function StockMeasurements({ stockCode }: StockMeasurementsProps) {
-  const detailQuery = useStockDetail(stockCode);
-  const profileQuery = useStockProfile(stockCode);
+export function StockDayStats({ stockCode }: StockDayStatsProps) {
+  const { data, isPending, isError } = useStockProfile(stockCode);
 
-  if (profileQuery.isPending || detailQuery.isPending) {
-    // 스켈레톤은 실제 격자와 같은 칸 수·같은 높이를 차지한다. 크기가 다르면
-    // 데이터가 도착할 때 아래 구획이 통째로 밀린다.
+  if (isPending) {
+    // 실제 격자와 같은 칸 수·같은 높이를 차지한다.
     return (
-      <div className="grid animate-pulse grid-cols-2" aria-hidden="true">
+      <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
         {[0, 1, 2, 3].map((cell) => (
-          <div
-            key={cell}
-            className="border-t border-rule-faint px-4 py-2 odd:border-r"
-          >
-            <div className="h-3 w-14 bg-rule-faint" />
-            <div className="mt-1.5 h-4 w-20 bg-rule-faint" />
+          <div key={cell}>
+            <Skeleton className="h-3.5 w-10" />
+            <Skeleton className="mt-1.5 h-4 w-20" />
           </div>
         ))}
-      </div>
+      </dl>
     );
   }
 
-  if (profileQuery.isError || detailQuery.isError) {
-    return (
-      <div className="border-t border-rule-faint px-4 py-4">
-        <p className="text-[0.9375rem] text-ink">
-          계측치를 불러오지 못했습니다
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            void profileQuery.refetch();
-            void detailQuery.refetch();
-          }}
-          className="mt-3 min-h-11 border border-ink px-4 font-display text-[0.8125rem] font-semibold tracking-[0.04em] text-ink"
-        >
-          다시 시도
-        </button>
-      </div>
-    );
+  if (isError) {
+    // 차트가 살아 있으면 화면은 쓸 수 있다. 이 넷은 조용히 비운다 —
+    // 같은 카드 안에서 재시도 버튼이 두 개 보이면 무엇을 다시 받는지 헷갈린다.
+    return null;
   }
-
-  const profile = profileQuery.data;
-  const detail = detailQuery.data;
 
   return (
-    <dl className="grid grid-cols-2">
-      <DataCell label="시가" value={formatKrw(profile.open)} />
-      <DataCell label="전일종가" value={formatKrw(detail.previousClose)} />
-      <DataCell label="거래량" value={`${formatCount(profile.volume)}주`} />
-      <DataCell
-        label="거래대금"
-        value={formatCompactKrw(profile.tradingValue)}
-      />
+    <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+      <StatCell label="시가" value={formatKrw(data.open)} />
+      <StatCell label="고가" value={formatKrw(data.high)} />
+      <StatCell label="저가" value={formatKrw(data.low)} />
+      <StatCell label="거래량" value={`${formatCount(data.volume)}주`} />
     </dl>
   );
 }

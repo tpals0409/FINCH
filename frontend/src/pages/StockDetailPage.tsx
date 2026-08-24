@@ -2,8 +2,8 @@ import { useSearchParams, useParams } from 'react-router-dom';
 
 import {
   CandlePeriodSchema,
-  StockDetailPlate,
   StockDetailTabSchema,
+  StockDetailView,
   type MockAnalysisOutcome,
 } from '@/features/stock';
 
@@ -22,8 +22,7 @@ const MOCK_ANALYSIS_OUTCOMES: MockAnalysisOutcome[] = [
  * 살아 있어야 하는 것은 전부 URL 상태다 (컨벤션 §4, IA §2).
  *
  * 데스크톱은 중앙 정렬 + 최대 너비 제한으로만 대응한다. 데스크톱 전용
- * 레이아웃을 따로 만들지 않는다 (컨벤션 §8). 판면 좌우 괘선은 지면 폭보다
- * 화면이 넓을 때만 보인다.
+ * 레이아웃을 따로 만들지 않는다 (컨벤션 §8).
  */
 export function StockDetailPage() {
   const { stockCode } = useParams<{ stockCode: string }>();
@@ -32,8 +31,8 @@ export function StockDetailPage() {
   // 종목코드는 6자리 문자열이다. 파라미터 이름이 어긋나면 조용히 undefined 가 된다.
   if (stockCode === undefined) {
     return (
-      <main className="mx-auto w-full max-w-plate px-4 py-16">
-        <p className="text-[0.9375rem] text-ink">종목을 찾을 수 없습니다</p>
+      <main className="mx-auto w-full max-w-app px-5 py-20">
+        <p className="text-body text-text">종목을 찾을 수 없습니다</p>
       </main>
     );
   }
@@ -61,8 +60,8 @@ export function StockDetailPage() {
   };
 
   return (
-    <main className="mx-auto w-full max-w-plate border-x border-rule pb-24">
-      <StockDetailPlate
+    <main className="mx-auto w-full max-w-app">
+      <StockDetailView
         stockCode={stockCode}
         tab={tab}
         period={period}

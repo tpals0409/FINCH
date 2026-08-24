@@ -1,5 +1,5 @@
 /** feature 경계의 barrel. 밖에서는 이 파일에 있는 것만 쓴다 (컨벤션 §3). */
-export { StockDetailPlate } from './components/StockDetailPlate';
+export { StockDetailView } from './components/StockDetailView';
 export {
   CANDLE_PERIODS,
   CandlePeriodSchema,

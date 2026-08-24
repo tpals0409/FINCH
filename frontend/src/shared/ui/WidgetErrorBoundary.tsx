@@ -1,7 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { Button } from './Button';
+
 type WidgetErrorBoundaryProps = {
-  /** 무엇이 안 되는지 문장에 넣을 이름. `도판`, `소견` 처럼 화면에 보이는 말로 쓴다. */
+  /** 무엇이 안 되는지 문장에 넣을 이름. `차트`, `AI 소견` 처럼 화면에 보이는 말로 쓴다. */
   label: string;
   children: ReactNode;
 };
@@ -45,17 +47,13 @@ export class WidgetErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="px-4 py-6">
-          <p className="text-[0.9375rem] text-ink">
+        <div className="py-8 text-center">
+          <p className="text-body text-text">
             {this.props.label}을 표시할 수 없습니다
           </p>
-          <button
-            type="button"
-            onClick={this.handleRetry}
-            className="mt-3 min-h-11 border border-ink px-4 font-display text-[0.8125rem] font-semibold tracking-[0.04em] text-ink"
-          >
-            다시 시도
-          </button>
+          <div className="mt-4">
+            <Button onClick={this.handleRetry}>다시 시도</Button>
+          </div>
         </div>
       );
     }

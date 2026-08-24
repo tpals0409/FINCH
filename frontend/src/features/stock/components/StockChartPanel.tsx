@@ -1,11 +1,15 @@
+import { Button } from '@/shared/ui/Button';
+import { SectionCard } from '@/shared/ui/SectionCard';
+import { Skeleton } from '@/shared/ui/Skeleton';
 import { WidgetErrorBoundary } from '@/shared/ui/WidgetErrorBoundary';
 
 import { useStockCandles } from '../api/useStockDetail';
 import { CANDLE_PERIODS, type CandlePeriod } from '../model/stockDetail';
 
 import { StockCandleChart } from './StockCandleChart';
+import { StockDayStats } from './StockDayStats';
 
-type StockChartPlateProps = {
+type StockChartPanelProps = {
   stockCode: string;
   period: CandlePeriod;
   onPeriodChange: (period: CandlePeriod) => void;
@@ -17,99 +21,100 @@ const PERIOD_LABEL: Record<CandlePeriod, string> = {
   '1Y': '1년',
 };
 
+const CHART_HEIGHT = 260;
+
 /**
- * 도판 구획. 기간 선택과 캔들 차트를 담는다.
+ * 차트 패널. 기간 선택 · 캔들 차트 · 오늘의 수치 넷을 한 카드에 담는다.
  *
- * 기간 선택은 알약 버튼이 아니라 괘선으로 칸을 나눈 줄이다. 고른 칸은 아래
- * 2px 먹선으로 표시한다. 채움색 버튼을 쓰면 지면 최하단의 주문 사각과
- * 무게를 다투게 된다 — 이 화면에서 채워진 먹 사각은 하나여야 한다.
+ * 카드에 표제를 달지 않는다. 위쪽 탭이 이미 `차트` 라고 말했고, 카드 안에
+ * 같은 말을 다시 쓰면 첫 화면에서 40px 을 표제가 먹는다.
+ *
+ * 기간 선택은 오른쪽 정렬한 작은 글자 줄이다. 위쪽 탭과 같은 크기의 분절
+ * 컨트롤을 두 줄 겹치면 어느 쪽이 상위인지 읽히지 않는다. 이쪽은 13px 이고
+ * 고른 칸만 승격면 알약이 되어, 형태로 한 단 아래임을 말한다.
  */
-export function StockChartPlate({
+export function StockChartPanel({
   stockCode,
   period,
   onPeriodChange,
-}: StockChartPlateProps) {
+}: StockChartPanelProps) {
   const { data, isPending, isError, refetch, isFetching } = useStockCandles(
     stockCode,
     period,
   );
 
   return (
-    <div>
-      {/* 기간 선택은 색인 줄 바로 아래에 놓인다. 같은 크기의 3칸 줄을 두 개
-          겹치면 어느 쪽이 상위인지 읽히지 않으므로, 이쪽은 왼쪽에 이름을 달고
-          오른쪽에 작은 글자로 붙여 한 단 아래임을 형태로 말한다. */}
-      <div className="flex items-center justify-between border-b border-rule-faint pr-2 pl-4">
-        <span
-          id="chart-period-label"
-          className="font-mono text-[0.6875rem] tracking-[0.16em] text-ink-muted"
-        >
-          기간
-        </span>
-        <div role="group" aria-labelledby="chart-period-label" className="flex">
-          {CANDLE_PERIODS.map((candlePeriod) => {
-            const isActive = candlePeriod === period;
-            return (
-              <button
-                key={candlePeriod}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => onPeriodChange(candlePeriod)}
-                className={`min-h-11 px-3 font-display text-[0.8125rem] tracking-[0.02em] ${
-                  isActive
-                    ? 'font-semibold text-ink underline decoration-2 underline-offset-[0.45em]'
-                    : 'text-ink-muted'
-                }`}
-              >
-                {PERIOD_LABEL[candlePeriod]}
-              </button>
-            );
-          })}
-        </div>
+    <SectionCard isFlush>
+      <div
+        role="radiogroup"
+        aria-label="차트 기간"
+        className="flex justify-end gap-1 px-3 pt-2"
+      >
+        {CANDLE_PERIODS.map((candlePeriod) => {
+          const isActive = candlePeriod === period;
+          return (
+            <button
+              key={candlePeriod}
+              type="button"
+              role="radio"
+              aria-checked={isActive}
+              onClick={() => onPeriodChange(candlePeriod)}
+              className={`min-h-11 rounded-full px-3.5 text-meta transition-colors duration-200 ${
+                isActive
+                  ? 'border border-border bg-elevated font-semibold text-text shadow-card'
+                  : 'border border-transparent font-medium text-text-muted'
+              }`}
+            >
+              {PERIOD_LABEL[candlePeriod]}
+            </button>
+          );
+        })}
       </div>
 
-      {/* 도판은 판면 전폭을 쓴다. 좌우 여백을 주지 않는다. */}
-      <WidgetErrorBoundary label="도판">
+      <WidgetErrorBoundary label="차트">
         {isPending ? (
-          <div
-            className="animate-pulse bg-rule-faint/40"
-            style={{ height: 260 }}
-            aria-hidden="true"
-          />
+          /* 스켈레톤 높이를 차트와 같은 상수로 고정한다. 다르면 데이터가
+             도착할 때 카드가 늘어나며 아래 내용이 튄다. */
+          <div className="px-3" style={{ height: CHART_HEIGHT }}>
+            <Skeleton className="size-full rounded-xl" />
+          </div>
         ) : null}
 
         {isError ? (
-          <div className="px-4 py-10">
-            <p className="text-[0.9375rem] text-ink">
-              도판을 불러오지 못했습니다
-            </p>
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              disabled={isFetching}
-              className="mt-3 min-h-11 border border-ink px-4 font-display text-[0.8125rem] font-semibold tracking-[0.04em] text-ink disabled:opacity-50"
-            >
-              다시 시도
-            </button>
+          <div className="px-5 py-10 text-center">
+            <p className="text-body text-text">차트를 불러오지 못했습니다</p>
+            <div className="mt-4">
+              <Button onClick={() => void refetch()} isDisabled={isFetching}>
+                다시 시도
+              </Button>
+            </div>
           </div>
         ) : null}
 
         {data !== undefined && data.length === 0 ? (
           /* 빈 상태는 에러가 아니다. 신규 상장이나 장기 거래정지면 봉이 없다. */
-          <div className="px-4 py-10">
-            <p className="text-[0.9375rem] text-ink">
+          <div className="px-5 py-10 text-center">
+            <p className="text-body text-text">
               이 기간에 표시할 일봉이 없습니다
             </p>
-            <p className="mt-1.5 text-[0.8125rem] text-ink-muted">
+            <p className="mt-1.5 text-note text-text-muted">
               다른 기간을 골라 보세요
             </p>
           </div>
         ) : null}
 
         {data !== undefined && data.length > 0 ? (
-          <StockCandleChart candles={data} />
+          /* 캔버스에 좌우 12px 을 준다. 0 으로 두면 첫 x축 라벨(`6월`)이 카드
+             왼쪽 모서리에 반쯤 잘리고, 가격 축 라벨이 오른쪽 테두리에 붙는다. */
+          <div className="px-3">
+            <StockCandleChart candles={data} height={CHART_HEIGHT} />
+          </div>
         ) : null}
       </WidgetErrorBoundary>
-    </div>
+
+      <div className="border-t border-border px-5 pt-4 pb-4">
+        <StockDayStats stockCode={stockCode} />
+      </div>
+    </SectionCard>
   );
 }

@@ -6,87 +6,85 @@ import {
   getPriceDirection,
   type PriceDirection,
 } from '@/shared/lib/formatNumber';
+import { Button } from '@/shared/ui/Button';
 import { DirectionMark } from '@/shared/ui/DirectionMark';
+import { Skeleton } from '@/shared/ui/Skeleton';
 
-import { useStockDetail, useStockProfile } from '../api/useStockDetail';
+import { useStockDetail } from '../api/useStockDetail';
 
-import { StockRangeBar } from './StockRangeBar';
-
-type StockQuotePlateProps = {
+type StockQuoteHeaderProps = {
   stockCode: string;
 };
 
-/** 수치 텍스트는 본문 크기라 4.5:1 을 넘는 `-ink` 계열만 쓴다. */
+/** 신호색은 수치에만 쓴다. 버튼·링크에 이 클래스가 붙으면 규율 위반이다. */
 const DIRECTION_TEXT_CLASS: Record<PriceDirection, string> = {
-  rise: 'text-rise-ink',
-  fall: 'text-fall-ink',
+  rise: 'text-rise',
+  fall: 'text-fall',
   flat: 'text-flat',
 };
 
 /**
- * 도감 지면의 표제부.
+ * 화면 표제부. 종목명 · 6자리 코드 · 현재가 · 등락.
  *
- * 학명 자리에 6자리 종목코드를 모노로 놓고, 그 아래 종명을 표제로 세운다.
- * **현재가가 이 화면에서 가장 큰 물질이다.** 그리고 먹색이다 — 등락의 적/청은
- * 변화량 쪽에만 실린다. 가장 큰 숫자를 16:1 대비의 먹으로 두면 색맹·직사광선·
- * 저가형 패널 어디서도 값을 읽는 데 실패하지 않는다.
+ * **카드에 담지 않는다.** 지면 위에 활자만 놓는다. 위계는 상자가 아니라
+ * 크기·굵기·색이 만든다 — 이 화면에서 가장 큰 활자가 현재가이고, 두 번째가
+ * 종목명이고, 나머지는 다 작다. 그 순서가 곧 읽는 순서다.
  *
- * 시세와 일중 계측치 두 쿼리를 여기서 함께 읽는다. 막대가 저가·고가를 축으로
- * 쓰므로 둘 다 이 컴포넌트가 실제로 쓰는 데이터다. 위에서 받아 내리지 않는다.
+ * **현재가는 먹색이다.** 등락의 적/청은 변화량 쪽에만 실린다. 가장 큰 숫자를
+ * 16:1 대비의 먹으로 두면 색맹·직사광선·저가형 패널 어디서도 값을 읽는 데
+ * 실패하지 않는다. 신호색은 "얼마인가"가 아니라 "어느 쪽으로 움직였나"에 쓴다.
  */
-export function StockQuotePlate({ stockCode }: StockQuotePlateProps) {
+export function StockQuoteHeader({ stockCode }: StockQuoteHeaderProps) {
   const detailQuery = useStockDetail(stockCode);
-  const profileQuery = useStockProfile(stockCode);
 
   if (detailQuery.isPending) {
+    // 스켈레톤은 실제 표제부와 같은 높이를 차지한다. 크기가 다르면 데이터가
+    // 도착할 때 아래 구획이 통째로 밀린다.
     return (
-      <div className="animate-pulse px-4 pt-4 pb-4" aria-hidden="true">
-        <div className="h-3 w-28 bg-rule-faint" />
-        <div className="mt-3 h-7 w-40 bg-rule-faint" />
-        <div className="mt-5 h-12 w-56 bg-rule-faint" />
-        <div className="mt-4 h-4 w-44 bg-rule-faint" />
+      <div className="px-5 pt-3 pb-7">
+        <Skeleton className="h-8 w-36" />
+        <Skeleton className="mt-2 h-4 w-28" />
+        <Skeleton className="mt-6 h-14 w-56" />
+        <Skeleton className="mt-3 h-6 w-44" />
+        <Skeleton className="mt-4 h-4 w-32" />
       </div>
     );
   }
 
   if (detailQuery.isError) {
     return (
-      <div className="px-4 pt-4 pb-4">
-        <p className="text-[0.9375rem] text-ink">시세를 불러오지 못했습니다</p>
-        <button
-          type="button"
-          onClick={() => void detailQuery.refetch()}
-          disabled={detailQuery.isFetching}
-          className="mt-3 min-h-11 border border-ink px-4 font-display text-[0.8125rem] font-semibold tracking-[0.04em] text-ink disabled:opacity-50"
-        >
-          다시 시도
-        </button>
+      <div className="px-5 pt-3 pb-7">
+        <p className="text-body text-text">시세를 불러오지 못했습니다</p>
+        <div className="mt-4">
+          <Button
+            onClick={() => void detailQuery.refetch()}
+            isDisabled={detailQuery.isFetching}
+          >
+            다시 시도
+          </Button>
+        </div>
       </div>
     );
   }
 
   const detail = detailQuery.data;
   const direction = getPriceDirection(detail.changeRate);
-  const profile = profileQuery.data;
 
   return (
-    <div className="px-4 pt-4 pb-4 motion-safe:animate-plate-settle">
-      {/* 학명 자리. 종목코드는 6자리 문자열이고 숫자로 다루지 않는다. */}
-      <p className="font-mono text-[0.75rem] tracking-[0.18em] text-ink-muted">
-        {detail.stockCode}
-        <span className="mx-2 text-rule">/</span>
-        {detail.market}
-      </p>
+    <div className="px-5 pt-3 pb-7 motion-safe:animate-settle">
+      <h1 className="text-name font-semibold text-text">{detail.stockName}</h1>
 
-      <h1 className="mt-1 font-display text-plate-title font-extrabold text-ink">
-        {detail.stockName}
-      </h1>
+      {/* 종목코드는 6자리 문자열이고 숫자로 다루지 않는다. 모노로 두면 사람이
+          쓴 이름과 기계가 쓰는 식별자가 형태로 갈린다. */}
+      <p className="mt-1 font-mono text-meta text-text-muted">
+        {detail.stockCode} · {detail.market}
+      </p>
 
       {detail.suspended ? (
         /* 거래정지는 뱃지 + 사유 문구를 노출하고 주문 진입을 막는다 (계약 C46).
            목 데이터는 `suspended: false` 라서 화면에는 안 보이지만, 실제 응답이
            붙는 날 이 분기가 없으면 정지 종목을 살 수 있게 된다. */
-        <p className="mt-3 inline-block border border-ink px-2 py-1 font-display text-[0.75rem] font-semibold tracking-[0.06em] text-ink">
+        <p className="mt-3 inline-flex rounded-full border border-border bg-surface px-3 py-1 text-meta font-medium text-text">
           거래정지
           {detail.suspendedReason === null
             ? null
@@ -94,37 +92,25 @@ export function StockQuotePlate({ stockCode }: StockQuotePlateProps) {
         </p>
       ) : null}
 
-      <p className="mt-3 flex items-baseline gap-1 text-quote font-semibold text-ink">
-        {/* 단위를 잘라 붙이지 않는다. 숫자와 단위를 따로 포매팅해
+      <p className="mt-5 flex items-baseline gap-1.5 text-price font-semibold text-text">
+        {/* 단위를 문자열에 잘라 붙이지 않는다. 숫자와 단위를 따로 포매팅해
             큰 숫자 옆의 `원` 만 작게 둔다. */}
         {formatCount(detail.currentPrice)}
-        <span className="text-2xl font-medium">원</span>
+        <span className="text-2xl font-medium tracking-normal">원</span>
       </p>
 
-      {/* 등락 사중 부호화 — 색 · 부호 · 삼각형 · 막대 길이. 색 하나만 쓰지 않는다. */}
+      {/* 등락 삼중 부호화 — 색 · 부호 · 삼각형. 색 하나만 쓰지 않는다.
+          이 화면에는 청색이 두 뜻으로 있어서(조작/하락) 색이 실패할 수 있다. */}
       <p
-        className={`mt-2 flex items-center gap-2 text-lg font-semibold ${DIRECTION_TEXT_CLASS[direction]}`}
+        className={`mt-2 flex items-center gap-2.5 text-body font-semibold ${DIRECTION_TEXT_CLASS[direction]}`}
       >
         <DirectionMark direction={direction} size={11} />
         <span>{formatSignedKrw(detail.changeAmount)}</span>
-        <span className="text-rule-faint" aria-hidden="true">
-          |
-        </span>
         <span>{formatSignedChangeRate(detail.changeRate)}</span>
       </p>
 
-      {profile === undefined ? null : (
-        <div className="mt-4">
-          <StockRangeBar
-            low={profile.low}
-            high={profile.high}
-            previousClose={detail.previousClose}
-            currentPrice={detail.currentPrice}
-          />
-        </div>
-      )}
-
-      <p className="mt-3.5 font-mono text-[0.6875rem] text-ink-muted">
+      {/* 신선도는 `asOf` 로만 드러난다. 데이터가 늦은 상태는 정상 범위 안에 있다. */}
+      <p className="mt-4 font-mono text-meta text-text-muted">
         {formatKstDateTime(detail.asOf)} 기준
         {detail.stale ? ' · 시세 지연' : ''}
       </p>
