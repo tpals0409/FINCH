@@ -8,4 +8,14 @@ export const queryKeys = {
     all: () => ['health'] as const,
     status: () => [...queryKeys.health.all(), 'status'] as const,
   },
+  stocks: {
+    all: () => ['stocks'] as const,
+    /** 종목코드는 6자리 문자열이다. 키에 숫자를 넣으면 `005930` 이 `5930` 이 된다. */
+    detail: (stockCode: string) =>
+      [...queryKeys.stocks.all(), 'detail', stockCode] as const,
+    candles: (stockCode: string, period: string) =>
+      [...queryKeys.stocks.all(), 'candles', stockCode, period] as const,
+    analysis: (stockCode: string) =>
+      [...queryKeys.stocks.all(), 'analysis', stockCode] as const,
+  },
 } as const;
