@@ -1,15 +1,18 @@
 @import 'tailwindcss';
 
-/* 서체 3종. 역할이 서로 다르므로 셋을 함께 싣는다.
- * 표제·라벨은 Wanted Sans, 본문·수치는 Pretendard, 종목코드·시각은 JetBrains Mono.
+/* 서체 2종. 역할이 다르므로 둘을 함께 싣는다.
+ * 본문·표제·수치는 Pretendard, 종목코드·타임스탬프는 JetBrains Mono.
  *
- * 한글 가변 폰트 둘은 **분할(subset) 판**을 쓴다. 통합 파일은 Pretendard 2.0MB +
- * Wanted Sans 1.3MB 로 합쳐 3.3MB 인데, 모바일 우선 서비스가 첫 화면에서 그만큼을
- * 내려받는 것은 받아들일 수 없다. 분할 판은 `unicode-range` 로 92조각씩 나뉘어
- * 화면에 실제로 나온 글자가 든 조각만 내려온다.
+ * Pretendard 는 SF Pro 메트릭에 맞춰 만든 한글 서체다. 그래서 애플 타이포
+ * 스케일(크기·자간·행간)을 한글에 그대로 얹어도 글자가 뜨거나 눌리지 않는다.
+ * 표제용 별도 서체를 두지 않는다 — 위계는 서체 종류가 아니라 크기·굵기·색이 만든다.
  *
- * 모노는 라틴 서브셋 두 굵기만 싣는다. 종목코드와 시각에만 쓰므로 키릴·그리스가 필요 없다. */
-@import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
+ * 한글 가변 폰트는 **분할(subset) 판**을 쓴다. 통합 파일이 2.0MB 인데 모바일
+ * 우선 서비스가 첫 화면에서 그만큼을 내려받는 것은 받아들일 수 없다. 분할 판은
+ * `unicode-range` 로 나뉘어 화면에 실제로 나온 글자가 든 조각만 내려온다.
+ *
+ * 모노는 라틴 서브셋 두 굵기만 싣는다. 종목코드와 시각에만 쓰므로 키릴·그리스가
+ * 필요 없다. */
 @import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 @import '@fontsource/jetbrains-mono/latin-400.css';
 @import '@fontsource/jetbrains-mono/latin-500.css';
@@ -17,67 +20,128 @@
 /*
  * ── 디자인 토큰 ────────────────────────────────────────────────────────────
  *
- * 야외 도감(field guide) 지면이 이 제품의 비주얼 월드다.
- * 회백 지면 위의 먹 잉크, 그리고 1px 괘선이 곧 레이아웃 그리드다.
- * 카드 컨테이너를 만들지 않는다. 구획은 괘선으로만 나눈다.
+ * 애플 디자인 언어가 이 제품의 비주얼 월드다 (2026-08-24 결정).
+ * 명료함·절제·깊이. 위계는 상자가 아니라 크기·굵기·색이 만든다.
+ * 1차 안이었던 '야외 도감'은 폐기했다 — 사용자가 보고 예쁘지 않다고 판단했다.
  *
- * 색은 값이 아니라 **의미**로 참조한다. `text-red-500` 이 아니라 `text-rise` 다.
+ * 색은 값이 아니라 **의미**로 참조한다. `text-blue-600` 이 아니라 `text-fall` 이다.
  * 관례가 바뀌거나 색맹 대응이 필요해지면 이 파일 한 곳만 고친다.
  *
  * 램프는 라이트가 주(主)다. 사용 장면이 장중 낮·실외·한 손이라 라이트가 기본이고,
  * 다크는 **같은 토큰 이름의 값만 반전**한다. 다크 전용 토큰을 새로 만들지 않는다.
  *
+ * ── 청색 두 개를 가르는 규율 ────────────────────────────────────────────────
+ *
+ * 국내 증권 관례상 하락이 청색인데 애플 액센트도 청색이다. 한 화면에서 청색이
+ * 두 뜻을 갖는 것이 이 화면의 가장 큰 위험이다. 역할로 갈라서 막는다.
+ *
+ *   accent  #0071E3 / #2997FF   조작에만 — 버튼·링크·활성 표시·초점
+ *                               **수치와 지표에 쓰지 않는다**
+ *   fall    #0B44B8 / #5B8CFF   하락 수치와 지표에만
+ *                               **버튼·링크에 쓰지 않는다**
+ *   rise    #D6252B / #FF6B6B   상승 수치와 지표에만
+ *
+ * 색조도 갈라 둔다. accent 는 밝은 하늘빛 azure 고 fall 은 어두운 남빛 indigo 다.
+ * 나란히 놓아도 같은 색으로 읽히지 않는다.
+ *
+ * 그래도 색만으로 등락을 말하지 않는다. 부호(+/-)와 삼각형(▲/▼)을 항상 함께 쓴다.
+ * 두 청색의 구분이 실패해도 의미가 남아야 한다 — 이게 이 결정을 감당 가능하게
+ * 만드는 유일한 장치다.
+ *
  * ── 대비 측정값 (WCAG 2.1 상대휘도 공식으로 계산, 2026-08-24) ──────────────
  *
- * 라이트 (지면 #F2F1ED 기준)
- *   ink          #14161A  16.03:1   본문·수치 ✔ 4.5:1
- *   ink-muted    #5A5E66   5.76:1   레이블 ✔ 4.5:1
- *   rise-ink     #C41E24   5.22:1   본문 크기 상승 수치 ✔ 4.5:1
- *   fall-ink     #0F55C0   6.03:1   본문 크기 하락 수치 ✔ 4.5:1
- *   rise         #D6252B   4.47:1   24px 이상 대형 수치 전용 ✔ 3:1 (본문 크기에 쓰지 않는다)
- *   fall         #1364DF   4.74:1   대형 수치 ✔ 3:1 (본문 크기도 통과하지만 쌍을 맞춰 -ink 를 쓴다)
- *   specimen-ink #54612C   5.95:1   종 표지 라벨 텍스트 ✔ 4.5:1
- *   rule         #8D8878   3.14:1   구획 괘선. 의미를 가진 비텍스트 ✔ 3:1
- *   rule-faint   #BFBBAE   1.70:1   표 안쪽 행 구분선. 구조가 아니라 리듬만 담당
- *   specimen     #6B7A3A   4.16:1   표지 채움·마크 전용. **작은 텍스트를 얹지 않는다**
+ * 라이트 · 지면 #FFFFFF 기준
+ *   text        #1D1D1F  16.83:1  본문·수치 ✔ 4.5:1
+ *   text-muted  #6E6E73   5.07:1  레이블·보조 ✔ 4.5:1
+ *   rise        #D6252B   5.05:1  상승 수치 ✔ 4.5:1
+ *   fall        #0B44B8   8.29:1  하락 수치 ✔ 4.5:1
+ *   accent      #0071E3   4.70:1  ✔ 4.5:1. 흰 글자를 얹어도 4.70:1 ✔
  *
- * 다크 (지면 #141619 기준)
- *   ink          #EDEBE4  15.20:1 ✔    ink-muted  #9A968E  6.15:1 ✔
- *   rise-ink     #FF6165   6.17:1 ✔    fall-ink   #6FA8FF  7.53:1 ✔
- *   rise         #F0555B   5.31:1 ✔    fall       #5FA0FF  6.87:1 ✔
- *   specimen-ink #A8B96B   8.47:1 ✔    rule       #666B73  3.38:1 ✔
+ * 라이트 · 표면 #F5F5F7(카드) 기준
+ *   text 15.46:1 ✔   text-muted 4.66:1 ✔   rise 4.64:1 ✔   fall 7.61:1 ✔
+ *   accent 4.31:1 ✗ — **카드 위에서 accent 를 글자색으로 쓰지 않는다.**
+ *   accent 은 카드 위에서 채움(흰 글자 얹음)이나 비텍스트 표시로만 쓴다 (✔ 3:1)
  *
- * 다크에서 -ink 계열이 더 밝다. 밝기 방향이 반대여도 규칙은 하나다 —
- * 본문 크기 수치가 항상 더 큰 대비를 갖는다.
+ * 다크 · 지면 #000000 기준
+ *   text        #F5F5F7  19.29:1 ✔   text-muted  #A1A1A6   8.16:1 ✔
+ *   rise        #FF6B6B   7.57:1 ✔   fall        #5B8CFF   6.64:1 ✔
+ *   accent      #2997FF   6.96:1 ✔
+ *
+ * 다크 · 표면 #1C1C1E(카드) 기준
+ *   text 15.62:1 ✔   text-muted 6.61:1 ✔   rise 6.13:1 ✔   fall 5.38:1 ✔
+ *
+ * ── 기준 미달을 처리한 방법 두 가지 ────────────────────────────────────────
+ *
+ * (1) 애플 토큰의 보조 텍스트 #86868B 는 흰 지면에서 3.62:1 이라 본문 기준
+ *     4.5:1 에 미달한다. 제품 원칙이 "숫자와 레이블은 양쪽에서 4.5:1 을 넘긴다"고
+ *     못박았으므로 **더 진한 값으로 바꾸는 쪽을 택했다.** #6E6E73 (5.07:1) 이다.
+ *     애플이 apple.com 각주·법적 고지에 쓰는 같은 계열의 회색이라 색조는 그대로다.
+ *     "캡션 이하 크기에만 쓴다"는 우회는 고르지 않았다 — 이 화면의 캡션이
+ *     타임스탬프와 지표 레이블이고, 둘 다 읽혀야 하는 정보다.
+ *
+ * (2) 다크 액센트 #2997FF 위에 흰 글자를 얹으면 3.02:1 로 미달한다.
+ *     그래서 **채움색과 글자색용 액센트를 갈랐다.** 채워진 버튼의 배경은 양쪽
+ *     모드에서 `accent-solid` #0071E3 로 고정하고 흰 글자를 얹는다 (4.70:1 ✔).
+ *     다크 지면에서 이 채움은 4.47:1 로 형태가 충분히 드러난다 (✔ 3:1).
+ *     밝은 #2997FF 는 글자·표시용 `accent` 로만 남긴다.
+ *
+ * (3) 다크 하락청 #5B8CFF 는 승격면 #2C2C2E 위에서 4.41:1 로 근소하게 미달한다.
+ *     그래서 **신호색 수치를 승격면에 올리지 않는다.** 카드는 표면 #1C1C1E 를
+ *     쓰고(5.38:1 ✔), 승격면은 분절 컨트롤의 활성 칸처럼 수치를 담지 않는
+ *     자리에만 쓴다.
  */
 :root {
-  --finch-ground: #f2f1ed;
-  --finch-ink: #14161a;
-  --finch-ink-muted: #5a5e66;
-  --finch-rule: #8d8878;
-  --finch-rule-faint: #bfbbae;
+  /* 지면 램프. 세 단이고 그 이상 만들지 않는다. */
+  --finch-ground: #ffffff;
+  --finch-surface: #f5f5f7;
+  --finch-elevated: #fbfbfd;
+
+  /* 먹. 두 단이다. */
+  --finch-text: #1d1d1f;
+  --finch-text-muted: #6e6e73;
+
+  --finch-border: rgb(0 0 0 / 0.06);
+
+  /* 조작 전용 액센트. 수치에 쓰지 않는다. */
+  --finch-accent: #0071e3;
+  --finch-accent-solid: #0071e3;
+  --finch-accent-on-solid: #ffffff;
+
+  /* 신호색. 수치와 지표 전용이고 버튼·링크에 쓰지 않는다.
+   * 국내 관례를 따라 상승이 적색, 하락이 청색이다. 미국식과 반대다. */
   --finch-rise: #d6252b;
-  --finch-rise-ink: #c41e24;
-  --finch-fall: #1364df;
-  --finch-fall-ink: #0f55c0;
-  --finch-specimen: #6b7a3a;
-  --finch-specimen-ink: #54612c;
+  --finch-fall: #0b44b8;
+
+  --finch-shadow-sm: 0 1px 3px rgb(0 0 0 / 0.08);
+  --finch-shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
+
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --finch-ground: #141619;
-    --finch-ink: #edebe4;
-    --finch-ink-muted: #9a968e;
-    --finch-rule: #666b73;
-    --finch-rule-faint: #3a3f45;
-    --finch-rise: #f0555b;
-    --finch-rise-ink: #ff6165;
-    --finch-fall: #5fa0ff;
-    --finch-fall-ink: #6fa8ff;
-    --finch-specimen: #8b9c4a;
-    --finch-specimen-ink: #a8b96b;
+    --finch-ground: #000000;
+    --finch-surface: #1c1c1e;
+    --finch-elevated: #2c2c2e;
+
+    /* 순백을 쓰지 않는다. 어두운 지면 위의 #FFFFFF 는 눈이 아프다. */
+    --finch-text: #f5f5f7;
+    --finch-text-muted: #a1a1a6;
+
+    --finch-border: rgb(255 255 255 / 0.08);
+
+    --finch-accent: #2997ff;
+    /* 채움은 양쪽 모드에서 같다. 위 (2) 참조. */
+    --finch-accent-solid: #0071e3;
+    --finch-accent-on-solid: #ffffff;
+
+    --finch-rise: #ff6b6b;
+    --finch-fall: #5b8cff;
+
+    /* 어두운 지면 위에서는 그림자가 더 진해야 경계가 보인다. */
+    --finch-shadow-sm: 0 1px 3px rgb(0 0 0 / 0.3);
+    --finch-shadow-md: 0 4px 12px rgb(0 0 0 / 0.4);
+
     color-scheme: dark;
   }
 }
@@ -86,62 +150,76 @@
  * 값을 복사하지 않으므로 위 미디어 쿼리의 반전이 유틸리티에도 따라온다. */
 @theme inline {
   --color-ground: var(--finch-ground);
-  --color-ink: var(--finch-ink);
-  --color-ink-muted: var(--finch-ink-muted);
-  --color-rule: var(--finch-rule);
-  --color-rule-faint: var(--finch-rule-faint);
+  --color-surface: var(--finch-surface);
+  --color-elevated: var(--finch-elevated);
+  --color-text: var(--finch-text);
+  --color-text-muted: var(--finch-text-muted);
+  --color-border: var(--finch-border);
 
-  /* 등락 의미 토큰. 국내 관례를 따라 상승이 적색, 하락이 청색이다. 미국식과 반대다.
-   * `-ink` 접미는 본문 크기 수치용(4.5:1 이상), 접미 없는 쪽은 대형 수치용이다. */
+  --color-accent: var(--finch-accent);
+  --color-accent-solid: var(--finch-accent-solid);
+  --color-accent-on-solid: var(--finch-accent-on-solid);
+
   --color-rise: var(--finch-rise);
-  --color-rise-ink: var(--finch-rise-ink);
   --color-fall: var(--finch-fall);
-  --color-fall-ink: var(--finch-fall-ink);
-  --color-flat: var(--finch-ink-muted);
+  /* 보합은 방향이 없다. 신호색을 주지 않고 보조 먹으로 둔다. */
+  --color-flat: var(--finch-text-muted);
 
-  /* 종 표지색. 브랜드 액센트는 이 올리브 하나뿐이다. */
-  --color-specimen: var(--finch-specimen);
-  --color-specimen-ink: var(--finch-specimen-ink);
-
-  --font-display: 'Wanted Sans Variable', 'Wanted Sans', system-ui, sans-serif;
-  --font-sans: 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* 지면 폭. 도감 한 판(plate)의 너비다. 데스크톱은 이 폭으로 중앙 정렬만 한다. */
-  --container-plate: 26rem;
+  --shadow-card: var(--finch-shadow-sm);
+  --shadow-raised: var(--finch-shadow-md);
 
-  /* 현재가는 화면에서 가장 큰 물질이다. 320px 에서도 한 줄에 들어가야 한다. */
-  --text-quote: clamp(2.5rem, 13.5vw, 3.375rem);
-  --text-quote--line-height: 1;
-  --text-quote--letter-spacing: -0.03em;
+  /* 앱 한 폭. 데스크톱은 이 폭으로 중앙 정렬만 한다.
+   * 데스크톱 전용 레이아웃을 따로 만들지 않는다 (컨벤션 §8). */
+  --container-app: 28rem;
 
-  /* 표제 종명. 현재가와 같은 급으로 읽히도록 굵기로 무게를 맞춘다. */
-  --text-plate-title: clamp(1.5rem, 7vw, 1.875rem);
-  --text-plate-title--line-height: 1.15;
-  --text-plate-title--letter-spacing: -0.02em;
+  /* 애플 타이포 스케일. 크기·굵기·자간이 함께 움직여야 스케일이 성립한다.
+   * 큰 활자일수록 자간을 좁힌다 — 그러지 않으면 표제가 흩어진다. */
+
+  /* 현재가. 이 화면의 최대 활자다. 320px 에서도 한 줄에 들어간다. */
+  --text-price: clamp(3rem, 14vw, 4rem);
+  --text-price--line-height: 1;
+  --text-price--letter-spacing: -0.03em;
+
+  /* 종목명 표제. */
+  --text-name: clamp(1.5rem, 6.5vw, 1.75rem);
+  --text-name--line-height: 1.14;
+  --text-name--letter-spacing: -0.02em;
+
+  /* 구획 표제. */
+  --text-section: 1.0625rem;
+  --text-section--line-height: 1.4;
+  --text-section--letter-spacing: -0.02em;
+
+  /* 본문. 애플 body 17px 을 그대로 쓴다. */
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.47;
+  --text-body--letter-spacing: -0.022em;
+
+  /* 수치와 레이블. 애플 callout 15px. */
+  --text-note: 0.9375rem;
+  --text-note--line-height: 1.4;
+  --text-note--letter-spacing: -0.016em;
+
+  /* 메타. 타임스탬프·단위처럼 읽히기만 하면 되는 것. */
+  --text-meta: 0.8125rem;
+  --text-meta--line-height: 1.35;
+  --text-meta--letter-spacing: 0;
 
   /*
-   * 지면이 인쇄되듯 한 번 앉는다. 이 화면의 유일한 연출이고 반복하지 않는다.
-   * 괘선은 좌에서 우로 그어지고 표제 묶음은 6px 아래에서 올라온다.
-   * 감쇠는 지수 ease-out 이라 처음이 빠르고 끝이 길다.
-   * 호출부는 `motion-safe:` 변형과 함께 쓴다.
+   * 화면이 한 번 앉는다. 이 화면의 유일한 연출이고 반복하지 않는다.
+   * 애플 기본 이징 하나만 쓴다. 호출부는 `motion-safe:` 변형과 함께 쓴다.
    */
-  --animate-rule-draw: rule-draw 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-plate-settle: plate-settle 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-settle: settle 500ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
 
-  @keyframes rule-draw {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
-    }
-  }
-
-  @keyframes plate-settle {
+  @keyframes settle {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
@@ -160,33 +238,54 @@ body {
   /* 가로 스크롤은 버그로 본다 (컨벤션 §8). */
   overflow-x: hidden;
   background-color: var(--color-ground);
-  color: var(--color-ink);
+  color: var(--color-text);
   font-family: var(--font-sans);
   /* 수치가 갱신될 때 자릿수 폭이 흔들리면 레이아웃이 요동친다.
-   * 지면 전체에 고정폭 숫자를 걸어 두고 예외를 두지 않는다. */
+   * 화면 전체에 고정폭 숫자를 걸어 두고 예외를 두지 않는다. */
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 내가 그리지 않은 브라우저 표면도 이 지면의 일부다.
- * 기본값으로 두면 어느 디자인 시스템에도 속하지 않는 색이 화면에 남는다. */
+/* 내가 그리지 않은 브라우저 표면도 이 화면의 일부다.
+ * 기본값으로 두면 어느 디자인 시스템에도 속하지 않는 색이 남는다. */
 ::selection {
-  background-color: color-mix(in srgb, var(--color-specimen) 28%, transparent);
-  color: var(--color-ink);
+  background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  color: var(--color-text);
 }
 
 :root {
-  caret-color: var(--color-ink);
-  scrollbar-color: var(--color-rule) transparent;
+  caret-color: var(--color-accent);
+  scrollbar-color: color-mix(in srgb, var(--color-text-muted) 45%, transparent)
+    transparent;
   scrollbar-width: thin;
 }
 
 :focus-visible {
-  /* 라운드를 주지 않는다. 초점 표시도 괘선 어휘를 따른다. */
-  outline: 2px solid var(--color-ink);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-a {
-  text-underline-offset: 0.2em;
+/* 테마가 바뀔 때 색만 부드럽게 건너간다. `*` 에 걸면 레이아웃이 함께 요동친다. */
+body,
+button,
+a,
+section,
+[data-card] {
+  transition:
+    background-color 0.4s ease,
+    color 0.3s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  button,
+  a,
+  section,
+  [data-card] {
+    transition: none;
+  }
 }
