@@ -451,4 +451,4 @@ INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`�
 | 1 | Flyway `V1__init.sql` 작성 | 이 문서가 입력. 별도 티켓 |
 | 2 | 종목 마스터 동기화 배치 · 일봉 적재 배치 설계 | §1.1의 대가. KIS 호출 설계와 함께 |
 | 3 | `stock.suspended` 갱신 주기 | S0-1 실측 결과에 의존 |
-| 4 | 백엔드 DB 이름 불일치 | backConvention 1장은 `moutoss_db`, `application.yaml`은 `finch_db`. 한쪽이 틀렸다 |
+| 4 | 서버 DB 리네임 (`moutoss_db` → `finch_db`) | 이름은 **`finch_db`로 확정**했다(backConvention 1장·`application.yaml`). 서버에 만들어진 DB와 `postgres-secret`의 `POSTGRES_DB` 갱신이 남았다. 백엔드 DB에는 아직 테이블이 하나도 없어 `ALTER DATABASE ... RENAME`으로 끝나므로 **지금이 가장 싸다** |
