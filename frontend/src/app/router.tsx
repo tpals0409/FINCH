@@ -1,5 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
+/* DIRECTION:character START */
+import { CharacterStockDetailPage } from '@/pages/CharacterStockDetailPage';
+/* DIRECTION:character END */
 import { HealthPage } from '@/pages/HealthPage';
 import { StockDetailPage } from '@/pages/StockDetailPage';
 
@@ -11,5 +14,14 @@ import { StockDetailPage } from '@/pages/StockDetailPage';
 export const router = createBrowserRouter([
   { path: '/health', element: <HealthPage /> },
   { path: '/stocks/:stockCode', element: <StockDetailPage /> },
+  /* DIRECTION:character START
+     캐릭터 방향 경쟁 시안(S15P21A101-93). 기존 경로는 애플 방향 그대로 두고
+     여기에 줄만 더해, dev 서버 하나로 두 방향을 나란히 비교한다.
+     방향이 정해지면 진 쪽의 페이지와 이 구간을 함께 지운다. */
+  {
+    path: '/character/stocks/:stockCode',
+    element: <CharacterStockDetailPage />,
+  },
+  /* DIRECTION:character END */
   { path: '*', element: <Navigate to="/health" replace /> },
 ]);
