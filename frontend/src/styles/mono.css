@@ -1,0 +1,885 @@
+/* DIRECTION: mono (S15P21A101-95) */
+
+/* 서체는 92 안과 같은 두 종이다. 같은 파일을 여기서 한 번 더 들여온다.
+ * 이 방향이 탈락하면 이 파일 하나만 지우면 되고, 반대로 이 방향이 뽑히면
+ * `styles/index.css` 를 지워도 화면이 그대로 서야 한다. 그러려면 어느 쪽도
+ * 다른 쪽의 선언에 기대면 안 된다. 중복되는 것은 `@font-face` 규칙 텍스트뿐이고
+ * 폰트 파일 자체는 브라우저가 같은 URL 로 한 번만 받는다. */
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+
+/*
+ * ── 모노 캐릭터 방향 · 디자인 토큰 ─────────────────────────────────────────
+ *
+ * 캐릭터가 사실적인 3D 소프트 렌더다. 화면이 납작한 플랫 UI 면 캐릭터만
+ * 이물질처럼 뜬다. 그래서 표면·버튼·카드도 같은 물성을 갖는다 —
+ * 부드러운 그림자로 뜨거나 눌리고, 모서리가 둥글고, 광원이 하나다.
+ *
+ * 다만 **가벼워 보이면 실패다.** 실제 돈이 오가는 화면이다. 캐릭터는 한 자리에만
+ * 두고, 나머지는 절제된 금융 화면의 활자와 여백을 쓴다. 캐릭터만 따뜻하고
+ * 나머지가 차분해야 대비가 살고 유치해지지 않는다.
+ *
+ * 토큰 이름은 전부 `--mono-` 로 시작한다. 92(`--finch-`)·93 토큰을 참조하지
+ * 않는다. 시안 셋 중 둘은 지워지므로, 한쪽을 지울 때 다른 쪽이 딸려 죽으면 안 된다.
+ * 이 파일은 Tailwind 유틸리티를 쓰지 않는다 — 유틸리티는 92 의 `index.css` 가
+ * 만들어 내므로, 그것에 기대면 격리가 성립하지 않는다.
+ *
+ * ── 광원 방향 ──────────────────────────────────────────────────────────────
+ *
+ * 캐릭터 시트에서 실측했다. 흰 몸통의 오른쪽 절반이 왼쪽보다 밝고(평균 휘도
+ * +20), 위쪽 절반이 아래쪽보다 밝다(+28). 세 포즈 모두 같은 방향이다.
+ *
+ *   flat  좌 198.9 / 우 220.6   상 221.9 / 하 196.4
+ *   rise  좌 202.4 / 우 222.0   상 224.7 / 하 197.3
+ *   fall  좌 199.5 / 우 218.8   상 224.3 / 하 193.3
+ *
+ * **광원은 오른쪽 위에 있다.** 그래서 이 화면의 모든 그림자는 아래로 떨어지되
+ * 살짝 왼쪽으로 눕고(`-3px 8px`), 떠 있는 면의 광은 위·오른쪽 모서리에 붙는다
+ * (`inset -1px 1px`). 카드마다 그림자 방향이 다르면 3D 가 그 자리에서 깨진다.
+ *
+ * ── 색이 하나라는 제약이 만든 이점 ─────────────────────────────────────────
+ *
+ * 캐릭터가 무채색이라 이 화면에서 **적색과 청색은 오직 등락에만 쓰인다.**
+ * 92 를 괴롭힌 "한 화면에서 청색이 조작과 하락 두 뜻을 갖는" 문제가 여기서는
+ * 생기지 않는다. 그 이점을 지키기 위해 **청색 액센트를 만들지 않는다.**
+ * 주 버튼은 넥타이 색 계열의 먹남색이고, 초점 링도 먹색이다.
+ *
+ * 다크에서는 주 버튼이 흰색으로 뒤집힌다. 어두운 지면 위의 먹남색은 형태가
+ * 남지 않기 때문이다. 어느 쪽이든 **채도가 없다** — 규율은 그대로다.
+ *
+ * 지면 램프도 무채색이다. 캐릭터의 렌더가 따뜻한 쪽이라 지면까지 따뜻하게 두면
+ * 화면 전체가 누렇게 물든 것처럼 보이고, 무채색이라는 이 방향의 성질이
+ * "베이지 톤"으로 읽힌다. 지면은 깨끗한 흰색 계열로 두고 온기는 캐릭터에만 남긴다.
+ *
+ * ── 대비 측정값 (WCAG 2.1 상대휘도 공식으로 계산, 2026-08-25) ─────────────
+ *
+ * 라이트 · 지면 #F1F2F4
+ *   text  #1B1C1E 15.22:1 ✔   muted #5F6368 5.40:1 ✔
+ *   rise  #C5211D  5.19:1 ✔   fall  #1140A6 8.12:1 ✔
+ * 라이트 · 떠오른 면 #FFFFFF (카드)
+ *   text 17.05:1 ✔   muted 6.05:1 ✔   rise 5.82:1 ✔   fall 9.10:1 ✔
+ * 라이트 · 눌린 면 #E4E6EA (탭 트랙)
+ *   text 13.65:1 ✔   muted 4.84:1 ✔   rise 4.66:1 ✔   fall 7.28:1 ✔
+ *
+ * 다크 · 지면 #131417
+ *   text  #F2F3F5 16.59:1 ✔   muted #A3A8B0 7.71:1 ✔
+ *   rise  #FF7A72  7.26:1 ✔   fall  #87A9FF 8.02:1 ✔
+ * 다크 · 떠오른 면 #1F2126
+ *   text 14.51:1 ✔   muted 6.74:1 ✔   rise 6.35:1 ✔   fall 7.02:1 ✔
+ * 다크 · 눌린 면 #0B0C0E
+ *   text 17.62:1 ✔   muted 8.19:1 ✔   rise 7.71:1 ✔   fall 8.53:1 ✔
+ *
+ * 주 버튼
+ *   라이트 채움 #2C3648 — 지면 대비 10.85:1 ✔, 얹은 흰 글자 12.15:1 ✔
+ *   다크  채움 #EDEFF2 — 지면 대비 15.99:1 ✔, 얹은 먹 글자 15.41:1 ✔
+ *
+ * **어느 조합도 4.5:1 아래로 내려가지 않는다.** 지면 램프가 무채색이라 92 가
+ * 감당해야 했던 "이 면에는 이 색을 올리지 않는다" 류의 배치 예외가 없다.
+ */
+
+.mono-screen {
+  /* 지면 램프. 무채색 세 단이고 그 이상 만들지 않는다.
+   * 지면이 한 단 회색이고 카드가 순백이다. 반대로 두면(지면 흰색·카드 회색)
+   * 떠 있는 면이 지면보다 어두워져서 오른쪽 위 광원과 어긋난다. */
+  --mono-ground: #f1f2f4;
+  --mono-surface: #ffffff;
+  --mono-sunken: #e4e6ea;
+
+  --mono-text: #1b1c1e;
+  --mono-text-muted: #5f6368;
+
+  --mono-line: rgb(27 28 30 / 0.1);
+
+  /* 신호색. 수치와 지표 전용이고 버튼·링크에 쓰지 않는다.
+   * 국내 관례를 따라 상승이 적색, 하락이 청색이다. */
+  --mono-rise: #c5211d;
+  --mono-fall: #1140a6;
+
+  /* 주 액션. 넥타이 색 계열의 먹남색이다. 청색 액센트를 만들지 않는다. */
+  --mono-ink: #2c3648;
+  --mono-on-ink: #ffffff;
+
+  /* 광원이 오른쪽 위다. 그림자는 아래로 떨어지며 왼쪽으로 눕는다.
+   * 그림자 색도 무채색이다 — 따뜻한 그림자를 흰 지면에 깔면 지면이 물든다. */
+  --mono-shadow-raised:
+    -1px 1px 2px rgb(19 22 30 / 0.06), -3px 8px 18px rgb(19 22 30 / 0.12);
+  --mono-shadow-lifted:
+    -1px 1px 2px rgb(19 22 30 / 0.08), -2px 4px 10px rgb(19 22 30 / 0.14);
+  --mono-shadow-sunken:
+    inset 2px -2px 5px rgb(19 22 30 / 0.13),
+    inset -1px 1px 2px rgb(255 255 255 / 0.9);
+  /* 위·오른쪽 모서리에만 광을 둔다. 사방에 두르면 엠보싱이 되고 촌스러워진다. */
+  --mono-rim: inset -1px 1px 0 rgb(255 255 255 / 0.9);
+
+  --mono-finch-shadow: rgb(19 22 30 / 0.2);
+  /* 라이트에서는 캐릭터 뒤에 아무것도 깔지 않는다. */
+  --mono-finch-halo: rgb(255 255 255 / 0);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mono-screen {
+    --mono-ground: #131417;
+    --mono-surface: #1f2126;
+    --mono-sunken: #0b0c0e;
+
+    /* 순백을 쓰지 않는다. 어두운 지면 위의 #FFFFFF 는 눈이 아프다. */
+    --mono-text: #f2f3f5;
+    --mono-text-muted: #a3a8b0;
+
+    --mono-line: rgb(242 243 245 / 0.12);
+
+    --mono-rise: #ff7a72;
+    --mono-fall: #87a9ff;
+
+    /* 어두운 지면 위에서 먹남색 채움은 형태가 남지 않는다. 먹을 뒤집는다.
+     * 채도는 여전히 없다 — 청색 액센트를 만들지 않는다는 규율은 그대로다. */
+    --mono-ink: #edeff2;
+    --mono-on-ink: #17181b;
+
+    --mono-shadow-raised:
+      -1px 1px 2px rgb(0 0 0 / 0.45), -3px 8px 18px rgb(0 0 0 / 0.55);
+    --mono-shadow-lifted:
+      -1px 1px 2px rgb(0 0 0 / 0.5), -2px 4px 10px rgb(0 0 0 / 0.6);
+    --mono-shadow-sunken:
+      inset 2px -2px 5px rgb(0 0 0 / 0.55),
+      inset -1px 1px 2px rgb(255 255 255 / 0.05);
+    --mono-rim: inset -1px 1px 0 rgb(255 255 255 / 0.06);
+
+    --mono-finch-shadow: rgb(0 0 0 / 0.55);
+    /* 흰 새가 어두운 지면 위에서 과하게 튀는 것을 캐릭터를 물들여 막지 않는다.
+     * 대신 뒤에 아주 옅은 빛 웅덩이를 깔아 국소 배경을 올린다. 새와 배경의
+     * 밝기 차가 줄어드는 만큼 튐이 가라앉고, 캐릭터 픽셀은 그대로 남는다.
+     * 오른쪽 위 광원이 바닥에 흘린 빛이라는 해석이라 3D 와도 어긋나지 않는다. */
+    --mono-finch-halo: rgb(237 239 242 / 0.08);
+  }
+}
+
+/*
+ * ── 지면 ───────────────────────────────────────────────────────────────────
+ */
+
+/* 화면 밖(오버스크롤 영역)까지 같은 지면이어야 한다. 두지 않으면 iOS 에서
+ * 위아래로 당길 때 92 안의 흰 지면이 드러난다. */
+body:has(.mono-screen) {
+  background-color: #f1f2f4;
+}
+
+@media (prefers-color-scheme: dark) {
+  body:has(.mono-screen) {
+    background-color: #131417;
+  }
+}
+
+.mono-screen {
+  min-height: 100dvh;
+  margin: 0 auto;
+  width: 100%;
+  /* 데스크톱은 이 폭으로 중앙 정렬만 한다. 데스크톱 전용 레이아웃은 없다. */
+  max-width: 28rem;
+  background-color: var(--mono-ground);
+  color: var(--mono-text);
+  font-family:
+    'Pretendard Variable',
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+  /* 수치가 갱신될 때 자릿수 폭이 흔들리면 레이아웃이 요동친다. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mono-screen *,
+.mono-screen *::before,
+.mono-screen *::after {
+  box-sizing: border-box;
+}
+
+.mono-screen :focus-visible {
+  /* 초점 링도 먹이다. 청색을 쓰면 하락 청과 한 화면에서 만난다. */
+  outline: 2px solid var(--mono-text);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.mono-screen ::selection {
+  background-color: rgb(44 54 72 / 0.16);
+}
+
+/*
+ * ── 활자 ───────────────────────────────────────────────────────────────────
+ * 위계는 상자가 아니라 크기·굵기·색이 만든다. 큰 활자일수록 자간을 좁힌다.
+ */
+
+.mono-price {
+  font-size: clamp(2.9rem, 13vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-weight: 650;
+}
+
+.mono-price-unit {
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+.mono-name {
+  font-size: clamp(1.375rem, 5.8vw, 1.625rem);
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  font-weight: 650;
+}
+
+.mono-section {
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.mono-body {
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  letter-spacing: -0.02em;
+}
+
+.mono-note {
+  font-size: 0.9375rem;
+  line-height: 1.42;
+  letter-spacing: -0.015em;
+}
+
+.mono-meta {
+  font-size: 0.8125rem;
+  line-height: 1.38;
+}
+
+.mono-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.mono-fg {
+  color: var(--mono-text);
+}
+
+.mono-fg-muted {
+  color: var(--mono-text-muted);
+}
+
+/* 보합은 방향이 없다. 신호색을 주지 않고 보조 먹으로 둔다. */
+.mono-dir-rise {
+  color: var(--mono-rise);
+}
+
+.mono-dir-fall {
+  color: var(--mono-fall);
+}
+
+.mono-dir-flat {
+  color: var(--mono-text-muted);
+}
+
+.mono-strong {
+  font-weight: 600;
+}
+
+.mono-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * ── 면 ─────────────────────────────────────────────────────────────────────
+ * 떠 있는 면과 눌린 면 두 가지뿐이다. 셋째를 만들지 않는다.
+ */
+
+.mono-card {
+  border-radius: 22px;
+  background-color: var(--mono-surface);
+  box-shadow: var(--mono-shadow-raised), var(--mono-rim);
+  overflow: hidden;
+}
+
+.mono-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.25rem;
+}
+
+.mono-card-body {
+  padding: 1rem 1.25rem;
+}
+
+.mono-card-body-tight {
+  padding: 0.5rem 1.25rem 1rem;
+}
+
+.mono-track {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.3125rem;
+  border-radius: 16px;
+  background-color: var(--mono-sunken);
+  box-shadow: var(--mono-shadow-sunken);
+}
+
+.mono-hairline {
+  border: 0;
+  border-top: 1px solid var(--mono-line);
+  margin: 0;
+}
+
+/*
+ * ── 조작 ───────────────────────────────────────────────────────────────────
+ * 높이는 최소 44px 이다 (터치 대상). 눌림은 축소로만 말한다.
+ */
+
+.mono-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1.5rem;
+  border: 0;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 150ms ease-out;
+}
+
+.mono-button:active {
+  transform: scale(0.97);
+}
+
+.mono-button:disabled {
+  pointer-events: none;
+  opacity: 0.42;
+}
+
+.mono-button-solid {
+  background-color: var(--mono-ink);
+  color: var(--mono-on-ink);
+  font-weight: 600;
+  box-shadow: var(--mono-shadow-lifted);
+}
+
+.mono-button-tinted {
+  background-color: var(--mono-surface);
+  color: var(--mono-text);
+  box-shadow: var(--mono-shadow-raised), var(--mono-rim);
+}
+
+.mono-button-plain {
+  background-color: transparent;
+  color: var(--mono-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  box-shadow: none;
+}
+
+.mono-icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--mono-text);
+  cursor: pointer;
+  transition: transform 150ms ease-out;
+}
+
+.mono-icon-button:active {
+  transform: scale(0.9);
+}
+
+.mono-tab {
+  flex: 1 1 0;
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 12px;
+  background-color: transparent;
+  color: var(--mono-text-muted);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+/* 고른 칸만 트랙에서 떠오른다. 채워진 색으로 표시하지 않는다 —
+ * 이 화면에서 채워진 면은 하단 주문 버튼 하나여야 한다. */
+.mono-tab[data-state='active'] {
+  background-color: var(--mono-surface);
+  color: var(--mono-text);
+  font-weight: 600;
+  box-shadow: var(--mono-shadow-raised), var(--mono-rim);
+}
+
+.mono-chip {
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--mono-text-muted);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.mono-chip[aria-checked='true'] {
+  background-color: var(--mono-surface);
+  color: var(--mono-text);
+  font-weight: 600;
+  box-shadow: var(--mono-shadow-raised), var(--mono-rim);
+}
+
+/*
+ * ── 캐릭터 ─────────────────────────────────────────────────────────────────
+ *
+ * 시트에서 잘라낸 PNG 에는 바닥 그림자가 없다. 지웠다 — 구운 그림자는 시트
+ * 배경과 같은 따뜻한 회색이라 무채색 지면 위에서 누런 얼룩이 되고, 화면의 다른
+ * 그림자와 광원 방향을 맞출 방법도 없다. 대신 여기서 타원 하나를 그려 바닥에 붙인다.
+ * 이 그림자가 카드 그림자와 같은 광원(오른쪽 위)을 따르므로 새와 화면이
+ * 같은 공간에 있는 것으로 읽힌다.
+ */
+
+.mono-finch {
+  position: relative;
+  display: block;
+  flex: none;
+}
+
+.mono-finch::before {
+  /* 다크에서만 보이는 빛 웅덩이. 라이트에서는 완전히 투명하다. */
+  content: '';
+  position: absolute;
+  inset: -12% -8% -10% -12%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--mono-finch-halo),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.mono-finch::after {
+  /* 광원이 오른쪽 위라 접지 그림자는 왼쪽으로 눕는다. */
+  content: '';
+  position: absolute;
+  left: -6%;
+  right: 10%;
+  bottom: 0;
+  height: 9%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--mono-finch-shadow),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.mono-finch img {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/*
+ * ── 고정 요소 ──────────────────────────────────────────────────────────────
+ * 고정되는 것은 셋을 넘지 않는다 — 머리단·보유 요약 줄·주문 바.
+ * 넘으면 실제로 읽을 수 있는 지면이 없어진다.
+ */
+
+.mono-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 2.8125rem;
+  padding: 0 0.375rem;
+  border-bottom: 1px solid var(--mono-line);
+  background-color: color-mix(in srgb, var(--mono-ground) 78%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.mono-holding-bar {
+  /* 머리단 높이(45px)와 같아야 두 줄이 겹치지 않는다. */
+  position: sticky;
+  top: 2.8125rem;
+  z-index: 9;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid var(--mono-line);
+  background-color: color-mix(in srgb, var(--mono-ground) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.mono-action-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  border-top: 1px solid var(--mono-line);
+  background-color: color-mix(in srgb, var(--mono-ground) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.mono-action-bar-inner {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.75rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.mono-order-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.25rem;
+  border-radius: 999px;
+  background-color: var(--mono-ink);
+  color: var(--mono-on-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--mono-shadow-lifted);
+  transition: transform 150ms ease-out;
+}
+
+.mono-order-button:active {
+  transform: scale(0.985);
+}
+
+/*
+ * ── 레이아웃 ───────────────────────────────────────────────────────────────
+ */
+
+.mono-scroll {
+  /* 하단 고정 바 높이만큼 비운다. 없으면 마지막 카드가 바에 가린다. */
+  padding-bottom: 7.5rem;
+}
+
+.mono-header {
+  padding: 0.75rem 1.25rem 1.75rem;
+}
+
+/* 종목명·코드와 캐릭터가 한 줄에 선다. 캐릭터는 원래 비어 있던 오른쪽
+ * 자리를 쓰고, 현재가는 그 아래에서 폭을 온전히 갖는다.
+ * 캐릭터가 최대 활자와 가로로 경쟁하지 않게 하는 배치다. */
+.mono-header-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 5.25rem;
+}
+
+/* 캐릭터 한 자리. 폭만 정하고 높이는 그림 비율(289:240)이 따라온다.
+ * 390px 기준 96px 이고, 종목명 자리에 242px 이 남는다. */
+.mono-header-finch {
+  display: block;
+  flex: none;
+  width: 6rem;
+}
+
+@media (max-width: 359px) {
+  .mono-header-finch {
+    width: 5rem;
+  }
+}
+
+.mono-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-top: 1rem;
+}
+
+.mono-change-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.mono-stack {
+  padding: 0.75rem 1.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mono-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin: 0;
+}
+
+.mono-stat dt {
+  font-size: 0.8125rem;
+  line-height: 1.38;
+  color: var(--mono-text-muted);
+}
+
+.mono-stat dd {
+  margin: 0.125rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--mono-text);
+}
+
+.mono-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid var(--mono-line);
+}
+
+.mono-row:first-child {
+  border-top: 0;
+}
+
+.mono-row dt {
+  font-size: 0.9375rem;
+  color: var(--mono-text-muted);
+}
+
+.mono-row dd {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--mono-text);
+}
+
+.mono-badge {
+  display: inline-flex;
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background-color: var(--mono-surface);
+  box-shadow: var(--mono-shadow-raised), var(--mono-rim);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.mono-skeleton {
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--mono-text) 12%, transparent);
+  animation: mono-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes mono-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* 화면이 한 번 앉는다. 이 방향의 유일한 연출이고 반복하지 않는다. */
+@media (prefers-reduced-motion: no-preference) {
+  .mono-settle {
+    animation: mono-settle 480ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+}
+
+@keyframes mono-settle {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mono-button,
+  .mono-icon-button,
+  .mono-order-button,
+  .mono-skeleton {
+    transition: none;
+    animation: none;
+  }
+}
+
+.mono-center {
+  padding: 2.5rem 1.25rem;
+  text-align: center;
+}
+
+.mono-empty-note {
+  margin: 0.375rem 0 0;
+  font-size: 0.9375rem;
+  color: var(--mono-text-muted);
+}
+
+/*
+ * ── 나머지 자리 잡기 ───────────────────────────────────────────────────────
+ * 컴포넌트 하나에서만 쓰는 좁은 규칙들. 값이 아니라 자리를 정한다.
+ */
+
+.mono-holding-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+}
+
+/* `min-width: 0` 이 없으면 flex 항목의 자동 최소 너비 때문에 줄지 않고
+ * 오른쪽 손익을 밀어낸다. 320px 에서 실제로 밀린다. */
+.mono-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono-holding-profit {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.mono-chip-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem 0;
+}
+
+.mono-card-foot {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--mono-line);
+}
+
+.mono-analysis-sections {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mono-skeleton-line {
+  height: 1rem;
+}
+
+.mono-skeleton-line-88 {
+  width: 88%;
+}
+
+.mono-skeleton-line-62 {
+  width: 62%;
+}
+
+.mono-skeleton-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mono-skeleton-row {
+  height: 1rem;
+}
+
+.mono-skeleton-title {
+  height: 1.75rem;
+  width: 8.5rem;
+}
+
+.mono-skeleton-sub {
+  height: 0.875rem;
+  width: 6.5rem;
+  margin-top: 0.5rem;
+}
+
+/* 실제 캐릭터가 앉을 자리와 같은 높이를 잡는다. 다르면 그림이 도착할 때
+ * 표제부가 늘어나며 아래 구획이 통째로 밀린다. */
+.mono-skeleton-finch {
+  height: 5rem;
+  border-radius: 999px;
+}
+
+.mono-skeleton-price {
+  height: 3.25rem;
+  width: 13rem;
+  margin-top: 1rem;
+}
+
+.mono-skeleton-change {
+  height: 1.25rem;
+  width: 10rem;
+  margin-top: 0.75rem;
+}
+
+.mono-skeleton-stamp {
+  height: 0.875rem;
+  width: 8rem;
+  margin-top: 1rem;
+}
+
+.mono-skeleton-label {
+  height: 0.8125rem;
+  width: 2.5rem;
+}
+
+.mono-skeleton-value {
+  height: 1rem;
+  width: 5rem;
+  margin-top: 0.375rem;
+}
+
+.mono-skeleton-chart {
+  height: 100%;
+  width: 100%;
+  border-radius: 14px;
+}

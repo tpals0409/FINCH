@@ -1,0 +1,79 @@
+// DIRECTION: mono (S15P21A101-95)
+
+import {
+  formatCompactKrw,
+  formatCount,
+  formatDecimal,
+  formatKrw,
+} from '@/shared/lib/formatNumber';
+import { Button } from '@/shared/ui/mono/Button';
+import { InfoRow } from '@/shared/ui/mono/InfoRow';
+import { SectionCard } from '@/shared/ui/mono/SectionCard';
+import { Skeleton } from '@/shared/ui/mono/Skeleton';
+
+import { useStockProfile } from '../api/useStockDetail';
+
+type StockProfileListProps = {
+  stockCode: string;
+};
+
+/**
+ * 기업 정보 패널.
+ *
+ * PER·PBR 같은 지표에 색을 칠하지 않는다. 신호색은 등락에만 쓰는 색이고
+ * 여기까지 번지면 화면 어디를 봐도 색이 무슨 뜻인지 알 수 없게 된다.
+ * 52주 최고·최저도 먹색이다 — 그 둘은 등락이 아니라 범위다.
+ *
+ * 이 탭에 캐릭터를 두지 않는다. 기업 지표는 새가 거들 수 있는 값이 아니고,
+ * 화면당 한 자리라는 규칙을 지키는 쪽이 먼저다.
+ */
+export function StockProfileList({ stockCode }: StockProfileListProps) {
+  const { data, isPending, isError, refetch, isFetching } =
+    useStockProfile(stockCode);
+
+  if (isPending) {
+    return (
+      <SectionCard>
+        <div className="mono-skeleton-rows">
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((row) => (
+            <Skeleton key={row} className="mono-skeleton-row" />
+          ))}
+        </div>
+      </SectionCard>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SectionCard>
+        <div className="mono-center">
+          <p className="mono-body mono-fg">기업 정보를 불러오지 못했습니다</p>
+          <div style={{ marginTop: '1rem' }}>
+            <Button onClick={() => void refetch()} isDisabled={isFetching}>
+              다시 시도
+            </Button>
+          </div>
+        </div>
+      </SectionCard>
+    );
+  }
+
+  return (
+    <SectionCard>
+      <dl>
+        <InfoRow label="업종" value={data.sector} />
+        <InfoRow label="시가총액" value={formatCompactKrw(data.marketCap)} />
+        <InfoRow
+          label="상장주식수"
+          value={`${formatCount(data.listedShares)}주`}
+        />
+        <InfoRow label="PER" value={`${formatDecimal(data.per, 1)}배`} />
+        <InfoRow label="PBR" value={`${formatDecimal(data.pbr, 2)}배`} />
+        <InfoRow label="EPS" value={formatKrw(data.eps)} />
+        <InfoRow label="BPS" value={formatKrw(data.bps)} />
+        <InfoRow label="52주 최고" value={formatKrw(data.week52High)} />
+        <InfoRow label="52주 최저" value={formatKrw(data.week52Low)} />
+      </dl>
+    </SectionCard>
+  );
+}
