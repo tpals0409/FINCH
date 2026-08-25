@@ -12,21 +12,149 @@
 
 ### 1. 기술 스택과 선정 근거
 
-- Java 21 + Spring Boot 3.x
+- Java 21 + Spring Boot 4.1.x (착수 시점 최신 4.1.1)
+  - 3.x 기각 — 3.5가 2026-06-30 오픈소스 EOL(최종 패치 3.5.16)이라 신규 프로젝트가 고를 수 있는 지원 라인은 4.0(2026-12-31 EOL)과 4.1뿐이다
+  - Boot 4는 Spring Framework 7 기반이므로 3.x용 라이브러리를 그대로 가져오면 기동에 실패할 수 있다. 의존성 추가 시 Boot 4 호환 여부를 확인한다
+  - Java 21 유지 — Boot 4 최소 요구는 17이고 21은 LTS다
 - 영속성 Spring Data JPA
-- DB MySQL 8 / 마이그레이션 Flyway
+- DB PostgreSQL 17 / 마이그레이션 Flyway
+  - MySQL 8 기각 — AI 파트가 같은 인스턴스에서 pgvector를 필수로 쓴다(초기 마이그레이션이 `CREATE EXTENSION vector`를 실행하고, 벡터 검색은 종목 분석·채팅의 런타임 기능이다). MySQL을 따로 두면 2vCPU 노드에 DB 엔진이 둘 올라가고 EC2 이관 절차(`pg_dump` 일괄 덤프·복원)도 갈라진다
+  - 인스턴스 1개 + DB 2개 — 백엔드 `finch_db` / AI `ai_invest`. 스키마 관리 도구가 달라(Flyway vs Alembic) DB를 나눠야 마이그레이션 이력이 충돌 없이 공존한다
+  - ⚠️ 서버에 실제로 만들어진 DB는 아직 `moutoss_db`다. 프로젝트 이름을 `finch`로 통일하기로 했으므로 이름이 정답이고 서버 쪽 리네임이 남은 작업이다 (erd.md 후속 과제 4)
+  - 운영 이미지 `pgvector/pgvector:pg17` (infraSpec 결정 #10). `ddl-auto`는 `validate` 고정, 스키마 변경은 Flyway 전용 (infraSpec §3.2)
 - 캐시·멱등성 키 저장 Redis
 - 인증 Spring Security + JWT, 카카오 OAuth
+  - OAuth2 Client 기각 — apiSpec.md 2.1의 계약은 프론트가 인가 코드를 받아 `POST /auth/kakao`로 넘기는 구조다. Spring Security의 리다이렉트 로그인 플로우를 쓰지 않으므로, 카카오 토큰 교환은 HTTP 클라이언트로 직접 호출한다
 - 외부 연동(KIS·AI 서버) WebClient
-- API 문서 springdoc-openapi (→ `openapi.yaml` 산출, apiSpec.md 13장)
+- 실시간 시세 전송 Spring WebSocket + STOMP (apiSpec.md 5.6 확정)
+  - 폴링 전용 기각 — 폴링은 폴백 경로로 남기되 최종 구조는 STOMP다. 두 경로의 시세 페이로드 스키마는 동일하다
+- API 문서 springdoc-openapi (→ `openapi.yaml` 산출, apiSpec.md 13장) — Boot 4 호환 버전 확인 필요
 - 테스트 JUnit 5 + Testcontainers
 - **각 항목에 기각한 대안과 이유를 함께 적는다**
 
 ### 2. 패키지 구조
 
-- `backend/src/main/java` 하위 패키지 구성과 각 패키지의 책임
-- 도메인 단위 분할
-- 도메인 간 참조 방향 규칙 (순환 참조 금지, 공통 모듈의 위치)
+기준: [ERD v1.0](../erd/erd.md)의 11개 테이블과 [apiSpec v0.2](../api/apiSpec.md)의 엔드포인트 묶음.
+
+#### 2.1 전체 트리
+
+```
+com.ssafy.finch
+├── FinchApplication.java
+├── global/                     # 도메인에 속하지 않는 것만. 도메인을 참조하지 않는다
+│   ├── apiPayload/
+│   │   ├── ErrorResponse.java
+│   │   └── code/               # BaseErrorCode, GeneralErrorCode
+│   ├── config/                 # Security · Jpa · Redis · WebSocket · Swagger 설정
+│   ├── exception/              # CustomException, AiRelayException, GlobalExceptionHandler
+│   ├── security/               # JWT 발급·검증, 인증 필터, 로그인 사용자 주입
+│   └── util/
+└── domain/
+    ├── auth/                   # 카카오 로그인, 토큰 회전, 내 정보
+    ├── account/                # 투자 회차 = 계좌, 리셋
+    ├── deposit/                # 모의 충전
+    ├── ledger/                 # 원장 기록 + 거래 내역 조회
+    ├── stock/                  # 종목 마스터, 검색, 일봉
+    ├── price/                  # 시세 캐시 읽기, STOMP 발행, KIS 수집
+    ├── order/                  # 주문 체결
+    ├── portfolio/              # 보유 종목, 잔고·평가손익
+    ├── watchlist/              # 관심 종목
+    ├── recent/                 # 최근 본 종목, 최근 검색어
+    └── ai/                     # AI 중계 + 내부 연동 API 제공
+```
+
+#### 2.2 도메인과 소유 테이블
+
+한 테이블은 정확히 한 도메인이 소유한다. 소유 도메인만 그 테이블의 Entity·Repository를 가진다.
+
+| 도메인 | 소유 테이블 | 담당 엔드포인트 (apiSpec 장) |
+|---|---|---|
+| `auth` | `users` | 2장 전체 (`/auth/**`, `/users/me`) |
+| `account` | `investment_round` | 3장 (`/account`, `/account/reset`, `/rounds`) |
+| `deposit` | `deposit` | 4장 (`/deposits`, `/deposits/limit`) |
+| `ledger` | `ledger_entry` | 8.2 (`/transactions`) |
+| `stock` | `stock`, `daily_candle` | 5.1~5.3 (검색·상세·캔들) |
+| `price` | 없음 (Redis) | 5.4~5.6 (`/price`, `/prices`, STOMP `/ws`) |
+| `order` | `trade` | 7장 (`/orders`, `/orders/available`) |
+| `portfolio` | `holding` | 8.1 (`/portfolio`) |
+| `watchlist` | `watchlist_item` | 6장 관심 종목 |
+| `recent` | `recent_viewed_stock`, `recent_search_keyword` | 6장 최근 본·최근 검색어 |
+| `ai` | 없음 | 9장(`/internal/v1/**`), 10장(`/api/v1/ai/**`) |
+
+Refresh Token과 멱등성 키는 Redis에 있고 테이블이 없다 (ERD §1.4). Refresh Token은 `global/security`,
+멱등성 키는 `global/config`의 인터셉터가 다룬다 — 특정 도메인의 관심사가 아니다.
+
+#### 2.3 도메인 내부 계층
+
+```
+domain/order/
+├── controller/OrderController.java
+├── service/OrderService.java
+├── repository/TradeRepository.java
+├── entity/Trade.java
+├── dto/
+│   ├── request/OrderCreateReq.java
+│   └── response/OrderRes.java
+└── exception/OrderErrorCode.java      # BaseErrorCode 구현
+```
+
+도메인 고유 에러 코드는 `global`이 아니라 해당 도메인의 `exception/`에 둔다. `global/apiPayload/code`에는
+어느 도메인에도 속하지 않는 `GeneralErrorCode`만 남는다.
+
+#### 2.4 참조 방향 규칙
+
+**규칙 1 — `global`은 `domain`을 참조하지 않는다.** 방향은 항상 `domain → global` 한쪽이다.
+
+**규칙 2 — 도메인 간 참조는 아래 순서의 위에서 아래로만 한다.** 역방향과 같은 층 사이의 참조는 순환을
+만들 수 있으므로 금지한다.
+
+```
+1층 (피참조 전용)   stock      price      ledger
+2층                 auth       account
+3층                 portfolio
+4층                 deposit    order      watchlist    recent
+5층                 ai
+```
+
+- `order`는 `account`(예수금 락) · `ledger`(원장 기록) · `portfolio`(보유 갱신) · `price`(최신가) · `stock`(거래정지)을 참조한다
+- `deposit`은 `account`와 `ledger`를 참조한다
+- `account`의 리셋은 `ledger`를 참조한다
+- `ai`는 `portfolio`와 `order`를 읽어 내부 API로 노출한다 (읽기 전용, 원장을 쓰지 않는다 — featureSpec 10.1)
+- `ledger`·`stock`·`price`는 다른 도메인을 참조하지 않는다
+
+**규칙 3 — 참조는 다른 도메인의 Service를 통해서만 한다.** 다른 도메인의 Entity·Repository를 import
+하지 않는다. 데이터가 필요하면 그 도메인이 노출한 DTO를 받는다.
+
+**규칙 4 — 조회 전용 쿼리는 테이블을 조인할 수 있다.** `/transactions`는 `ledger_entry`·`deposit`·`trade`·
+`stock`을 함께 읽어야 하는데(ERD §5), 이때 `ledger`가 다른 도메인의 Entity를 import하는 대신 **DTO
+프로젝션으로 조인 결과만 받는다.** 규칙 3을 지키면서 N+1도 피하는 방법이다.
+
+#### 2.5 원장 기록의 단일 경로
+
+`ledger_entry`에 6종을 기록하는 주체를 고정한다 (backConvention 7장의 "기록 시점과 책임 서비스").
+
+| `type` | 기록 주체 |
+|---|---|
+| `ROUND_OPEN` · `INITIAL_GRANT` · `ROUND_CLOSE` | `account` |
+| `DEPOSIT` | `deposit` |
+| `BUY` · `SELL` | `order` |
+
+`ledger`는 기록용 서비스 하나만 노출하고 스스로 원장을 만들지 않는다. **`LedgerRepository`를 `ledger`
+밖에서 직접 부르는 코드가 생기면 원장 불변성을 지킬 지점이 흩어진다.**
+
+#### 2.6 결정과 기각한 대안
+
+- **계층 우선 분할(`controller/`·`service/`·`repository/`를 최상위로) 기각** — 기능 하나를 만들 때
+  네 디렉터리를 오가고, BE 인원이 병렬로 작업하면 같은 디렉터리에서 계속 충돌한다.
+- **`holding`을 별도 도메인으로 두지 않고 `portfolio`가 소유** — `holding`은 포트폴리오의 상태 그
+  자체다. `order`가 체결 트랜잭션에서 `portfolio`의 서비스를 통해 갱신한다.
+- **`order`와 `trade`를 나누지 않음** — 시장가 즉시 체결이라 주문 1건 = `trade` 1행이다 (ERD §2.5).
+  지정가가 들어오면 `order` 도메인 안에서 테이블을 나눈다.
+- **`price`를 `stock`에 합치지 않음** — `stock`은 DB를 읽고 `price`는 Redis·KIS·STOMP를 다룬다.
+  더구나 시세 워커는 별도 Deployment로 배포되므로(infraSpec §3.2) 경계를 지금 그어두는 편이 낫다.
+  ⚠️ **워커를 같은 jar에서 프로파일로 띄울지 별도 모듈로 뺄지는 아직 미결이다.**
+- **`/transactions`를 `portfolio`가 아니라 `ledger`에 둠** — apiSpec 8장이 `/portfolio`와 묶어 두었지만
+  읽는 대상이 원장이다. 소유권을 API 장 번호보다 데이터 기준으로 정했다.
 
 ### 3. 네이밍 규칙
 
@@ -53,6 +181,8 @@
 - 멱등성 키(apiSpec.md 1.4): 처리 위치(인터셉터 vs 서비스), 저장소(Redis), 24시간 TTL, `IDEMPOTENCY_CONFLICT` 판정 기준(요청 본문 해시)
 - 커서 페이징(apiSpec.md 1.5): 공통 응답 타입, 커서 인코딩 방식 (12장 미확정 항목 — 여기서 제안하고 Sprint 0에서 확정)
 - 검증: Bean Validation 사용 기준, `INVALID_REQUEST` 매핑
+- 실시간 시세 STOMP(apiSpec.md 5.6): CONNECT 프레임의 `Authorization` 검증 위치(핸드셰이크가 아니다 — 브라우저 `WebSocket` 생성자가 커스텀 헤더를 못 붙인다), `/topic/prices/{stockCode}` 발행 주체, 하트비트 10초/10초와 30초 미수신 시 슬롯 회수 로직의 위치
+- **replica 2개 환경의 STOMP 팬아웃 방식 확정** — 내장 SimpleBroker는 각 인스턴스가 자기 연결에만 발행한다. 시세 캐시(Redis)를 각 인스턴스가 읽어 자기 구독자에게 발행하는 구조인지 Redis Pub/Sub으로 팬아웃하는지 명시하지 않으면, 단일 인스턴스에서는 되고 배포 후 절반의 사용자만 시세를 받는 형태로 깨진다 (infraSpec §3.2 — Spring Boot replicas 2)
 
 ### 6. 데이터 표기 규약
 
@@ -71,11 +201,11 @@
 
 ### 8. 외부 연동 규약
 
-- KIS 시세: 앱키 1개 기준 **동시 41슬롯** 관리 방식, 초과분 폴링 폴백 전환 로직의 위치
+- KIS 시세: 실시간 등록 한도 관리 방식(서버 전체 LRU 배정)과 초과분 REST 폴링 전환 로직의 위치. **한도 수치는 `[S0-1]` 실측 대기이고 41은 가정값이다** — 상수로 분리하고 수치에 의존하는 로직을 만들지 않는다 (apiSpec.md 5.6)
 - `stale` 판정: 마지막 수신 시각 기준, 허용 시간은 `[S0-3]` 확정 전까지 상수로 분리
 - 재시도·타임아웃: WebClient 공통 설정, 429 Retry-After 준수
 - AI 서버 내부 API(`/internal/v1`): `X-Internal-Token` 검증 위치, 외부 노출 차단 방법(네트워크 vs 필터), **읽기 전용 보장** (AI는 원장을 쓰지 않는다, 명세 10.1)
-- AI 명세 SSE: 백엔드가 프록시하는지 AI 서버 직결인지 확정하고, 프록시라면 버퍼링 없이 통과시키는 설정 명시
+- AI 중계(apiSpec.md 10장): **SSE는 폐기됐다** — AI 6종은 전부 일반 요청/응답이고 프론트는 AI 서버를 직접 부르지 않는다. 응답 정규화(AI `snake_case` + 공통 봉투 → 백엔드 `camelCase` + 봉투 없음) 위치와, **AI 장애를 백엔드 자체 장애와 구분할 에러 코드 체계**를 명시 (구분이 없으면 프론트가 AI 블록만 죽이는 에러 경계를 만들 수 없다)
 
 ## 완료 조건
 
@@ -89,7 +219,7 @@
 - `docs/convention/frontConvention.md` — 데이터 표기 규약(6장)은 FE 문서와 값이 일치해야 한다 (비율·금액·종목코드·등락 색)
 - `docs/api/apiSpec.md` — 응답 형식·멱등성·페이징·에러 코드의 계약 원본. 이 문서와 충돌 금지
 - 확정 조건: 시장가 즉시 체결(접수·체결 미분리), 거래 시간 09:00~15:30 KST, 초기 예수금 100만 원
-- 시세는 KIS 앱키 1개 기준 동시 41슬롯. 초과분은 폴링 폴백
+- 시세는 KIS 앱키 1개 기준 실시간 등록 한도 + 초과분 REST 폴링 폴백. 한도 수치는 `[S0-1]` 실측 대기 (41은 가정값)
 
 ## 범위 밖
 
