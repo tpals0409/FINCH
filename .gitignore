@@ -75,6 +75,7 @@ env/
 .env
 .env.*
 !.env.example
+infra/ai.env
 application-secret.yml
 application-local.yml
 
