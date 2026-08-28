@@ -1,7 +1,7 @@
 # 백엔드 API 명세서
 
-- 문서 버전: v0.3 (확정판)
-- 작성일: 2026-08-20 / 최종 수정: 2026-08-24
+- 문서 버전: v0.4 (확정판)
+- 작성일: 2026-08-20 / 최종 수정: 2026-08-28
 - 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md)
 - 범위: MVP 백엔드 API 전체. 프론트엔드가 Mock을 만들 수 있는 수준의 계약을 목표로 한다.
 - 변경 이력:
@@ -16,6 +16,10 @@
   - v0.3 — 스프링 표준 예외를 정확한 상태 코드로 내리기 위해 공통 에러 코드 2종 추가
     (`METHOD_NOT_ALLOWED` 405, `UNSUPPORTED_MEDIA_TYPE` 415). **기존 코드의 값·상태는 변경 없음**,
     AI 중계 upstream 상태 통과 범위를 13장 6번 결정 항목으로 등록 (10.4 현행 규칙은 유지)
+  - v0.4 — **엔드포인트별 발생 코드 표 신설 (§11.2)**. 프론트 contracts P6 회신. 코드의 값·상태는 변경 없음.
+    공통 계층 코드의 발생 조건 명문화(§11.1), `Authorization` 헤더 누락 시 코드 확정(§1.2),
+    `AI_UPSTREAM_*`에는 `requestId`가 없음을 명시(§10.4 — contracts P16 회신),
+    DELETE 계열은 대상이 없어도 `204`로 확정(§11.2), `ORDER_PRICE_CHANGED` 판정 조건을 13장 7번으로 등록
 
 > **이 문서의 성격**
 > 공통 API 규격(0-5)의 확정 내용을 담은 문서다. 프론트·AI 파트와 어긋나면 이 문서가 기준이며, 수정은 백엔드 파트가 한다.
@@ -58,6 +62,17 @@ Authorization: Bearer {accessToken}
 
 **Access Token 만료 시** 서버는 `401 AUTH_TOKEN_EXPIRED`를 반환한다. 프론트 인터셉터는 **이 코드에서만**
 `POST /auth/refresh`로 재발급 후 원요청을 재시도한다. `AUTH_INVALID_TOKEN`(변조·무효)은 재시도 없이 로그인 화면으로 보낸다.
+
+인증 필요 엔드포인트에서 두 코드를 가르는 기준은 **서명이 유효한가**다.
+
+| 상황 | 코드 |
+|---|---|
+| 서명 유효, `exp` 경과 | `401 AUTH_TOKEN_EXPIRED` |
+| `Authorization` 헤더 누락 · `Bearer` 형식 아님 · 서명 불일치 · 파싱 불가 | `401 AUTH_INVALID_TOKEN` |
+
+헤더 누락을 `AUTH_TOKEN_EXPIRED`로 주면 프론트가 재발급을 시도하고, 재발급이 성공하면 원래 토큰을 안 붙인 버그가 가려진다. 그래서 누락은 `AUTH_INVALID_TOKEN`이다.
+
+`AUTH_FORBIDDEN`(403)은 "인증은 됐지만 권한 밖"을 위해 예약된 코드다. **MVP에는 이 코드를 내는 경로가 없다** — 모든 리소스가 토큰의 사용자 기준으로 조회되고 역할 구분이 없다. 프론트는 이 코드에 화면을 만들지 않아도 된다.
 
 ### 1.3 응답 형식
 
@@ -953,6 +968,8 @@ AI 서버의 사용자 위키 4종(`/wiki/**`)은 프론트 화면 범위가 확
 | `AI_UPSTREAM_UNAVAILABLE` | 502 | AI 서버 연결 실패·비정상 응답 |
 | `AI_UPSTREAM_TIMEOUT` | 504 | 중계 타임아웃. 타임아웃 값은 AI의 LLM 타임아웃보다 길게 잡아 AI가 먼저 `LLM_TIMEOUT`을 돌려주게 한다 |
 
+- **위 두 코드에는 최상위 `requestId`가 없다.** 백엔드 자체 에러(§1.3)이고, AI 서버가 응답하지 않았으므로 `POST /ai/feedback`으로 찾을 원본 응답 자체가 없다. §10.3의 "에러 응답에도 보존"은 AI 서버가 돌려준 에러에만 해당한다. 프론트는 `requestId` 유무로 피드백 슬롯을 조건부로 만든다.
+
 ---
 
 ## 11. 에러 코드 목록
@@ -1012,6 +1029,80 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | `ORDER_INSUFFICIENT_QUANTITY` | 409 |
 | `ORDER_PRICE_UNAVAILABLE` | 503 |
 
+### 11.1 공통 계층 — 모든 엔드포인트에서 나올 수 있는 코드
+
+아래 코드는 컨트롤러에 닿기 전 공통 계층(예외 핸들러·인증 필터·멱등성 인터셉터)이 내며, §11.2 표에서는 **생략**한다.
+
+**모든 엔드포인트**
+
+| 코드 | 상태 | 조건 |
+|---|---|---|
+| `INVALID_REQUEST` | 400 | 본문 JSON 파싱 실패 · Bean Validation 실패 · 필수 파라미터 누락 · 파라미터 타입 불일치 · 열거값 밖(`period=2W`, `sort=FOO` 등). `detail`은 `{이름: 사유}` 맵이며 파싱 실패일 때만 생략 |
+| `METHOD_NOT_ALLOWED` | 405 | 존재하는 경로에 허용되지 않은 메서드. `Allow` 헤더에 허용 메서드를 싣는다 |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | 본문을 받는 엔드포인트에 `application/json`이 아닌 `Content-Type` |
+| `RESOURCE_NOT_FOUND` | 404 | 매핑되지 않은 경로 |
+| `INTERNAL_ERROR` | 500 | 처리되지 않은 예외. 원인 메시지는 본문에 싣지 않는다 |
+
+**인증 필요 엔드포인트** (`POST /auth/kakao` · `POST /auth/refresh` 제외 전부)
+
+| 코드 | 상태 | 조건 |
+|---|---|---|
+| `AUTH_TOKEN_EXPIRED` | 401 | 서명 유효, 만료 (§1.2) |
+| `AUTH_INVALID_TOKEN` | 401 | 헤더 누락 · 형식 오류 · 서명 불일치 (§1.2) |
+
+**멱등성 키 필수 엔드포인트** (`POST /deposits` · `POST /orders`)
+
+| 코드 | 상태 | 조건 |
+|---|---|---|
+| `IDEMPOTENCY_KEY_REQUIRED` | 400 | 헤더 누락 (§1.4) |
+| `IDEMPOTENCY_IN_PROGRESS` | 409 | 같은 키 처리 중 (§1.4) |
+| `IDEMPOTENCY_CONFLICT` | 409 | 같은 키, 다른 본문 (§1.4) |
+
+멱등성 판정은 본문 검증보다 **앞선다** — 키가 없으면 본문이 틀려도 `IDEMPOTENCY_KEY_REQUIRED`다.
+
+### 11.2 엔드포인트별 발생 코드
+
+공통 계층(§11.1)을 제외하고 **그 엔드포인트의 처리 로직이 직접 내는 코드**만 적는다. "—"는 고유 코드가 없다는 뜻이다.
+같은 요청에 여러 사유가 겹치면 **비고의 판정 순서에서 먼저 걸리는 코드 하나**만 나간다.
+
+| Method | Path | 고유 코드 | 비고 |
+|---|---|---|---|
+| POST | `/auth/kakao` | `AUTH_KAKAO_FAILED` | 무인증. 카카오 토큰 교환 실패·카카오 사용자 조회 실패 모두 이 코드. `authorizationCode`·`redirectUri` 누락은 `INVALID_REQUEST` |
+| POST | `/auth/refresh` | `AUTH_REFRESH_TOKEN_MISSING` · `AUTH_INVALID_TOKEN` | 무인증. 쿠키 없음 → `MISSING`, 쿠키 있으나 만료·무효·회전 충돌 → `INVALID` (§2.2) |
+| POST | `/auth/logout` | — | Refresh 쿠키가 없어도 `204`. Access Token은 있어야 한다 |
+| GET | `/users/me` | — | |
+| GET | `/account` | — | |
+| POST | `/account/reset` | — | 활성 회차는 항상 하나 있으므로 `ROUND_READ_ONLY`는 나오지 않는다 |
+| GET | `/rounds` | — | |
+| GET | `/deposits/limit` | — | |
+| POST | `/deposits` | `DEPOSIT_AMOUNT_INVALID` · `DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED` · `DEPOSIT_LIMIT_EXCEEDED` · `ROUND_READ_ONLY` | 판정 순서: 멱등성 → `paymentMethod` 열거값(`INVALID_REQUEST`) → 금액 0 이하 → 1회 한도 → 회차 상태 → 누적 한도(`detail.remainingAmount`) |
+| GET | `/stocks/search` | — | `keyword` 2글자 미만 · `size` 범위 밖 → `INVALID_REQUEST`. 결과 없음은 빈 `items` |
+| GET | `/stocks/{stockCode}` | `STOCK_NOT_FOUND` | 상장폐지 종목 노출 여부는 별도 확정 항목(프론트 contracts P18) |
+| GET | `/stocks/{stockCode}/candles` | `STOCK_NOT_FOUND` | `period` 열거값 밖 → `INVALID_REQUEST` |
+| GET | `/stocks/{stockCode}/price` | `STOCK_NOT_FOUND` | **시세 없음은 에러가 아니다** — `stale: true` + `null` (§5.4) |
+| GET | `/stocks/prices` | — | `stockCodes` 누락·빈 값·50건 초과 → `INVALID_REQUEST`. 없는 종목은 `items`에서 제외하고 실패시키지 않는다 (§5.5) |
+| GET | `/stocks/recent` | — | |
+| DELETE | `/stocks/recent` · `/stocks/recent/{stockCode}` | — | **대상이 없어도 `204`** (멱등). 목록에 없는 종목·이미 지운 항목을 다시 지워도 실패하지 않는다 |
+| GET | `/stocks/search/recent` | — | |
+| DELETE | `/stocks/search/recent` · `/stocks/search/recent/{keywordId}` | — | 대상이 없어도 `204` |
+| GET | `/watchlist` | — | `sort` 열거값 밖 → `INVALID_REQUEST` |
+| POST | `/watchlist` | `STOCK_NOT_FOUND` · `WATCHLIST_ALREADY_EXISTS` · `WATCHLIST_LIMIT_EXCEEDED` | 판정 순서: 종목 존재 → 중복 → 한도. 이미 등록된 종목은 한도가 찼어도 `ALREADY_EXISTS` |
+| DELETE | `/watchlist/{stockCode}` | — | 대상이 없어도 `204` |
+| POST | `/orders` | `ORDER_QUANTITY_INVALID` · `STOCK_NOT_FOUND` · `ROUND_READ_ONLY` · `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` · `ORDER_INSUFFICIENT_CASH` · `ORDER_INSUFFICIENT_QUANTITY` · `ORDER_PRICE_CHANGED` | 판정 순서: 멱등성 → `side` 열거값(`INVALID_REQUEST`) → 수량 0 이하 → 종목 존재 → 회차 상태 → §7.2 1~5단계. `ORDER_INSUFFICIENT_CASH`는 매수, `ORDER_INSUFFICIENT_QUANTITY`는 매도에서만. **`ORDER_PRICE_CHANGED`의 판정 조건은 13장 7번 확정 전까지 발행하지 않는다** |
+| GET | `/orders/available` | `STOCK_NOT_FOUND` | `side` 열거값 밖 → `INVALID_REQUEST`. `tradable: false`의 `reason`은 `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` 중 하나이며 **HTTP 200**이다 (§7.3) |
+| GET | `/portfolio` | — | `sort` 열거값 밖 → `INVALID_REQUEST`. 보유 없음은 빈 `holdings` |
+| GET | `/transactions` | `RESOURCE_NOT_FOUND` | `roundId`가 내 회차가 아니거나 없음. `type` 열거값 밖 · `cursor` 손상 · `size` 범위 밖 → `INVALID_REQUEST` |
+| POST | `/ai/stocks/{stockCode}/analysis` | `AI_UPSTREAM_UNAVAILABLE` · `AI_UPSTREAM_TIMEOUT` + **AI 서버 발행 코드 통과** | AI 서버 코드 목록은 [aiApiSpec §3](./aiApiSpec.md). 백엔드는 종목 존재를 미리 검사하지 않는다 — AI 서버의 `INSTRUMENT_NOT_FOUND`(404)가 그대로 내려간다. `AI_UPSTREAM_*`에는 `requestId`가 없다 (§10.4) |
+| POST | `/ai/chat` | 위와 동일 | |
+| POST | `/ai/portfolio/diagnosis` | 위와 동일 | 보유 종목 0개는 AI 서버의 `INSUFFICIENT_DATA`(409)이며 정상 거절이다 |
+| POST | `/ai/portfolio/attribution` | 위와 동일 | |
+| POST | `/ai/orders/preview` | 위와 동일 | |
+| GET | `/ai/briefing` | 위와 동일 | |
+| POST | `/ai/feedback` | 위와 동일 | 모르는 `requestId`의 처리는 AI 서버 몫이다 (프론트 contracts P14) |
+| GET | `/internal/v1/portfolio` · `/internal/v1/trades` | `AUTH_INVALID_TOKEN` · `RESOURCE_NOT_FOUND` | `X-Internal-Token` 누락·불일치 → `401 AUTH_INVALID_TOKEN`. `X-User-Id`에 해당하는 사용자 없음 · `roundId`가 그 사용자 것이 아님 → `404 RESOURCE_NOT_FOUND`. 사용자 JWT 인증은 적용되지 않는다 |
+
+**표에 없는 코드는 그 엔드포인트에서 나오지 않는다.** 구현 중 새 사유가 생기면 이 표와 §11 목록을 먼저 고치고 코드를 붙인다. 백엔드 테스트(`ErrorCodeContractTest`)가 enum 전체와 §11 목록의 일치를 검사한다.
+
 ---
 
 ## 12. 엔드포인트 요약
@@ -1063,6 +1154,7 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | 4 | AI 응답에 파생 지표를 백엔드가 포함할지 | `[S0-5]` | 9.1, 9.2 |
 | 5 | 5.6 수치 기본값(하트비트 10초·3회, TTL 30초, 폴링 5초/3초, KIS 순회 3초)의 실측 검증 — 채널과 기본값은 확정, 관계식 유지 하에 수치만 조정 가능 | `[S0-1]`·`[S0-2]` | 5.6 |
 | 6 | **AI 중계 시 upstream 상태 코드를 어디까지 그대로 통과시킬지.** 현행 10.4는 전 구간 통과인데, AI 서버의 401(내부 토큰 불일치 등)이 그대로 내려가면 프론트 인터셉터가 **사용자 토큰 만료로 오인해 로그아웃**시킨다. 429도 사용자 스로틀로 오인된다 | AI 파트 회신 | 10.4 |
+| 7 | **`ORDER_PRICE_CHANGED`의 판정 조건.** §7.2 4단계는 "최신가 재계산에서 예수금 부족이면 `ORDER_PRICE_CHANGED`"라고 적었지만, 주문 요청 본문(§7.1)에 프론트가 확인 화면에서 본 **기준가가 없어** 서버가 "가격이 바뀌었는지"를 알 수 없다. 현 구조에서는 예수금 부족이 전부 `ORDER_INSUFFICIENT_CASH`로 나간다. 선택지: (a) 요청에 `expectedPrice`를 추가하고 최신가와 다르면서 부족할 때만 `PRICE_CHANGED` (b) 코드를 폐기하고 `INSUFFICIENT_CASH`로 통일 | 프론트 협의 | 7.1, 7.2, 11.2 |
 
 다건 시세 조회 최대 건수는 **50건으로 확정**되어 목록에서 제거했다 (§5.5 — KIS 등록 한도는 백엔드 수집 계층이 흡수하므로 무관).
 
