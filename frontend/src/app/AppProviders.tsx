@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
 
+import { useRestoreSession } from '@/features/auth';
 import { createQueryClient } from '@/shared/api';
 
 import { AppErrorBoundary } from './AppErrorBoundary';
@@ -25,6 +26,12 @@ export function AppProviders({ children }: AppProvidersProps) {
   // 초기화 함수로 넘긴다. inline 으로 호출하면 StrictMode 이중 마운트에서
   // QueryClient 가 새로 만들어져 캐시가 날아간다.
   const [queryClient] = useState(createQueryClient);
+
+  /**
+   * 세션 복구를 라우터보다 위에서 한 번만 건다. 화면마다 걸면 이동할 때마다
+   * 재발급이 나가고, 회전 방식이라 서로의 토큰을 무효화한다.
+   */
+  useRestoreSession();
 
   return (
     <QueryClientProvider client={queryClient}>

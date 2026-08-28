@@ -1,3 +1,4 @@
+import { SessionCard } from '@/features/auth';
 import { HealthCard } from '@/features/health';
 
 /**
@@ -9,9 +10,10 @@ export function HealthPage() {
     <main className="mx-auto w-full max-w-md px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <h1 className="text-lg font-semibold text-slate-900">배선 점검</h1>
       <p className="mt-1 text-sm text-slate-500">
-        목 서버 · 서버 상태 · 스키마 검증 경로가 살아 있는지 확인합니다
+        목 서버 · 서버 상태 · 스키마 검증 · 세션 경로가 살아 있는지 확인합니다
       </p>
-      <div className="mt-4">
+      <div className="mt-4 space-y-4">
+        <SessionCard />
         <HealthCard />
       </div>
     </main>

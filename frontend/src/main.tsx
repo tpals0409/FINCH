@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from '@/app/App';
+import { installAuthBridge } from '@/features/auth';
 import '@/styles/index.css';
 
 /**
@@ -24,6 +25,13 @@ const rootElement = document.getElementById('root');
 if (rootElement === null) {
   throw new Error('#root 엘리먼트를 찾을 수 없습니다');
 }
+
+/**
+ * 렌더보다 먼저 꽂는다. 첫 요청이 나가기 전에 HTTP 클라이언트가 토큰을 어디서
+ * 읽어야 하는지 알고 있어야 한다. 컴포넌트 안에서 꽂으면 그보다 먼저 나간 요청에
+ * 토큰이 붙지 않는다.
+ */
+installAuthBridge();
 
 void enableMocking().then(() => {
   createRoot(rootElement).render(
