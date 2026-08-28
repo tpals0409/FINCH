@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
+import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
 import { useAuthSession } from '../model/useAuthSession';
@@ -16,14 +17,10 @@ export function RequireAuth() {
   // unknown 을 unauthenticated 로 합치면 새로고침할 때마다 로그인 화면이 번쩍인다.
   if (status === 'unknown') {
     return (
-      <main
-        className="mx-auto w-full max-w-md px-4 py-6"
-        aria-busy="true"
-        aria-label="세션 확인 중"
-      >
+      <PageMain aria-busy="true" aria-label="세션 확인 중">
         <Skeleton className="h-6 w-32" />
         <Skeleton className="mt-4 h-24 w-full" />
-      </main>
+      </PageMain>
     );
   }
 

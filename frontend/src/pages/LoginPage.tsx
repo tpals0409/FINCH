@@ -5,6 +5,7 @@ import {
   toSafeRedirectPath,
   useAuthSession,
 } from '@/features/auth';
+import { PageMain } from '@/shared/ui/PageMain';
 
 /**
  * 로그인 화면 (`/login`). 자체 회원가입 폼은 없다 — 인증 수단은 카카오 OAuth 하나이고
@@ -23,7 +24,7 @@ export function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col justify-center px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+    <PageMain className="flex flex-col justify-center">
       <h1 className="text-2xl font-semibold text-slate-900">
         모의투자를 시작합니다
       </h1>
@@ -33,6 +34,6 @@ export function LoginPage() {
       <div className="mt-8">
         <KakaoLoginButton redirectTo={redirectTo} />
       </div>
-    </main>
+    </PageMain>
   );
 }

@@ -1,5 +1,6 @@
 import { LogoutButton, useMe } from '@/features/auth';
 import { Card } from '@/shared/ui/Card';
+import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
 function AccountCard() {
@@ -38,7 +39,7 @@ function AccountCard() {
  */
 export function MyPage() {
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+    <PageMain>
       <h1 className="text-lg font-semibold text-slate-900">마이페이지</h1>
 
       <div className="mt-4">
@@ -52,6 +53,6 @@ export function MyPage() {
       <div className="mt-4">
         <LogoutButton />
       </div>
-    </main>
+    </PageMain>
   );
 }
