@@ -48,9 +48,17 @@ function readMockRefreshToken(): string | null {
   return entry === undefined ? null : entry.slice(prefix.length);
 }
 
-/** 회전 방식을 흉내 낸다 — 발급할 때마다 값이 바뀐다. */
+/**
+ * 회전 방식을 흉내 낸다 — 발급할 때마다 값이 바뀐다.
+ * randomUUID 는 보안 컨텍스트 전용이라 폰에서 LAN 주소로 열면 없다.
+ */
 function rotateMockRefreshToken(): void {
-  document.cookie = `${MOCK_REFRESH_COOKIE}=${crypto.randomUUID()}; path=/; max-age=1209600`;
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  const value = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+  document.cookie = `${MOCK_REFRESH_COOKIE}=${value}; path=/; max-age=1209600`;
 }
 
 function readBearerToken(request: Request): string | null {

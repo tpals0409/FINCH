@@ -76,26 +76,34 @@ async function toHttpError(response: Response): Promise<HttpError> {
   });
 }
 
+type SentRequest = {
+  response: Response;
+  /** 이 요청에 실제로 실린 토큰. 안 실었으면 null. */
+  sentAccessToken: string | null;
+};
+
 /** 토큰은 보낼 때마다 새로 읽는다. 캡처해 두면 재발급 뒤 재시도에 옛 토큰이 실린다. */
 async function sendRequest(
   path: string,
   options: RequestOptions,
-): Promise<Response> {
+): Promise<SentRequest> {
   const { method = 'GET', body, signal, shouldAttachSession = true } = options;
 
   const headers: Record<string, string> = {};
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }
+
+  let sentAccessToken: string | null = null;
   if (shouldAttachSession) {
-    const accessToken = getAuthBridge()?.getAccessToken() ?? null;
-    if (accessToken !== null) {
-      headers.Authorization = `Bearer ${accessToken}`;
+    sentAccessToken = getAuthBridge()?.getAccessToken() ?? null;
+    if (sentAccessToken !== null) {
+      headers.Authorization = `Bearer ${sentAccessToken}`;
     }
   }
 
   try {
-    return await fetch(buildUrl(path), {
+    const response = await fetch(buildUrl(path), {
       method,
       signal,
       // 기본값 same-origin 이면 교차 출처에서 Refresh 쿠키의 Set-Cookie 가 버려진다.
@@ -104,6 +112,7 @@ async function sendRequest(
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    return { response, sentAccessToken };
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === 'AbortError') {
       throw cause;
@@ -125,6 +134,7 @@ async function sendRequest(
 async function recoverSession(
   error: HttpError,
   options: RequestOptions,
+  sentAccessToken: string | null,
 ): Promise<boolean> {
   if (options.shouldAttachSession === false) {
     return false;
@@ -132,6 +142,15 @@ async function recoverSession(
 
   const bridge = getAuthBridge();
   if (bridge === null) {
+    return false;
+  }
+
+  /**
+   * 토큰 없이 나간 요청의 401 은 우리 세션에 대한 판정이 아니다. 부팅 복구가 끝나기
+   * 전에 출발한 요청이 여기 해당하는데, 그것으로 세션을 비우면 방금 복구된 세션까지
+   * 지운다. 보낸 토큰이 이미 갱신됐다면 그 실패도 낡은 것이라 마찬가지다.
+   */
+  if (sentAccessToken === null || bridge.getAccessToken() !== sentAccessToken) {
     return false;
   }
 
@@ -183,23 +202,23 @@ export async function request<TSchema extends z.ZodType<unknown>>(
   path: string,
   options: RequestOptions & { schema: TSchema },
 ): Promise<z.infer<TSchema>> {
-  const response = await sendRequest(path, options);
+  const { response, sentAccessToken } = await sendRequest(path, options);
   if (response.ok) {
     return parseSuccess(response, options.schema);
   }
 
   const error = await toHttpError(response);
-  const isRecovered = await recoverSession(error, options);
+  const isRecovered = await recoverSession(error, options, sentAccessToken);
   if (!isRecovered) {
     throw error;
   }
 
-  const retriedResponse = await sendRequest(path, options);
-  if (retriedResponse.ok) {
-    return parseSuccess(retriedResponse, options.schema);
+  const retried = await sendRequest(path, options);
+  if (retried.response.ok) {
+    return parseSuccess(retried.response, options.schema);
   }
 
-  const retriedError = await toHttpError(retriedResponse);
+  const retriedError = await toHttpError(retried.response);
   if (
     retriedError.code === AUTH_ERROR_CODES.INVALID_TOKEN ||
     retriedError.code === AUTH_ERROR_CODES.TOKEN_EXPIRED
