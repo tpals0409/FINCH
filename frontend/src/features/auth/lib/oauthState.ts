@@ -27,7 +27,7 @@ type PendingOauth = {
  * `//evil.com` 은 프로토콜 상대 URL 이라 `/` 로 시작하는데도 바깥으로 나간다.
  * 브라우저가 역슬래시를 슬래시로 정규화하므로 `/\evil.com` 도 같이 막는다.
  */
-function toSafeRedirectPath(candidate: string | null): string {
+export function toSafeRedirectPath(candidate: string | null): string {
   if (candidate === null || !candidate.startsWith('/')) {
     return DEFAULT_REDIRECT_TO;
   }

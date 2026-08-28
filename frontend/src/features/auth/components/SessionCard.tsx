@@ -26,6 +26,9 @@ function SignedOutCard() {
       <LinkButton to="/login" className="mt-3">
         로그인하러 가기
       </LinkButton>
+      <LinkButton to="/my" variant="secondary" className="mt-2">
+        보호 라우트로 가보기 (/my)
+      </LinkButton>
     </Card>
   );
 }
@@ -69,6 +72,9 @@ function SignedInCard() {
           </dd>
         </div>
       </dl>
+      <LinkButton to="/my" variant="secondary" className="mt-4">
+        마이페이지
+      </LinkButton>
     </Card>
   );
 }

@@ -1,6 +1,10 @@
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 
-import { KakaoLoginButton } from '@/features/auth';
+import {
+  KakaoLoginButton,
+  toSafeRedirectPath,
+  useAuthSession,
+} from '@/features/auth';
 
 /**
  * 로그인 화면 (`/login`). 자체 회원가입 폼은 없다 — 인증 수단은 카카오 OAuth 하나이고
@@ -8,6 +12,15 @@ import { KakaoLoginButton } from '@/features/auth';
  */
 export function LoginPage() {
   const [searchParams] = useSearchParams();
+  const status = useAuthSession((state) => state.status);
+  const redirectTo = searchParams.get('redirect');
+
+  // 이미 로그인한 사람에게 버튼을 보여 주지 않는다. 눌러도 카카오가 곧바로
+  // 되돌려보내지만 그 사이 화면이 두 번 깜빡인다.
+  // unknown 일 때는 판단하지 않는다. 아직 모르는 것이지 비로그인이 아니다.
+  if (status === 'authenticated') {
+    return <Navigate to={toSafeRedirectPath(redirectTo)} replace />;
+  }
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col justify-center px-4 py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
@@ -18,7 +31,7 @@ export function LoginPage() {
         카카오 계정으로 로그인하면 가상 계좌와 예수금이 준비됩니다
       </p>
       <div className="mt-8">
-        <KakaoLoginButton redirectTo={searchParams.get('redirect')} />
+        <KakaoLoginButton redirectTo={redirectTo} />
       </div>
     </main>
   );
