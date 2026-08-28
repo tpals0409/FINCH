@@ -1,6 +1,8 @@
 import { type z } from 'zod';
 
+import { API_BASE_PATH } from '@/shared/config/apiContract';
 import { API_BASE_URL } from '@/shared/config/env';
+import { parseErrorResponse } from '@/shared/types/error';
 
 import { HttpError, SchemaError, parseRetryAfterMs } from './errors';
 
@@ -12,12 +14,63 @@ type RequestOptions = {
   signal?: AbortSignal;
 };
 
+const FALLBACK_ERROR_MESSAGE = '요청을 처리하지 못했습니다';
+
+/**
+ * `{origin}{/api/v1}{path}` 로 조립한다.
+ *
+ * `/api/v1` 을 환경변수가 아니라 코드 상수(`API_BASE_PATH`)로 두는 이유가 있다.
+ * 환경변수에 넣으면 배포 환경마다 값이 갈릴 수 있는데, 이 접두는 계약이라
+ * 환경에 따라 달라지지 않는다 (apiSpec §1.1 · contracts C1).
+ * 호출부는 `API_PATHS` 의 뒷부분만 넘긴다.
+ */
 function buildUrl(path: string): string {
-  const base = API_BASE_URL.endsWith('/')
+  const origin = API_BASE_URL.endsWith('/')
     ? API_BASE_URL.slice(0, -1)
     : API_BASE_URL;
   const suffix = path.startsWith('/') ? path : `/${path}`;
-  return `${base}${suffix}`;
+  return `${origin}${API_BASE_PATH}${suffix}`;
+}
+
+/**
+ * 실패 응답을 정규화한다 (컨벤션 §5 에러 처리 위치).
+ *
+ * 본문이 `{code, message, detail}` 이면 그 값을 그대로 싣는다.
+ * `message` 는 서버가 완성해 주는 사용자 노출 문구이므로 화면이 문구를 다시
+ * 만들지 않는다 (contracts C10). 형식이 아니면 `code` 없이 기본 문구로 떨어지고,
+ * 그 응답은 세션 화이트리스트에 매칭되지 않아 안전하게 지나간다.
+ */
+async function toHttpError(response: Response): Promise<HttpError> {
+  const retryAfterMs = parseRetryAfterMs(response.headers.get('Retry-After'));
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    // 본문이 비었거나 JSON 이 아니다. 에러를 읽다가 다시 던지지 않는다.
+    return new HttpError({
+      status: response.status,
+      message: FALLBACK_ERROR_MESSAGE,
+      retryAfterMs,
+    });
+  }
+
+  const parsed = parseErrorResponse(payload);
+  if (parsed === null) {
+    return new HttpError({
+      status: response.status,
+      message: FALLBACK_ERROR_MESSAGE,
+      retryAfterMs,
+    });
+  }
+
+  return new HttpError({
+    status: response.status,
+    message: parsed.message,
+    retryAfterMs,
+    code: parsed.code,
+    detail: parsed.detail ?? null,
+  });
 }
 
 /**
@@ -37,6 +90,10 @@ export async function request<TSchema extends z.ZodType<unknown>>(
     response = await fetch(buildUrl(path), {
       method,
       signal,
+      // Refresh Token 은 HttpOnly 쿠키로만 오간다 (apiSpec §1.2 · §2.2).
+      // fetch 기본값 'same-origin' 이면 교차 출처에서 Set-Cookie 가 버려져
+      // 로그인은 성공하는데 재발급만 조용히 실패한다.
+      credentials: 'include',
       headers:
         body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -46,15 +103,14 @@ export async function request<TSchema extends z.ZodType<unknown>>(
       throw cause;
     }
     // 상태 코드 0 은 "응답 자체가 없었다"는 뜻으로 쓴다.
-    throw new HttpError(0, '네트워크에 연결할 수 없습니다', null);
+    throw new HttpError({
+      status: 0,
+      message: '네트워크에 연결할 수 없습니다',
+    });
   }
 
   if (!response.ok) {
-    throw new HttpError(
-      response.status,
-      '요청을 처리하지 못했습니다',
-      parseRetryAfterMs(response.headers.get('Retry-After')),
-    );
+    throw await toHttpError(response);
   }
 
   let payload: unknown;

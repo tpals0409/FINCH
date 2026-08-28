@@ -1,17 +1,40 @@
+import { type ErrorDetail } from '@/shared/types/error';
+
+type HttpErrorInit = {
+  status: number;
+  message: string;
+  /** 429 응답의 Retry-After 를 밀리초로 환산한 값. 헤더가 없으면 null */
+  retryAfterMs?: number | null;
+  /** 에러 본문의 `code`. 본문이 `{code, message, detail}` 형식이 아니면 null */
+  code?: string | null;
+  detail?: ErrorDetail | null;
+};
+
 /**
  * 네트워크·HTTP 실패. 상태 코드는 이 타입 안에 가두고
  * 이 층 밖으로 숫자를 그대로 흘리지 않는다 (컨벤션 §5).
+ *
+ * **분기는 `status` 가 아니라 `code` 로 한다** (컨벤션 §5 인증 인터셉터).
+ * 401 을 내는 주체가 우리 서비스 하나가 아니라서 숫자로 나누면 AI 서버의
+ * `UNAUTHORIZED` 까지 세션 만료로 오인한다. `status` 는 재시도 정책에만 쓴다.
+ *
+ * `code` 가 null 인 경우는 두 가지다 — 본문이 우리 에러 형식이 아니거나
+ * (프록시가 내는 HTML 401 등), 응답 자체가 없었던 경우(`status` 0)다.
+ * 어느 쪽이든 화이트리스트 매칭이 실패해 세션을 건드리지 않고 지나간다.
  */
 export class HttpError extends Error {
   readonly status: number;
-  /** 429 응답의 Retry-After 를 밀리초로 환산한 값. 헤더가 없으면 null */
   readonly retryAfterMs: number | null;
+  readonly code: string | null;
+  readonly detail: ErrorDetail | null;
 
-  constructor(status: number, message: string, retryAfterMs: number | null) {
-    super(message);
+  constructor(init: HttpErrorInit) {
+    super(init.message);
     this.name = 'HttpError';
-    this.status = status;
-    this.retryAfterMs = retryAfterMs;
+    this.status = init.status;
+    this.retryAfterMs = init.retryAfterMs ?? null;
+    this.code = init.code ?? null;
+    this.detail = init.detail ?? null;
   }
 }
 
