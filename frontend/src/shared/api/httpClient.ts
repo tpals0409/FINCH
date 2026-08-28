@@ -194,8 +194,9 @@ async function parseSuccess<TSchema extends z.ZodType<unknown>>(
 }
 
 /**
- * 세션 처리까지 끝난 성공 응답. 본문은 건드리지 않는다.
- * 재시도는 한 번뿐이다. 재발급 직후 또 거절되면 되살릴 수 없는 세션이고,
+ * 요청을 보내고, 세션 만료면 재발급한 뒤 한 번만 다시 보낸다. 본문은 건드리지 않는다.
+ *
+ * 재시도가 한 번뿐인 이유 — 재발급 직후 또 거절되면 되살릴 수 없는 세션이고,
  * 더 돌면 로그인 화면에 도달하지 못한 채 왕복만 계속한다.
  */
 async function sendWithSession(

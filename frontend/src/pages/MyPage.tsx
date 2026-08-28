@@ -1,36 +1,5 @@
-import { LogoutButton, useMe } from '@/features/auth';
-import { Card } from '@/shared/ui/Card';
+import { LogoutButton } from '@/features/auth';
 import { PageMain } from '@/shared/ui/PageMain';
-import { Skeleton } from '@/shared/ui/Skeleton';
-
-function AccountCard() {
-  const { data, isPending, isError, error } = useMe();
-
-  if (isPending) {
-    return (
-      <Card aria-busy="true">
-        <Skeleton className="h-7 w-28" />
-      </Card>
-    );
-  }
-
-  if (isError) {
-    return (
-      <Card>
-        <p className="text-sm text-slate-600">{error.message}</p>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <p className="text-sm text-slate-500">로그인 계정</p>
-      <p className="mt-1 text-lg font-semibold text-slate-900">
-        {data.nickname}
-      </p>
-    </Card>
-  );
-}
 
 /**
  * 자리만 잡아 둔 화면이다. 실제 마이페이지(프로필·계좌 리셋·회차 조회 진입)는
@@ -41,16 +10,11 @@ export function MyPage() {
   return (
     <PageMain>
       <h1 className="text-lg font-semibold text-slate-900">마이페이지</h1>
-
-      <div className="mt-4">
-        <AccountCard />
-      </div>
-
-      <p className="mt-4 text-xs text-slate-400">
+      <p className="mt-1 text-xs text-slate-400">
         프로필 · 계좌 리셋 · 회차 조회는 별도 티켓입니다
       </p>
 
-      <div className="mt-4">
+      <div className="mt-6">
         <LogoutButton />
       </div>
     </PageMain>
