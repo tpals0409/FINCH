@@ -23,15 +23,30 @@ type PendingOauth = {
   redirectTo: string;
 };
 
-/** `//evil.com` 은 프로토콜 상대 URL 이라 `/` 로 시작하는데도 바깥으로 나간다. */
+/**
+ * `//evil.com` 은 프로토콜 상대 URL 이라 `/` 로 시작하는데도 바깥으로 나간다.
+ * 브라우저가 역슬래시를 슬래시로 정규화하므로 `/\evil.com` 도 같이 막는다.
+ */
 function toSafeRedirectPath(candidate: string | null): string {
   if (candidate === null || !candidate.startsWith('/')) {
     return DEFAULT_REDIRECT_TO;
   }
-  if (candidate.startsWith('//')) {
+  if (candidate[1] === '/' || candidate[1] === '\\') {
     return DEFAULT_REDIRECT_TO;
   }
   return candidate;
+}
+
+/**
+ * crypto.randomUUID 는 보안 컨텍스트에서만 있다. 폰에서 `http://192.168.x.x:5173` 으로
+ * 열면 없어서 로그인 버튼이 그 자리에서 터진다. getRandomValues 는 그 제약이 없다.
+ */
+function createNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
+    '',
+  );
 }
 
 function isPendingOauth(value: unknown): value is PendingOauth {
@@ -73,7 +88,7 @@ function readPendingOauth(): PendingOauth | null {
  * 실패해 로그인이 거절된다 — 확인할 수 없는 콜백을 통과시키는 것보다 낫다.
  */
 export function createOauthState(redirectTo: string | null): string {
-  const state = crypto.randomUUID();
+  const state = createNonce();
   const pending: PendingOauth = {
     state,
     redirectTo: toSafeRedirectPath(redirectTo),

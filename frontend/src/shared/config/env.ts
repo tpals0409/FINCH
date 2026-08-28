@@ -31,5 +31,7 @@ export const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY ?? '';
  * 인가 시점의 값과 대조하므로 코드를 훔쳐도 짝이 맞지 않으면 토큰이 안 나온다.
  */
 export const KAKAO_REDIRECT_URI =
-  import.meta.env.VITE_KAKAO_REDIRECT_URI ??
+  // ?? 가 아니라 || 다. 빈 문자열도 폴백해야 한다 — .env.example 이 "비워 두면 현재
+  // 오리진"이라고 안내하는데 ?? 면 빈 값이 그대로 나가 카카오가 KOE006 으로 막는다.
+  import.meta.env.VITE_KAKAO_REDIRECT_URI ||
   `${window.location.origin}/oauth/kakao`;
