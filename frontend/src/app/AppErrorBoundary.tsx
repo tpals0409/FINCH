@@ -1,5 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { Button } from '@/shared/ui/Button';
+
 type AppErrorBoundaryProps = {
   children: ReactNode;
 };
@@ -34,13 +36,9 @@ export class AppErrorBoundary extends Component<
           <p className="text-base font-medium text-slate-900">
             화면을 표시할 수 없습니다
           </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-4 min-h-11 w-full rounded-lg bg-slate-900 px-4 text-sm font-medium text-white"
-          >
+          <Button onClick={() => window.location.reload()} className="mt-4">
             새로고침
-          </button>
+          </Button>
         </div>
       );
     }

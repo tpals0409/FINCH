@@ -8,9 +8,8 @@ import {
 
 /**
  * 인가 코드를 세션으로 바꾼다 (apiSpec §2.1).
- *
- * 응답 본문에는 Access Token 만 있다. Refresh Token 은 `Set-Cookie` 로만 내려오고
- * `HttpOnly` 라 JS 가 읽을 수 없다 — 브라우저가 알아서 보관하므로 여기서 할 일이 없다.
+ * 응답 본문에는 Access Token 만 있다. Refresh Token 은 Set-Cookie 로만 오고
+ * HttpOnly 라 JS 가 읽을 수 없어 여기서 다룰 것이 없다.
  */
 export function postKakaoLogin(
   body: KakaoLoginRequest,

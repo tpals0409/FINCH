@@ -17,12 +17,9 @@ type RequestOptions = {
 const FALLBACK_ERROR_MESSAGE = '요청을 처리하지 못했습니다';
 
 /**
- * `{origin}{/api/v1}{path}` 로 조립한다.
- *
- * `/api/v1` 을 환경변수가 아니라 코드 상수(`API_BASE_PATH`)로 두는 이유가 있다.
- * 환경변수에 넣으면 배포 환경마다 값이 갈릴 수 있는데, 이 접두는 계약이라
- * 환경에 따라 달라지지 않는다 (apiSpec §1.1 · contracts C1).
- * 호출부는 `API_PATHS` 의 뒷부분만 넘긴다.
+ * `{origin}{/api/v1}{path}` 로 조립한다. 호출부는 API_PATHS 의 뒷부분만 넘긴다.
+ * 접두를 환경변수가 아니라 상수로 두는 이유는 이것이 환경이 아니라 계약이기 때문이다
+ * (apiSpec §1.1).
  */
 function buildUrl(path: string): string {
   const origin = API_BASE_URL.endsWith('/')
@@ -33,12 +30,9 @@ function buildUrl(path: string): string {
 }
 
 /**
- * 실패 응답을 정규화한다 (컨벤션 §5 에러 처리 위치).
- *
- * 본문이 `{code, message, detail}` 이면 그 값을 그대로 싣는다.
- * `message` 는 서버가 완성해 주는 사용자 노출 문구이므로 화면이 문구를 다시
- * 만들지 않는다 (contracts C10). 형식이 아니면 `code` 없이 기본 문구로 떨어지고,
- * 그 응답은 세션 화이트리스트에 매칭되지 않아 안전하게 지나간다.
+ * 실패 응답을 정규화한다 (컨벤션 §5).
+ * message 는 서버가 완성해 주는 사용자 노출 문구라 화면이 문구를 다시 만들지 않는다.
+ * 우리 에러 형식이 아니면 code 없이 기본 문구로 떨어진다.
  */
 async function toHttpError(response: Response): Promise<HttpError> {
   const retryAfterMs = parseRetryAfterMs(response.headers.get('Retry-After'));
@@ -74,10 +68,8 @@ async function toHttpError(response: Response): Promise<HttpError> {
 }
 
 /**
- * 단일 HTTP 클라이언트 (컨벤션 §5).
- * 컴포넌트는 fetch 를 직접 부르지 않는다. 이 함수가 유일한 통로다.
- * 응답은 Zod 로 검증한 뒤에만 반환하고, 실패는 HttpError / SchemaError 로
- * 정규화해 던진다.
+ * 단일 HTTP 클라이언트 (컨벤션 §5). 컴포넌트는 fetch 를 직접 부르지 않는다.
+ * 응답은 Zod 로 검증한 뒤에만 반환하고, 실패는 HttpError / SchemaError 로 던진다.
  */
 export async function request<TSchema extends z.ZodType<unknown>>(
   path: string,
@@ -90,9 +82,8 @@ export async function request<TSchema extends z.ZodType<unknown>>(
     response = await fetch(buildUrl(path), {
       method,
       signal,
-      // Refresh Token 은 HttpOnly 쿠키로만 오간다 (apiSpec §1.2 · §2.2).
-      // fetch 기본값 'same-origin' 이면 교차 출처에서 Set-Cookie 가 버려져
-      // 로그인은 성공하는데 재발급만 조용히 실패한다.
+      // 기본값 same-origin 이면 교차 출처에서 Refresh 쿠키의 Set-Cookie 가 버려진다.
+      // 로그인은 성공하는데 재발급만 조용히 실패한다 (apiSpec §1.2).
       credentials: 'include',
       headers:
         body === undefined ? undefined : { 'Content-Type': 'application/json' },
