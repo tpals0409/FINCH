@@ -29,6 +29,90 @@ def test_export_is_deterministic() -> None:
     assert dump(build()) == dump(build())
 
 
+def test_analysis_section_schema_declares_contract_fields() -> None:
+    """조건부 응답 필드도 OpenAPI 계약에서는 이름과 타입이 보여야 한다."""
+    schema = COMMITTED["components"]["schemas"]["AnalysisSection"]
+
+    assert set(schema["properties"]) == {
+        "title",
+        "text",
+        "segments",
+        "cached",
+        "cached_at",
+        "thesis",
+        "supporting",
+        "challenging",
+        "events",
+    }
+
+
+def test_analysis_section_keys_are_a_fixed_contract() -> None:
+    """요청과 응답 모두 프런트가 7개 섹션을 정적 타입으로 생성할 수 있어야 한다."""
+    expected = {
+        "current",
+        "changes",
+        "attention",
+        "risks",
+        "my_impact",
+        "thesis_check",
+        "next_events",
+    }
+    request_items = COMMITTED["components"]["schemas"]["AnalysisRequest"]["properties"][
+        "sections"
+    ]["anyOf"][0]["items"]
+    response_properties = COMMITTED["components"]["schemas"]["AnalysisSections"]["properties"]
+
+    assert set(request_items["enum"]) == expected
+    assert set(response_properties) == expected
+    assert COMMITTED["components"]["schemas"]["AnalysisSections"]["additionalProperties"] is False
+
+
+def test_wiki_and_feedback_responses_have_typed_content() -> None:
+    """화면이 읽는 content가 빈 object로 퇴행하면 타입 생성 단계에서 잡아야 한다."""
+    expected = {
+        (f"{API_PREFIX}/wiki", "get"): "WikiContent",
+        (f"{API_PREFIX}/wiki/theses", "post"): "WikiThesisOut",
+        (f"{API_PREFIX}/wiki/theses/{{ticker}}", "put"): "WikiThesisOut",
+        (f"{API_PREFIX}/wiki/facts/{{fact_id}}", "delete"): "DeletedFactContent",
+        (f"{API_PREFIX}/feedback", "post"): "FeedbackContent",
+    }
+    schemas = COMMITTED["components"]["schemas"]
+
+    for (path, method), content_model in expected.items():
+        response_ref = COMMITTED["paths"][path][method]["responses"]["200"]["content"][
+            "application/json"
+        ]["schema"]["$ref"]
+        envelope = schemas[response_ref.rsplit("/", 1)[-1]]
+        assert envelope["properties"]["content"]["$ref"].endswith(f"/{content_model}")
+
+
+def test_wiki_and_feedback_content_keys_are_explicit() -> None:
+    schemas = COMMITTED["components"]["schemas"]
+
+    assert set(schemas["WikiContent"]["properties"]) == {"profile", "theses"}
+    assert set(schemas["WikiFactOut"]["properties"]) == {
+        "id",
+        "text",
+        "source",
+        "confidence",
+        "as_of",
+        "evidence",
+        "editable",
+    }
+    assert set(schemas["WikiThesisOut"]["properties"]) == {
+        "id",
+        "ticker",
+        "text",
+        "horizon",
+        "source",
+        "status",
+        "linked_trade_id",
+        "recorded_at",
+    }
+    assert set(schemas["DeletedFactContent"]["properties"]) == {"id", "deleted_at"}
+    assert set(schemas["FeedbackContent"]["properties"]) == {"recorded"}
+
+
 def test_every_path_is_prefixed_or_health() -> None:
     """프리픽스를 벗어난 경로가 생기면 프론트가 baseUrl을 못 맞춘다."""
     stray = [p for p in COMMITTED["paths"] if not p.startswith(API_PREFIX) and p != "/health"]
