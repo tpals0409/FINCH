@@ -129,6 +129,15 @@ const authHandlers = [
 
     return HttpResponse.json({ accessToken: ACCESS_TOKEN_FRESH });
   }),
+
+  http.post(mockPath(API_PATHS.auth.logout), () => {
+    // 서버가 Refresh Token 을 버리는 것에 대응한다. 이걸 안 지우면
+    // 다음 부팅 복구가 그대로 다시 로그인시킨다.
+    document.cookie = `${MOCK_REFRESH_COOKIE}=; path=/; max-age=0`;
+
+    // 본문이 없는 204 다. HttpResponse.json 을 쓰면 본문이 생겨 계약과 달라진다.
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
 
 const userHandlers = [
