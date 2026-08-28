@@ -6,5 +6,5 @@ export {
   isSchemaError,
   parseRetryAfterMs,
 } from './errors';
-export { request } from './httpClient';
+export { request, requestNoContent } from './httpClient';
 export { createQueryClient } from './queryClient';
