@@ -1,3 +1,4 @@
+export { setAuthBridge, type AuthBridge } from './authBridge';
 export {
   HttpError,
   SchemaError,

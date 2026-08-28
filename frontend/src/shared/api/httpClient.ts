@@ -3,7 +3,9 @@ import { type z } from 'zod';
 import { API_BASE_PATH } from '@/shared/config/apiContract';
 import { API_BASE_URL } from '@/shared/config/env';
 import { parseErrorResponse } from '@/shared/types/error';
+import { AUTH_ERROR_CODES } from '@/shared/types/errorCodes';
 
+import { getAuthBridge } from './authBridge';
 import { HttpError, SchemaError, parseRetryAfterMs } from './errors';
 
 type RequestOptions = {
@@ -12,6 +14,12 @@ type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  /**
+   * 기본 true. false 면 토큰도 붙이지 않고 만료 재발급도 걸지 않는다.
+   * 재발급 요청 자신이 꺼야 한다 — 켜 두면 401 을 받았을 때 다시 재발급을
+   * 부르는 무한 루프가 된다 (컨벤션 §5).
+   */
+  shouldAttachSession?: boolean;
 };
 
 const FALLBACK_ERROR_MESSAGE = '요청을 처리하지 못했습니다';
@@ -32,7 +40,8 @@ function buildUrl(path: string): string {
 /**
  * 실패 응답을 정규화한다 (컨벤션 §5).
  * message 는 서버가 완성해 주는 사용자 노출 문구라 화면이 문구를 다시 만들지 않는다.
- * 우리 에러 형식이 아니면 code 없이 기본 문구로 떨어진다.
+ * 우리 에러 형식이 아니면 code 없이 기본 문구로 떨어지고, 그 응답은 세션
+ * 화이트리스트에 매칭되지 않아 안전하게 지나간다.
  */
 async function toHttpError(response: Response): Promise<HttpError> {
   const retryAfterMs = parseRetryAfterMs(response.headers.get('Retry-After'));
@@ -67,26 +76,32 @@ async function toHttpError(response: Response): Promise<HttpError> {
   });
 }
 
-/**
- * 단일 HTTP 클라이언트 (컨벤션 §5). 컴포넌트는 fetch 를 직접 부르지 않는다.
- * 응답은 Zod 로 검증한 뒤에만 반환하고, 실패는 HttpError / SchemaError 로 던진다.
- */
-export async function request<TSchema extends z.ZodType<unknown>>(
+/** 토큰은 보낼 때마다 새로 읽는다. 캡처해 두면 재발급 뒤 재시도에 옛 토큰이 실린다. */
+async function sendRequest(
   path: string,
-  options: RequestOptions & { schema: TSchema },
-): Promise<z.infer<TSchema>> {
-  const { schema, method = 'GET', body, signal } = options;
+  options: RequestOptions,
+): Promise<Response> {
+  const { method = 'GET', body, signal, shouldAttachSession = true } = options;
 
-  let response: Response;
+  const headers: Record<string, string> = {};
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (shouldAttachSession) {
+    const accessToken = getAuthBridge()?.getAccessToken() ?? null;
+    if (accessToken !== null) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+  }
+
   try {
-    response = await fetch(buildUrl(path), {
+    return await fetch(buildUrl(path), {
       method,
       signal,
       // 기본값 same-origin 이면 교차 출처에서 Refresh 쿠키의 Set-Cookie 가 버려진다.
       // 로그인은 성공하는데 재발급만 조용히 실패한다 (apiSpec §1.2).
       credentials: 'include',
-      headers:
-        body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (cause) {
@@ -99,11 +114,49 @@ export async function request<TSchema extends z.ZodType<unknown>>(
       message: '네트워크에 연결할 수 없습니다',
     });
   }
+}
 
-  if (!response.ok) {
-    throw await toHttpError(response);
+/**
+ * 세션을 되살렸으면 true. 호출부가 원요청을 한 번 재시도한다 (컨벤션 §5).
+ *
+ * 만료는 되살릴 수 있고 무효는 없다. 서버가 코드를 둘로 나눠 준 이유가 이 분기다.
+ * 화이트리스트 밖의 코드는 세션을 건드리지 않고 지나간다.
+ */
+async function recoverSession(
+  error: HttpError,
+  options: RequestOptions,
+): Promise<boolean> {
+  if (options.shouldAttachSession === false) {
+    return false;
   }
 
+  const bridge = getAuthBridge();
+  if (bridge === null) {
+    return false;
+  }
+
+  if (error.code === AUTH_ERROR_CODES.INVALID_TOKEN) {
+    bridge.onSessionExpired();
+    return false;
+  }
+
+  if (error.code !== AUTH_ERROR_CODES.TOKEN_EXPIRED) {
+    return false;
+  }
+
+  const accessToken = await bridge.refreshSession();
+  if (accessToken === null) {
+    bridge.onSessionExpired();
+    return false;
+  }
+
+  return true;
+}
+
+async function parseSuccess<TSchema extends z.ZodType<unknown>>(
+  response: Response,
+  schema: TSchema,
+): Promise<z.infer<TSchema>> {
   let payload: unknown;
   try {
     payload = await response.json();
@@ -117,4 +170,41 @@ export async function request<TSchema extends z.ZodType<unknown>>(
   }
 
   return parsed.data as z.infer<TSchema>;
+}
+
+/**
+ * 단일 HTTP 클라이언트 (컨벤션 §5). 컴포넌트는 fetch 를 직접 부르지 않는다.
+ * 응답은 Zod 로 검증한 뒤에만 반환하고, 실패는 HttpError / SchemaError 로 던진다.
+ *
+ * 재시도는 한 번뿐이다. 재발급 직후 또 거절되면 되살릴 수 없는 세션이고,
+ * 더 돌면 로그인 화면에 도달하지 못한 채 왕복만 계속한다.
+ */
+export async function request<TSchema extends z.ZodType<unknown>>(
+  path: string,
+  options: RequestOptions & { schema: TSchema },
+): Promise<z.infer<TSchema>> {
+  const response = await sendRequest(path, options);
+  if (response.ok) {
+    return parseSuccess(response, options.schema);
+  }
+
+  const error = await toHttpError(response);
+  const isRecovered = await recoverSession(error, options);
+  if (!isRecovered) {
+    throw error;
+  }
+
+  const retriedResponse = await sendRequest(path, options);
+  if (retriedResponse.ok) {
+    return parseSuccess(retriedResponse, options.schema);
+  }
+
+  const retriedError = await toHttpError(retriedResponse);
+  if (
+    retriedError.code === AUTH_ERROR_CODES.INVALID_TOKEN ||
+    retriedError.code === AUTH_ERROR_CODES.TOKEN_EXPIRED
+  ) {
+    getAuthBridge()?.onSessionExpired();
+  }
+  throw retriedError;
 }
