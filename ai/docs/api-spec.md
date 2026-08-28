@@ -100,7 +100,7 @@ AI 서비스는 백엔드와 분리된 독립 서버로 동작한다. 포트폴�
 | `request_id` | string | 피드백·로그 추적 키. 프론트는 이 값을 `POST /feedback`에 그대로 전달 |
 | `data_as_of` | object | **데이터 원천별 기준 시각.** UI에 반드시 노출한다. 시세는 지연될 수 있으므로 생성 시각과 별도로 관리 |
 | `model` | string | 문장 생성에 쓴 LLM 모델 이름. 서버 설정값을 그대로 싣는다 |
-| `cached` | boolean | 응답 전체 또는 일부가 캐시에서 왔는지. **캐시 계층이 아직 없어 현재는 항상 `false`** |
+| `cached` | boolean | 응답 전체 또는 일부가 캐시에서 왔는지. 종목 분석의 공통 섹션을 재사용하면 `true` |
 | `content` | object | 엔드포인트별 본문. 이 아래 §3–§8이 각각의 모양을 정의한다 |
 | `citations` | array | [§2.4](#citations) 근거 목록. 근거를 싣지 않는 엔드포인트에서는 빈 배열 |
 | `disclaimer` | string | 고지 문구. 하드코딩하지 말고 응답 값을 표시할 것 (규제 문구 변경 대응) |
@@ -300,16 +300,32 @@ LLM은 계산을 시키지 않아도 *주어진 숫자를 반올림하거나 바
         "recorded_at": "2026-03-11T10:22:00+09:00",
         "source": "user_stated"
       },
-      "supporting": [ ],
+      "supporting": [
+        {
+          "citation_id": "cit_1",
+          "title": "분기보고서",
+          "source": "DART",
+          "rationale": "HBM 사업 확대가 기록한 성장 논지를 뒷받침합니다."
+        }
+      ],
       "challenging": [ ]
     },
-    "next_events": {
+      "next_events": {
       "title": "다음에 확인할 일정",
       "text": "…",
       "segments": [ ],
       "cached": false,
       "cached_at": null,
-      "events": [ ]
+      "events": [
+        {
+          "id": "evt_01JQ...",
+          "type": "earnings",
+          "title": "3분기 실적 발표",
+          "event_date": "2026-10-30",
+          "confirmed": true,
+          "days_until": 63
+        }
+      ]
     }
   }
 }
@@ -322,13 +338,13 @@ LLM은 계산을 시키지 않아도 *주어진 숫자를 반올림하거나 바
 | `my_impact` | `personalize: true`이고 **보유 중일 때만** 값이 찬다. 아니면 `null` |
 | `thesis_check` | 기록된 활성 논지가 있을 때만 값이 차고, 그때 Section 다섯 키에 `thesis`·`supporting`·`challenging`이 더 붙는다 |
 | `next_events` | Section 다섯 키에 `events`가 더 붙는다 |
-| `cached` · `cached_at` | 캐시 계층이 아직 없어 항상 `false` / `null` |
+| `cached` · `cached_at` | 6시간 안에 만든 같은 종목·같은 프롬프트 버전의 공통 섹션을 재사용하면 `true` / 원본 생성 시각. 새로 만든 섹션과 개인화 섹션은 `false` / `null` |
 
-> **아직 비어 있는 자리**
-> `thesis_check.supporting`·`challenging`과 `next_events.events`는 **키는 있으나 현재 구현에서 항상 빈 배열**이다. 근거를 지지·반박으로 가르는 추출 패스와 일정 캘린더 원천이 아직 없다. 서술만으로도 화면이 성립하므로 빈 배열로 두고, 원천이 붙을 때 채운다. 프론트는 **이 배열이 비어 있는 것을 정상으로** 다뤄야 한다.
+> **근거 분류와 일정**
+> `thesis_check.supporting`·`challenging`은 검색된 공시·뉴스가 사용자의 논지를 뒷받침하는지 약화하는지 분류한 결과다. 각 항목은 최상위 `citations`의 id와 제목·출처, 논지와 연결되는 이유를 담는다. 중립이거나 관련 없는 자료는 넣지 않으므로 두 배열이 비어 있어도 정상이다. `next_events.events`는 `events` 저장소에서 오늘부터 90일 안의 확정된 종목 일정을 날짜순으로 최대 5건 제공한다. 확정 일정이 없으면 빈 배열이다.
 
 > **비용 설계**
-> `current`·`changes`·`attention`·`risks`·`next_events`는 사용자와 무관하므로 **종목 단위로 캐시**한다(TTL 6시간). `my_impact`·`thesis_check`만 사용자별로 생성한다. 이 분리가 없으면 인기 종목에서 동일 분석을 수천 번 재생성한다. **아직 구현하지 않은 설계다** — 현재 동작은 [§14](#sources)를 보라.
+> `current`·`changes`·`attention`·`risks`·`next_events`는 사용자와 무관하므로 **종목 단위로 캐시**한다(TTL 6시간). 프롬프트가 바뀌면 이전 캐시는 쓰지 않는다. `my_impact`·`thesis_check`는 사용자의 최신 원장과 논지를 반영해 요청마다 생성한다. 이 분리가 인기 종목의 같은 분석을 반복 생성하는 비용을 줄인다.
 
 `attention`·`risks`의 명칭은 규제 대응이다. "긍정 요인 / 부정 요인"은 의견 제시로 읽힐 수 있어 **시장이 주목하는 요인 / 공시·실적에서 확인된 위험 요인**이라는 출처 귀속형으로 고정한다. 목표주가와 투자의견은 어떤 섹션에서도 생성하지 않는다.
 
@@ -661,7 +677,7 @@ LLM은 계산을 시키지 않아도 *주어진 숫자를 반올림하거나 바
 
 **GET** `/api/ai/v1/briefing?date=2026-08-19`  —  Phase 3
 
-배치 생성 결과 조회. 생성 트리거가 아니므로 GET이다. `date` 생략 시 당일.
+사용자·거래일별 배치 생성 결과를 우선 조회한다. 배치가 늦거나 대상에서 빠졌으면 기존 화면을 위해 같은 규칙으로 즉시 생성해 저장한다. `date` 생략 시 마지막 거래일.
 
 #### Response — content
 
@@ -700,7 +716,7 @@ LLM은 계산을 시키지 않아도 *주어진 숫자를 반올림하거나 바
 | `status` | 의미 | 프론트 처리 |
 | --- | --- | --- |
 | `ready` | 생성 완료 | 정상 표시 |
-| `generating` | 배치 진행 중 | 스켈레톤 표시 후 30초 뒤 재조회. **현재 구현은 요청 시점에 생성하므로 이 값을 내보내지 않는다** |
+| `generating` | 배치 진행 중 | 스켈레톤 표시 후 30초 뒤 재조회. **현재 서버는 캐시 미스 시 즉시 생성하므로 이 값을 내보내지 않는다** |
 | `empty` | 보유 종목 없음 또는 유의미한 이벤트 없음 | 영역 숨김 |
 
 `category`는 `holding_move · earnings · filing · macro_event · portfolio_shift` 중 하나이며 최대 4건을 반환한다.
@@ -710,7 +726,7 @@ LLM은 계산을 시키지 않아도 *주어진 숫자를 반올림하거나 바
 `items[].citations`는 **현재 구현에서 항상 빈 배열**이다. 이 기능은 일정·시세에서 항목을 뽑을 뿐 문서를 조회하지 않아 인용할 원문이 없다. 봉투의 `citations`도 같은 이유로 비어 있다.
 
 > **비용 설계**
-> `relevance_score` 산출은 **LLM이 아니라 규칙 엔진**이 한다(보유 여부 × 비중 × 이벤트 중요도). LLM은 상위 4건의 문장만 생성한다. 랭킹까지 LLM에 맡기면 사용자 수에 비례해 비용이 선형 증가한다.
+> `relevance_score` 산출은 **LLM이 아니라 규칙 엔진**이 한다(보유 여부 × 비중 × 이벤트 중요도). LLM은 상위 4건의 문장만 생성한다. `python -m ingest.briefings`를 하루 한 번 실행하면 최근 30일 활성 사용자의 결과를 미리 만들며, 같은 거래일·프롬프트 버전 결과는 다시 생성하지 않는다. 특정 대상은 `--users`, 강제 재생성은 `--force`를 쓴다.
 
 ## §9 투자 논지 · Wiki
 
@@ -948,10 +964,7 @@ Event Ranking | `/portfolio/attribution`
 
 | 약속 | 현재 동작 | 응답에서 보이는 모습 |
 | --- | --- | --- |
-| 캐시 ([§2.6](#errors) TTL 표 · [§3](#ep-analysis) 종목 단위 캐시) | 캐시 계층 없음 | 봉투와 모든 Section의 `cached`가 항상 `false`, `cached_at`이 `null` |
 | 호출 한도 ([§2.6](#errors)) | `RATE_LIMITED`는 정의돼 있으나 세는 곳이 없음 | 429가 나가지 않는다 |
-| 브리핑 배치 생성 | 조회 시점에 생성 | `status`가 `ready` 아니면 `empty`. `generating`은 나오지 않는다 |
-| 논지 근거 분류 · 일정 캘린더 | 추출 패스와 원천 없음 | `thesis_check.supporting`·`challenging`, `next_events.events`가 항상 빈 배열 |
 | 인용 원문 ([§8](#ep-briefing)) | 문서를 조회하지 않음 | `items[].citations`와 봉투 `citations`가 항상 빈 배열 |
 | `benchmark` 선택 ([§6](#ep-attribution)) | 요청 필드를 받기만 하고 쓰지 않음 | 어떤 값을 보내도 결과가 같다 |
 

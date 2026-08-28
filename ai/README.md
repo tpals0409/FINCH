@@ -147,6 +147,9 @@ DB 나 의존성이 준비되지 않았으면 무엇을 실행해야 하는지 �
 ```bash
 python -m app.rag.dart --tickers 005930,000660 --days 30
 python -m ingest.news --tickers 005930,000660 --days 7
+python -m ingest.briefings
+# 특정 사용자 또는 재생성이 필요할 때
+python -m ingest.briefings --users user_a,user_b --force
 python -m app.rag.search --backfill
 ```
 
@@ -168,6 +171,8 @@ AI 파트는 `ai/` 안에서만 작업한다. `backend/`, `frontend/`, `infra/`,
 python -m eval.run --list       # 검색 평가셋 요약
 python -m eval.run --metrics    # 지표 자체 점검 (키 불필요, CI에 포함)
 python -m eval.run --retrieval  # 검색 정확도 (임베딩 키 필요)
+python -m eval.run --feedback   # 최근 30일 프롬프트 버전별 사용자 평가
+python -m eval.run --feedback --baseline prompt_old --candidate prompt_new
 ```
 
 자동 지표는 셋뿐이다 — `Numerical Accuracy` · `Groundedness` ·
@@ -176,6 +181,10 @@ python -m eval.run --retrieval  # 검색 정확도 (임베딩 키 필요)
 
 검색 평가셋은 **우리 코퍼스에 실제로 답이 있는 질문만** 담는다. 코퍼스를 다시
 적재하면 `eval/retrieval.yaml`도 같이 손봐야 한다.
+
+모든 새 AI 응답 로그에는 사용한 프롬프트 파일의 해시가 `prompt_version`으로
+기록된다. 피드백 통계는 승인율·피드백률·오류 사유 분포를 이 버전별로 묶으며,
+`--baseline`과 `--candidate`를 함께 주면 두 버전의 변화량을 비교한다.
 
 ## 브랜치 전략
 

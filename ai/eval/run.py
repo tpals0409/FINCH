@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,6 +59,12 @@ def _load_cases(path: Path = RETRIEVAL_SET) -> list[RetrievalCase]:
     return cases
 
 
+def _minimum_recall(path: Path = RETRIEVAL_SET, *, top_k: int) -> float | None:
+    text = path.read_text(encoding="utf-8")
+    match = re.search(rf"^min_recall_at_{top_k}:\s*([0-9.]+)\s*$", text, re.MULTILINE)
+    return float(match.group(1)) if match else None
+
+
 def _to_case(d: dict) -> RetrievalCase:
     raw = d.get("expect_title_contains", "[]")
     titles = [t.strip() for t in raw.strip("[]").split(",") if t.strip()]
@@ -74,17 +81,23 @@ def _to_case(d: dict) -> RetrievalCase:
 async def run_retrieval(top_k: int = 5) -> int:
     from app.core.db import engine
     from app.rag.embedding import NullEmbedder, get_embedder
-    from app.rag.search import search
+    from app.rag.search import search_with_vector
 
     if isinstance(get_embedder(), NullEmbedder):
         print("임베딩 키가 없어 검색 평가를 건너뛴다. GMS_KEY를 설정하라.")
         return 0
 
     cases = _load_cases()
+    vectors = await asyncio.to_thread(get_embedder().embed, [case.query for case in cases])
     hits = graded = 0
     try:
-        for c in cases:
-            found = await search(c.query, top_k=top_k, ticker=c.ticker)
+        for c, vector in zip(cases, vectors, strict=True):
+            if vector is None:
+                print(f"  [FAIL] {c.id:<22} 질의 임베딩 실패")
+                return 1
+            found = await search_with_vector(
+                c.query, vector, top_k=top_k, ticker=c.ticker
+            )
             titles = " | ".join(h["title"] for h in found)
             if c.expect_empty:
                 # 오탐 관찰용. 지금은 top-k만 쓰므로 항상 무언가 나온다.
@@ -97,7 +110,13 @@ async def run_retrieval(top_k: int = 5) -> int:
             hits += ok
             print(f"  [{'HIT ' if ok else 'MISS'}] {c.id:<22} {titles[:60]}")
         if graded:
-            print(f"\nRecall@{top_k}: {hits}/{graded} = {hits / graded:.3f}")
+            recall = hits / graded
+            minimum = _minimum_recall(top_k=top_k)
+            gate = f" · 최소 {minimum:.3f}" if minimum is not None else ""
+            print(f"\nRecall@{top_k}: {hits}/{graded} = {recall:.3f}{gate}")
+            if minimum is not None and recall < minimum:
+                print("검색 품질 기준을 통과하지 못했다.")
+                return 1
     finally:
         await engine.dispose()
     return 0
@@ -173,6 +192,11 @@ def main() -> int:
     p.add_argument("--metrics", action="store_true", help="지표 자체 점검")
     p.add_argument("--top-k", type=int, default=5)
     p.add_argument("--list", action="store_true", help="평가셋 요약")
+    p.add_argument("--feedback", action="store_true", help="프롬프트 버전별 피드백 통계")
+    p.add_argument("--days", type=int, default=30, help="피드백 집계 기간 (기본 30일)")
+    p.add_argument("--json", action="store_true", help="피드백 통계를 JSON으로 출력")
+    p.add_argument("--baseline", help="비교할 이전 prompt_version")
+    p.add_argument("--candidate", help="비교할 새 prompt_version")
     a = p.parse_args()
 
     if a.list:
@@ -184,6 +208,28 @@ def main() -> int:
         return 0
     if a.metrics:
         return run_metrics_selfcheck()
+    if a.feedback:
+        from eval.feedback import (
+            aggregate,
+            as_dict,
+            comparisons,
+            load,
+            render,
+            render_comparisons,
+        )
+
+        stats = aggregate(asyncio.run(load(a.days)))
+        if bool(a.baseline) != bool(a.candidate):
+            p.error("--baseline과 --candidate는 함께 지정해야 한다")
+        if a.baseline and a.candidate:
+            print(render_comparisons(comparisons(stats, a.baseline, a.candidate)))
+            return 0
+        print(
+            json.dumps([as_dict(item) for item in stats], ensure_ascii=False, indent=2)
+            if a.json
+            else render(stats)
+        )
+        return 0
     if a.retrieval:
         return asyncio.run(run_retrieval(a.top_k))
     p.print_help()
