@@ -10,12 +10,7 @@ export const queryKeys = {
   },
   users: {
     all: () => ['users'] as const,
-    /**
-     * 내 정보. 키에 `userId` 를 넣지 않는다 — 식별자는 토큰에서만 나오고
-     * 이 키가 가리키는 대상은 언제나 "지금 로그인한 사람"이다 (contracts C25).
-     * 로그아웃 때 이 캐시를 비우는 것이 다음 로그인 사용자에게 남의 정보가
-     * 잠깐 보이는 것을 막는다.
-     */
+    /** 키에 userId 를 넣지 않는다. 가리키는 대상은 언제나 지금 로그인한 사람이다. */
     me: () => [...queryKeys.users.all(), 'me'] as const,
   },
 } as const;

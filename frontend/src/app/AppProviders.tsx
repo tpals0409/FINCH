@@ -27,10 +27,8 @@ export function AppProviders({ children }: AppProvidersProps) {
   // QueryClient 가 새로 만들어져 캐시가 날아간다.
   const [queryClient] = useState(createQueryClient);
 
-  /**
-   * 세션 복구를 라우터보다 위에서 한 번만 건다. 화면마다 걸면 이동할 때마다
-   * 재발급이 나가고, 회전 방식이라 서로의 토큰을 무효화한다.
-   */
+  // 라우터보다 위에서 한 번만 건다. 화면마다 걸면 이동할 때마다 재발급이 나가고,
+  // 회전 방식이라 서로의 토큰을 무효화한다.
   useRestoreSession();
 
   return (
