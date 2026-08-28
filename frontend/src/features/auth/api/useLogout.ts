@@ -22,7 +22,10 @@ export function useLogout() {
       // 세션을 먼저 비운다. 순서가 반대면 캐시를 지우는 순간 아직 로그인 상태로
       // 판단한 쿼리들이 다시 요청을 날린다.
       clearSession();
-      queryClient.clear();
+
+      // queryClient.clear() 가 아니다. 그쪽은 mutation 캐시까지 비우는데 지금 실행
+      // 중인 이 로그아웃이 거기 들어 있다. 지울 대상은 쿼리 캐시뿐이다.
+      queryClient.getQueryCache().clear();
     },
   });
 }

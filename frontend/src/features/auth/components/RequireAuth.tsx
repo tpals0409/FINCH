@@ -26,7 +26,8 @@ export function RequireAuth() {
 
   if (status === 'unauthenticated') {
     // 원래 가려던 곳을 들고 간다. 이 값은 카카오 왕복 동안 state 에 실려 살아남는다.
-    const requestedPath = `${location.pathname}${location.search}`;
+    // hash 까지 붙이는 이유 — 빼면 앵커나 딥링크로 들어온 사람만 다른 곳에 떨어진다.
+    const requestedPath = `${location.pathname}${location.search}${location.hash}`;
     return (
       <Navigate
         to={`/login?redirect=${encodeURIComponent(requestedPath)}`}
