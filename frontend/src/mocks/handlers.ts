@@ -17,11 +17,49 @@ function mockPath(path: string): string {
 }
 
 /**
- * 인가 코드 접두사로 응답을 고른다. 백엔드 없이 세 갈래를 다 확인할 수 있다.
- * fail(인증 실패) · new(최초 로그인) · 그 밖(기존 회원)
+ * 목 Refresh Token.
+ *
+ * 실제와 다른 점 하나 — 서비스 워커 응답이라 Set-Cookie 로 HttpOnly 쿠키를 심을 수
+ * 없어 핸들러가 document.cookie 로 직접 쓴다. 즉 이 쿠키는 JS 가 읽을 수 있다.
+ * 새로고침을 견뎌야 부팅 복구를 확인할 수 있어서 모듈 변수 대신 쿠키를 쓴다.
+ * 프론트 코드는 이 값을 읽지 않는다. 읽으면 실제 백엔드에서 깨진다.
+ */
+const MOCK_REFRESH_COOKIE = 'mockRefreshToken';
+
+const ACCESS_TOKEN_FRESH = 'mock.access.token.fresh';
+/** 보호 엔드포인트가 AUTH_TOKEN_EXPIRED 로 거절하는 토큰. */
+const ACCESS_TOKEN_EXPIRED = 'mock.access.token.expired';
+
+/**
+ * 인가 코드 접두사로 응답을 고른다. 백엔드 없이 네 갈래를 다 확인할 수 있다.
+ * fail(인증 실패) · expire(만료 토큰 발급) · new(최초 로그인) · 그 밖(기존 회원)
  */
 const KAKAO_FAIL_CODE_PREFIX = 'fail';
+const KAKAO_EXPIRED_CODE_PREFIX = 'expire';
 const KAKAO_NEW_USER_CODE_PREFIX = 'new';
+
+function readMockRefreshToken(): string | null {
+  const prefix = `${MOCK_REFRESH_COOKIE}=`;
+  const entry = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+
+  return entry === undefined ? null : entry.slice(prefix.length);
+}
+
+/** 회전 방식을 흉내 낸다 — 발급할 때마다 값이 바뀐다. */
+function rotateMockRefreshToken(): void {
+  document.cookie = `${MOCK_REFRESH_COOKIE}=${crypto.randomUUID()}; path=/; max-age=1209600`;
+}
+
+function readBearerToken(request: Request): string | null {
+  const header = request.headers.get('Authorization');
+  if (header === null || !header.startsWith('Bearer ')) {
+    return null;
+  }
+  return header.slice('Bearer '.length);
+}
 
 const authHandlers = [
   http.post(mockPath(API_PATHS.auth.kakao), async ({ request }) => {
@@ -50,27 +88,72 @@ const authHandlers = [
     }
 
     const isNewUser = authorizationCode.startsWith(KAKAO_NEW_USER_CODE_PREFIX);
+    const accessToken = authorizationCode.startsWith(KAKAO_EXPIRED_CODE_PREFIX)
+      ? ACCESS_TOKEN_EXPIRED
+      : ACCESS_TOKEN_FRESH;
 
-    // Set-Cookie 는 흉내만 낸다. 서비스 워커 응답이라 실제 HttpOnly 쿠키가 저장되지
-    // 않으므로 재발급은 목으로 끝까지 확인할 수 없다.
-    return HttpResponse.json(
-      {
-        accessToken: `mock.access.token.${isNewUser ? 'new' : 'existing'}`,
-        isNewUser,
-        user: {
-          userId: isNewUser ? 2 : 1,
-          nickname: isNewUser ? '새로운핀치' : '홍길동',
-          profileImageUrl: 'https://placehold.co/96x96',
-        },
+    rotateMockRefreshToken();
+
+    return HttpResponse.json({
+      accessToken,
+      isNewUser,
+      user: {
+        userId: isNewUser ? 2 : 1,
+        nickname: isNewUser ? '새로운핀치' : '홍길동',
+        profileImageUrl: 'https://placehold.co/96x96',
       },
-      {
-        status: 200,
-        headers: {
-          'Set-Cookie':
-            'refreshToken=mock-refresh-token; HttpOnly; SameSite=Lax; Path=/api/v1/auth; Max-Age=1209600',
+    });
+  }),
+
+  http.post(mockPath(API_PATHS.auth.refresh), () => {
+    // 쿠키가 없는 것과 무효한 것을 나눈다. 최초 방문자는 반드시 이 경로다 (apiSpec §2.2).
+    if (readMockRefreshToken() === null) {
+      return HttpResponse.json(
+        {
+          code: AUTH_ERROR_CODES.REFRESH_TOKEN_MISSING,
+          message: '로그인이 필요합니다',
         },
-      },
-    );
+        { status: 401 },
+      );
+    }
+
+    rotateMockRefreshToken();
+
+    return HttpResponse.json({ accessToken: ACCESS_TOKEN_FRESH });
+  }),
+];
+
+const userHandlers = [
+  http.get(mockPath(API_PATHS.users.me), ({ request }) => {
+    const accessToken = readBearerToken(request);
+
+    if (accessToken === null) {
+      return HttpResponse.json(
+        {
+          code: AUTH_ERROR_CODES.INVALID_TOKEN,
+          message: '로그인이 필요합니다',
+        },
+        { status: 401 },
+      );
+    }
+
+    if (accessToken === ACCESS_TOKEN_EXPIRED) {
+      return HttpResponse.json(
+        {
+          code: AUTH_ERROR_CODES.TOKEN_EXPIRED,
+          message: '로그인이 만료되었습니다',
+        },
+        { status: 401 },
+      );
+    }
+
+    return HttpResponse.json({
+      userId: 1,
+      nickname: '홍길동',
+      profileImageUrl: 'https://placehold.co/96x96',
+      currentRoundId: 3,
+      joinedAt: '2026-08-25T10:00:00+09:00',
+    });
   }),
 ];
 
@@ -85,4 +168,4 @@ const healthHandlers = [
   ),
 ];
 
-export const handlers = [...authHandlers, ...healthHandlers];
+export const handlers = [...authHandlers, ...userHandlers, ...healthHandlers];
