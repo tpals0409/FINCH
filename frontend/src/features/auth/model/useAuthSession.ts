@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 
-import { type AuthUser } from '@/shared/types/auth';
-
 /**
  * 세 상태인 이유. 앱이 뜨는 순간 Access Token 은 반드시 없고(메모리라서)
  * 부팅 복구 응답은 그 뒤에 온다. 그 구간을 unauthenticated 로 두면 가드가 즉시
@@ -16,33 +14,27 @@ type AuthSessionState = {
    * 한 줄로 가져간다. Refresh Token 은 HttpOnly 쿠키라 여기 자리가 없다.
    */
   accessToken: string | null;
-  user: AuthUser | null;
   /** 최초 로그인이면 서버가 계좌·1회차·예수금을 함께 만든 것이다 (apiSpec §2.1). */
   isNewUser: boolean;
-  setSession: (session: {
-    accessToken: string;
-    user: AuthUser;
-    isNewUser: boolean;
-  }) => void;
+  setSession: (session: { accessToken: string; isNewUser: boolean }) => void;
+  /** 재발급 성공. isNewUser 는 건드리지 않는다 — 재발급은 가입이 아니다. */
+  renewAccessToken: (accessToken: string) => void;
   /** 로그아웃과 세션 만료가 함께 쓴다. 결과는 둘 다 "세션 없음이 확인된 상태"다. */
   clearSession: () => void;
 };
 
-const EMPTY_SESSION = {
-  status: 'unauthenticated',
-  accessToken: null,
-  user: null,
-  isNewUser: false,
-} as const;
-
 /**
- * React 밖에서도 읽어야 한다 — 요청마다 토큰을 붙이고 401 을 만나면 세션을 비우는 것은
- * 컴포넌트가 아니다. zustand 는 getState() 로 훅 밖 접근을 열어 준다.
+ * 사용자 정보는 여기 없다. 닉네임·프로필은 서버가 원본을 갖는 서버 상태라
+ * GET /users/me 쿼리가 유일한 출처다 (컨벤션 §4).
  */
 export const useAuthSession = create<AuthSessionState>((set) => ({
-  ...EMPTY_SESSION,
   status: 'unknown',
-  setSession: ({ accessToken, user, isNewUser }) =>
-    set({ status: 'authenticated', accessToken, user, isNewUser }),
-  clearSession: () => set({ ...EMPTY_SESSION }),
+  accessToken: null,
+  isNewUser: false,
+  setSession: ({ accessToken, isNewUser }) =>
+    set({ status: 'authenticated', accessToken, isNewUser }),
+  renewAccessToken: (accessToken) =>
+    set({ status: 'authenticated', accessToken }),
+  clearSession: () =>
+    set({ status: 'unauthenticated', accessToken: null, isNewUser: false }),
 }));
