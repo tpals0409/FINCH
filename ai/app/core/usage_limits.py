@@ -2,6 +2,9 @@
 
 요청 횟수는 API 진입에서 세고, 토큰은 실제 GMS 호출 직전에 예약한다. 캐시가
 응답을 대신하면 GMS 예약 함수가 호출되지 않으므로 토큰 예산을 쓰지 않는다.
+
+배치처럼 사용자가 누르지 않은 호출은 `enter_system`으로 시스템 몫의 장부를 연다.
+개인 예산과 섞이지 않으면서 총량 상한과 토큰 기록은 그대로 남는다.
 """
 
 from __future__ import annotations
@@ -13,6 +16,7 @@ from collections import defaultdict, deque
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from math import ceil
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -27,6 +31,12 @@ class UsageCounter:
     user_id: str
     endpoint: str
     day: date
+    #: 이 문맥을 연 장부. GMS 호출 직전에 여기로 예약과 정산이 돌아온다.
+    guard: UsageGuard
+    #: 이 문맥에 적용할 일일 토큰 상한. 사용자 요청과 배치가 서로 다른 값을 쓴다.
+    budget: int = 0
+    #: 메모리 장부가 시작값을 응답 로그에서 읽을 때만 쓴다. DB 장부는 자기 테이블에
+    #: 오늘 합계를 들고 있어 이 값이 필요 없으므로 DB 모드에서는 항상 None이다.
     db: Any = None
     input_tokens: int = 0
     output_tokens: int = 0
@@ -51,6 +61,10 @@ _current: ContextVar[UsageCounter | None] = ContextVar("ai_usage", default=None)
 log = logging.getLogger("app.core.usage_limits")
 KST = ZoneInfo("Asia/Seoul")
 
+#: 브리핑 배치가 쓰는 시스템 장부의 주인. 실제 사용자 ID와 겹치지 않도록 접두를
+#: 붙인다. 장부 테이블의 user_id 컬럼이 40자이므로 이름을 더 늘리지 않는다.
+BRIEFING_BATCH_USER = "system:briefing-batch"
+
 
 class UsageGuard:
     """DB 설정 시 모든 Pod가 공유하고, 없으면 로컬 메모리로 동작하는 장부."""
@@ -72,9 +86,18 @@ class UsageGuard:
         key = (user_id, endpoint)
         limit = endpoint_limit(endpoint)
         timestamp = now.timestamp()
+        budget = settings.ai_daily_token_budget
         if self._store is not None:
             await self._store.check_request(user_id, endpoint, now=now, limit=limit)
-            return _current.set(UsageCounter(user_id=user_id, endpoint=endpoint, day=now.date()))
+            return _current.set(
+                UsageCounter(
+                    user_id=user_id,
+                    endpoint=endpoint,
+                    day=now.date(),
+                    guard=self,
+                    budget=budget,
+                )
+            )
         async with self._lock:
             window = self._requests[key]
             cutoff = timestamp - settings.ai_rate_limit_window_s
@@ -91,11 +114,44 @@ class UsageGuard:
                     },
                 )
             window.append(timestamp)
-        return _current.set(UsageCounter(user_id=user_id, endpoint=endpoint, day=now.date(), db=db))
+        return _current.set(
+            UsageCounter(
+                user_id=user_id,
+                endpoint=endpoint,
+                day=now.date(),
+                guard=self,
+                budget=budget,
+                db=db,
+            )
+        )
+
+    async def enter_system(
+        self,
+        user_id: str,
+        endpoint: str,
+        *,
+        now: datetime,
+        budget: int,
+    ) -> Token[UsageCounter | None]:
+        """배치·스케줄러용 문맥. 토큰 장부만 열고 요청 창은 세지 않는다.
+
+        분당 횟수 한도는 한 사람이 화면을 연타하는 것을 막는 장치다. 대상 사용자
+        수만큼 도는 배치에 그대로 걸면 대상이 늘어날수록 정상 실행이 막힌다.
+        새는 것은 요금이므로 토큰 쪽만 잠근다.
+        """
+        return _current.set(
+            UsageCounter(
+                user_id=user_id,
+                endpoint=endpoint,
+                day=now.date(),
+                guard=self,
+                budget=budget,
+            )
+        )
 
     async def reserve(self, amount: int) -> TokenReservation | None:
         counter = _current.get()
-        if counter is None or settings.ai_daily_token_budget <= 0:
+        if counter is None or counter.budget <= 0:
             return None
         amount = max(amount, 1)
         if self._store is not None:
@@ -103,7 +159,7 @@ class UsageGuard:
                 counter.user_id,
                 counter.day,
                 amount=amount,
-                limit=settings.ai_daily_token_budget,
+                limit=counter.budget,
             )
         key = (counter.user_id, counter.day)
         async with self._lock:
@@ -115,14 +171,14 @@ class UsageGuard:
                 self._daily.setdefault(key, DailyUsage(spent=baseline))
         async with self._lock:
             usage = self._daily.setdefault(key, DailyUsage(spent=0))
-            if usage.spent + usage.reserved + amount > settings.ai_daily_token_budget:
+            if usage.spent + usage.reserved + amount > counter.budget:
                 raise RateLimited(
                     "오늘 사용할 수 있는 AI 분석량을 모두 사용했습니다.",
                     detail={
                         "reason": "daily_token_budget",
                         "used_tokens": usage.spent,
                         "reserved_tokens": usage.reserved,
-                        "limit_tokens": settings.ai_daily_token_budget,
+                        "limit_tokens": counter.budget,
                     },
                 )
             usage.reserved += amount
@@ -180,50 +236,69 @@ class PersistentUsageStore:
     async def check_request(
         self, user_id: str, endpoint: str, *, now: datetime, limit: int
     ) -> None:
-        cutoff = now - timedelta(seconds=settings.ai_rate_limit_window_s)
+        """현재 창과 직전 창을 겹치는 비율로 가중 합산해 한도를 본다.
+
+        창 하나만 세면 경계에서 카운터가 통째로 초기화되어, 창 끝에 한도만큼
+        보내고 창이 바뀌자마자 한도만큼 더 보내는 두 배 버스트가 통과한다.
+        직전 창을 남은 비율만큼 함께 세면 그 구멍이 닫힌다.
+
+        요청마다 타임스탬프를 쌓는 메모리 장부와 달리 행 하나만 유지하므로,
+        정확한 값이 아니라 근사값이다. 창 안에서 요청이 고르게 분포한다고 볼 때의
+        추정치이며, 그 대가로 사용자·엔드포인트당 행 하나로 끝난다.
+        """
+        window_s = settings.ai_rate_limit_window_s
+        start = _window_start(now, window_s)
+        elapsed = (now - start).total_seconds()
+        overlap = (window_s - elapsed) / window_s
         async with self._sessions() as db, db.begin():
+            # 읽고 나서 쓰므로 같은 사용자·엔드포인트끼리는 직렬화해야 한다.
+            await self._lock(db, f"ai-request:{user_id}:{endpoint}")
             row = (
                 await db.execute(
                     text(
-                        """
-                        INSERT INTO ai_request_windows
-                            (user_id, endpoint, window_started_at, request_count)
-                        VALUES (:user_id, :endpoint, :now, 1)
-                        ON CONFLICT (user_id, endpoint) DO UPDATE SET
-                            window_started_at = CASE
-                                WHEN ai_request_windows.window_started_at <= :cutoff
-                                THEN :now ELSE ai_request_windows.window_started_at END,
-                            request_count = CASE
-                                WHEN ai_request_windows.window_started_at <= :cutoff
-                                THEN 1 ELSE ai_request_windows.request_count + 1 END
-                        RETURNING window_started_at, request_count
-                        """
+                        "SELECT window_started_at, request_count, previous_count "
+                        "FROM ai_request_windows "
+                        "WHERE user_id=:user_id AND endpoint=:endpoint"
                     ),
-                    {
-                        "user_id": user_id,
+                    {"user_id": user_id, "endpoint": endpoint},
+                )
+            ).one_or_none()
+            current, previous = _window_counts(row, start, timedelta(seconds=window_s))
+            if previous * overlap + current + 1 > limit:
+                # 거절은 기록하지 않는다. 막힌 요청까지 세면 그 숫자가 다음 창의
+                # 직전 값이 되어, 연타한 사용자가 다음 창까지 눌린 채로 시작한다.
+                raise RateLimited(
+                    "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+                    detail={
+                        "reason": "request_rate_limit",
                         "endpoint": endpoint,
-                        "now": now,
-                        "cutoff": cutoff,
+                        "retry_after_seconds": _retry_after(
+                            previous=previous,
+                            current=current,
+                            limit=limit,
+                            elapsed=elapsed,
+                            window_s=window_s,
+                        ),
                     },
                 )
-            ).one()
-        if row.request_count > limit:
-            retry_after = max(
-                1,
-                round(
-                    (
-                        row.window_started_at
-                        + timedelta(seconds=settings.ai_rate_limit_window_s)
-                        - now
-                    ).total_seconds()
+            await db.execute(
+                text(
+                    """
+                    INSERT INTO ai_request_windows
+                        (user_id, endpoint, window_started_at, request_count, previous_count)
+                    VALUES (:user_id, :endpoint, :start, :count, :previous)
+                    ON CONFLICT (user_id, endpoint) DO UPDATE SET
+                        window_started_at = :start,
+                        request_count = :count,
+                        previous_count = :previous
+                    """
                 ),
-            )
-            raise RateLimited(
-                "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.",
-                detail={
-                    "reason": "request_rate_limit",
+                {
+                    "user_id": user_id,
                     "endpoint": endpoint,
-                    "retry_after_seconds": retry_after,
+                    "start": start,
+                    "count": current + 1,
+                    "previous": previous,
                 },
             )
 
@@ -316,6 +391,54 @@ class PersistentUsageStore:
             )
 
 
+def _window_start(now: datetime, window_s: int) -> datetime:
+    """창 경계를 절대 시각 격자에 맞춘다.
+
+    첫 요청 시각을 기준으로 삼으면 창마다 격자가 밀려서, 지금 창의 직전 한 칸이
+    어디였는지 특정할 수 없다. 격자에 고정해야 "직전 창"이 한 값으로 정해진다.
+    """
+    seconds = now.timestamp()
+    return datetime.fromtimestamp(seconds - seconds % window_s, tz=now.tzinfo)
+
+
+def _window_counts(row: Any, start: datetime, window: timedelta) -> tuple[int, int]:
+    """(이번 창 건수, 직전 창 건수). 두 칸보다 오래된 기록은 버린다."""
+    if row is None:
+        return 0, 0
+    if row.window_started_at == start:
+        return row.request_count, row.previous_count
+    if row.window_started_at == start - window:
+        return 0, row.request_count
+    return 0, 0
+
+
+def _retry_after(
+    *, previous: int, current: int, limit: int, elapsed: float, window_s: int
+) -> int:
+    """직전 창의 무게가 충분히 빠질 때까지 남은 초.
+
+    이번 창 건수만으로 이미 한도를 채웠다면 창이 바뀌어야 열리므로 창 끝까지
+    기다린다. 그렇지 않으면 `previous * 남은비율 + current + 1 <= limit`을 만족하는
+    가장 이른 시점을 그대로 푼다.
+    """
+    remaining = window_s - elapsed
+    allowance = limit - current - 1
+    if previous > 0 and allowance >= 0:
+        remaining = max(remaining - allowance * window_s / previous, 0.0)
+    return max(1, ceil(remaining))
+
+
+def default_guard() -> UsageGuard:
+    """환경에 맞는 장부를 고른다. 앱과 배치가 서로 다른 규칙을 쓰면 안 된다.
+
+    운영·스테이징은 PostgreSQL 장부를 공유하고, 로컬은 DB 없이도 개발할 수 있게
+    프로세스 메모리 장부를 쓴다.
+    """
+    from app.core.db import SessionFactory
+
+    return UsageGuard(SessionFactory if settings.app_env != "local" else None)
+
+
 def endpoint_limit(endpoint: str) -> int:
     return {
         "stocks.analysis": settings.ai_rate_limit_stocks_per_minute,
@@ -335,12 +458,13 @@ def reset_usage(token: Token[UsageCounter | None]) -> None:
     _current.reset(token)
 
 
+# GMS 호출부(app/llm/client.py)는 문맥이 열려 있는지 모른 채 이 함수들을 부른다.
+# 문맥이 없으면 — 배치 밖의 스크립트나 단위 테스트 — 조용히 넘어간다.
 async def reserve_gms() -> TokenReservation | None:
     counter = _current.get()
     if counter is None:
         return None
-    guard = _guard_by_counter.get(id(counter))
-    return await guard.reserve(settings.ai_gms_reservation_tokens) if guard else None
+    return await counter.guard.reserve(settings.ai_gms_reservation_tokens)
 
 
 async def settle_gms(
@@ -351,36 +475,21 @@ async def settle_gms(
     cache_read_tokens: int = 0,
 ) -> None:
     counter = _current.get()
-    guard = _guard_by_counter.get(id(counter)) if counter else None
-    if guard:
-        await guard.settle(
-            reservation,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cache_read_tokens=cache_read_tokens,
-        )
+    if counter is None:
+        return
+    await counter.guard.settle(
+        reservation,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cache_read_tokens=cache_read_tokens,
+    )
 
 
 async def cancel_gms(reservation: TokenReservation | None) -> None:
     counter = _current.get()
-    guard = _guard_by_counter.get(id(counter)) if counter else None
-    if guard:
-        await guard.cancel(reservation)
-
-
-_guard_by_counter: dict[int, UsageGuard] = {}
-
-
-def bind_guard(guard: UsageGuard, token: Token[UsageCounter | None]) -> None:
-    counter = _current.get()
-    if counter is not None:
-        _guard_by_counter[id(counter)] = guard
-
-
-def unbind_guard() -> None:
-    counter = _current.get()
-    if counter is not None:
-        _guard_by_counter.pop(id(counter), None)
+    if counter is None:
+        return
+    await counter.guard.cancel(reservation)
 
 
 def usage_values() -> dict[str, int]:
