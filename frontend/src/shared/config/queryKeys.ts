@@ -8,4 +8,9 @@ export const queryKeys = {
     all: () => ['health'] as const,
     status: () => [...queryKeys.health.all(), 'status'] as const,
   },
+  users: {
+    all: () => ['users'] as const,
+    /** 키에 userId 를 넣지 않는다. 가리키는 대상은 언제나 지금 로그인한 사람이다. */
+    me: () => [...queryKeys.users.all(), 'me'] as const,
+  },
 } as const;

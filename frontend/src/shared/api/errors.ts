@@ -1,17 +1,36 @@
+import { type ErrorDetail } from '@/shared/types/error';
+
+type HttpErrorInit = {
+  status: number;
+  message: string;
+  /** 429 응답의 Retry-After 를 밀리초로 환산한 값. 헤더가 없으면 null */
+  retryAfterMs?: number | null;
+  /** 본문이 `{code, message, detail}` 형식이 아니면 null */
+  code?: string | null;
+  detail?: ErrorDetail | null;
+};
+
 /**
  * 네트워크·HTTP 실패. 상태 코드는 이 타입 안에 가두고
  * 이 층 밖으로 숫자를 그대로 흘리지 않는다 (컨벤션 §5).
+ *
+ * 분기는 status 가 아니라 code 로 한다. 401 을 내는 주체가 우리 하나가 아니라서
+ * 숫자로 나누면 AI 서버의 UNAUTHORIZED 까지 세션 만료로 오인한다.
+ * status 는 재시도 정책에만 쓴다.
  */
 export class HttpError extends Error {
   readonly status: number;
-  /** 429 응답의 Retry-After 를 밀리초로 환산한 값. 헤더가 없으면 null */
   readonly retryAfterMs: number | null;
+  readonly code: string | null;
+  readonly detail: ErrorDetail | null;
 
-  constructor(status: number, message: string, retryAfterMs: number | null) {
-    super(message);
+  constructor(init: HttpErrorInit) {
+    super(init.message);
     this.name = 'HttpError';
-    this.status = status;
-    this.retryAfterMs = retryAfterMs;
+    this.status = init.status;
+    this.retryAfterMs = init.retryAfterMs ?? null;
+    this.code = init.code ?? null;
+    this.detail = init.detail ?? null;
   }
 }
 
@@ -38,9 +57,7 @@ export function isSchemaError(error: unknown): error is SchemaError {
 }
 
 /**
- * Retry-After 는 두 형식이 모두 올 수 있다.
- * - 초 단위 정수: "120"
- * - HTTP-date: "Wed, 21 Oct 2026 07:28:00 GMT"
+ * Retry-After 는 초 단위 정수("120")와 HTTP-date 두 형식이 모두 온다.
  * 둘 다 파싱하지 못하면 null 을 돌려주고 호출부가 지수 백오프로 넘어간다.
  */
 export function parseRetryAfterMs(

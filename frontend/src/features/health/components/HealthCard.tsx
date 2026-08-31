@@ -4,6 +4,8 @@ import {
   formatSignedPercent,
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
+import { Button } from '@/shared/ui/Button';
+import { Card } from '@/shared/ui/Card';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
 import { useHealthStatus } from '../api/useHealthStatus';
@@ -24,36 +26,35 @@ export function HealthCard() {
 
   if (isPending) {
     return (
-      <section className="rounded-xl border border-slate-200 p-4">
+      <Card>
         <Skeleton className="h-4 w-24" />
         <Skeleton className="mt-3 h-8 w-40" />
         <Skeleton className="mt-2 h-4 w-32" />
-      </section>
+      </Card>
     );
   }
 
   if (isError) {
     return (
-      <section className="rounded-xl border border-slate-200 p-4">
+      <Card>
         <p className="text-sm text-slate-600">
           연결 상태를 불러오지 못했습니다
         </p>
-        <button
-          type="button"
+        <Button
           onClick={() => void refetch()}
           disabled={isFetching}
-          className="mt-3 min-h-11 w-full rounded-lg bg-slate-900 px-4 text-sm font-medium text-white disabled:opacity-50"
+          className="mt-3"
         >
           다시 시도
-        </button>
-      </section>
+        </Button>
+      </Card>
     );
   }
 
   const direction = getPriceDirection(data.sampleChangeRatio);
 
   return (
-    <section className="rounded-xl border border-slate-200 p-4">
+    <Card>
       <p className="text-sm text-slate-500">목 서버 연결 상태</p>
       <p className="mt-1 text-2xl font-semibold text-slate-900">
         {data.status === 'ok' ? '정상' : '지연'}
@@ -78,6 +79,6 @@ export function HealthCard() {
           </dd>
         </div>
       </dl>
-    </section>
+    </Card>
   );
 }

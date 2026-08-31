@@ -1,3 +1,4 @@
+export { setAuthBridge, type AuthBridge } from './authBridge';
 export {
   HttpError,
   SchemaError,
@@ -5,5 +6,5 @@ export {
   isSchemaError,
   parseRetryAfterMs,
 } from './errors';
-export { request } from './httpClient';
+export { request, requestNoContent } from './httpClient';
 export { createQueryClient } from './queryClient';
