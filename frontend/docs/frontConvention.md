@@ -224,9 +224,12 @@ Refresh Token은 `HttpOnly` 쿠키라 JS에서 보이지 않으므로 프론트�
 
 **응답 형태와 단위 변환은 API 레이어에서 한 번만 한다.**
 
-- 백엔드 성공 응답은 봉투가 없다(C6). AI 성공 응답도 백엔드가 AI의 봉투를 벗기고 camelCase로
-  재포장한 뒤 내려주므로([`contracts.md`](./contracts.md) C7), 프론트가 받는 시점에는 이미
-  봉투가 없다. **AI 전용 봉투 해체 코드를 따로 두지 않는다**
+- 백엔드 성공 응답은 봉투가 없다(C6). AI 성공 응답은 백엔드가 AI의 나머지 봉투 필드(`generatedAt`·
+  `model`·`cached`)만 벗기고 **`content` 컨테이너는 남긴 채로** camelCase 재포장해 내려준다
+  ([`contracts.md`](./contracts.md) C7) — 최종 모양은 `{content: {...}, dataAsOf, citations, disclaimer, requestId}`다.
+  **프론트가 받는 시점에도 `content` 키는 남아 있으므로, API 레이어에서 `response.content`를 한 번 벗겨
+  화면 타입으로 넘기는 어댑터가 필요하다.** 이전 판은 이 자리를 "봉투가 없다"로 잘못 적었다
+  (이슈 #22 회신으로 (가) 평탄화 가정이 뒤집혔다)
 - 에러는 `{code, message, detail}` 형식 하나로 온다(C8). AI 중계 에러도 상태 코드와
   `code`·`message`·`detail`을 그대로 통과시킨 것이므로(C11) 형식이 갈리지 않는다
 - `snake_case` → `camelCase` 변환은 백엔드가 재포장 단계에서 끝낸다(C7·C15)
@@ -268,9 +271,13 @@ Refresh Token은 `HttpOnly` 쿠키라 JS에서 보이지 않으므로 프론트�
 이것을 세션 만료로 오인해 AI 분석 탭을 눌렀을 뿐인 사용자를 로그아웃시킨다. 화이트리스트는 모르는
 코드가 와도 세션을 건드리지 않으므로 이 사고가 나지 않는다.
 
-이 방식은 **`AUTH_` 접두 코드가 우리 서비스 사용자 인증 전용**이라는 전제 위에 있다. 지금은 성립하지만
-(AI 코드 목록에 `AUTH_` 접두가 없다) 이 전제가 계속 성립하도록 GitLab 이슈 #18로 백엔드·AI 양쪽에
-이름공간 합의를 요청해 뒀다.
+이 방식은 **`AUTH_` 접두 코드가 우리 서비스 사용자 인증 전용**이라는 전제 위에 있다. GitLab 이슈
+[#18](https://lab.ssafy.com/s15-fintech-finance-sub1/S15P21A101/-/issues/18)에서 AI 파트가
+2026-08-28에 "앞으로 `AUTH_` 접두 코드를 발행하지 않겠다"고 확인했다([`contracts.md`](./contracts.md) C68).
+같은 이슈에서 AI 서버의 `UNAUTHORIZED`(401)도 백엔드-AI 서버 사이의 내부 인증 문제이지 사용자
+로그인 만료가 아니라고 확인됐으므로([`contracts.md`](./contracts.md) C67), 화이트리스트 밖 코드로
+넘어가는 이 문서의 처리 방식이 그대로 맞다. 단 백엔드 파트가 `apiSpec.md`에 같은 한 줄을
+적기로 한 부분은 아직 회신이 없다.
 
 - **갱신 요청은 동시에 하나만 나가게 한다.** 동시에 만료된 요청 여러 개가 각자 갱신을 부르면 Refresh 회전과 겹쳐 서로를 무효화한다. 진행 중인 갱신 Promise를 공유하고 대기시킨다
 - 재시도는 한 번만 한다. 갱신 직후 재시도한 요청이 다시 `AUTH_INVALID_TOKEN`이면 재로그인이다
@@ -311,6 +318,9 @@ AI 호출도 다른 쿼리·뮤테이션과 똑같이 다룬다. 별도 전송 �
 > **`shared/api`에 스트림 파서를 만들지 않는다.** 다시 필요해지면 AI 파트의 구현을 먼저 확인하고 이 절을 되살린다.
 
 - AI 경로 문자열은 `shared/config` 상수 한 곳에 모은다. 중계 경로 7종은 확정됐다([`contracts.md`](./contracts.md) C3)
+- 재포장된 응답은 `{content: {...}, dataAsOf, citations, disclaimer, requestId}` 모양이다
+  ([`contracts.md`](./contracts.md) C7). Zod 스키마도 이 모양대로 `content` 키를 감싸서 짠다 — 화면
+  타입으로 정규화할 때 이 껍데기를 벗기는 것이 API 레이어(정규화 어댑터)의 일이다
 - 응답의 `dataAsOf`·`disclaimer`는 재포장 후에도 **반드시 보존된다**([`contracts.md`](./contracts.md) C7).
   Zod 스키마에서는 `.optional()`이 아니라 **`.nullable()`**로 짠다(C54) — 선언된 키는 값이 없어도 빠지지 않고 `null`로 온다
 - AI 요청은 느리다. `staleTime`을 길게 잡고 화면 진입마다 다시 부르지 않는다
@@ -403,7 +413,8 @@ AI 호출도 다른 쿼리·뮤테이션과 똑같이 다룬다. 별도 전송 �
 - TanStack Query 에러를 경계로 올리려면 `throwOnError`를 명시한다. 기본값에 기대지 않는다
 - 모든 대체 화면에는 재시도 수단을 둔다. 재시도할 수 없으면 무엇이 안 되는지라도 적는다
 - **에러 메시지는 서버가 준 `message`를 쓰고, 스택이나 응답 원문은 노출하지 않는다.** 원문은 콘솔에 남긴다
-- 오류를 리포트할 때는 응답 헤더의 `X-Request-Id`(AI는 본문 `request_id`)를 함께 담는다. 서버 로그와 잇는 유일한 키다
+- 오류를 리포트할 때는 응답 헤더의 `X-Request-Id`(AI 중계 응답은 본문 최상위 `requestId`, camelCase)를 함께 담는다. 서버 로그와 잇는 유일한 키다.
+  `AI_UPSTREAM_UNAVAILABLE`·`AI_UPSTREAM_TIMEOUT`은 이 값이 없다(C70)
 
 ---
 
