@@ -77,7 +77,13 @@ const CHAT_UPSTREAM_UNAVAILABLE_PREFIX = 'upstream';
 const CHAT_UPSTREAM_TIMEOUT_PREFIX = 'timeout';
 const CHAT_GUARDRAIL_PREFIX = 'guardrail';
 
-/** 보유 종목이 없을 때의 정상 거절 (AI 명세 §2.6). `detail.reason` 열거값은 미확정이다 (P5). */
+/**
+ * 보유 종목이 없을 때의 정상 거절 (AI 명세 §2.6).
+ *
+ * **`detail.reason` 을 싣지 않는다.** 열거값은 `llm_key_missing`·`ledger_unavailable` 둘이
+ * 전부이고(contracts C63), 보유 종목 없음은 그 둘 중 하나가 아니라 `reason` 자체가 없는
+ * 경우다. 프론트가 `reason` 없는 갈래를 반드시 처리해야 하므로 목이 그 갈래를 낸다.
+ */
 function insufficientData(requestId: string) {
   return aiErrorResponse(
     AI_SERVICE_ERROR_CODES.INSUFFICIENT_DATA,

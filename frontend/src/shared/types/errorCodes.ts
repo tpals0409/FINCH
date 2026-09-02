@@ -59,8 +59,10 @@ export type AiRelayErrorCode =
  * 백엔드가 `code`·`message`·`detail` 과 HTTP 상태를 **그대로 통과**시킨다 (apiSpec §10.4).
  *
  * `INSUFFICIENT_DATA` 는 에러가 아니라 정상적인 거절이다 (contracts C12) —
- * AI 영역만 대체 문구로 접고 화면 전체를 실패로 만들지 않는다. 사유는 `detail.reason` 이며
- * 열거값 전체는 아직 미확정이다 (contracts P5, `llm_key_missing`·`ledger_unavailable` 둘만 확인됨).
+ * AI 영역만 대체 문구로 접고 화면 전체를 실패로 만들지 않는다. 사유는 `detail.reason` 으로
+ * 분기하고 그 값은 `llm_key_missing`·`ledger_unavailable` **둘이 전부다** (contracts C63).
+ * 다만 **모든 `INSUFFICIENT_DATA` 가 `reason` 을 갖지는 않는다** — 보유 종목·거래일·종가 없음은
+ * `message` 만 있고 `detail` 이 빈 객체다. `reason` 없는 갈래를 기본 경로로 둔다.
  *
  * `RATE_LIMITED` 는 정의만 있고 세는 곳이 없어 현재 나가지 않는다 (contracts C13 주석).
  */
