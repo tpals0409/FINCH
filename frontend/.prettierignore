@@ -2,3 +2,6 @@ dist
 node_modules
 public/mockServiceWorker.js
 package-lock.json
+
+# 개인 도구 산출물이라 포맷 대상이 아니다. .git/info/exclude 로 제외돼 커밋되지 않는다
+.impeccable/
