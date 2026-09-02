@@ -1,7 +1,7 @@
 # 백엔드 API 명세서
 
-- 문서 버전: v0.4 (확정판)
-- 작성일: 2026-08-20 / 최종 수정: 2026-08-28
+- 문서 버전: v0.5 (확정판)
+- 작성일: 2026-08-20 / 최종 수정: 2026-09-02
 - 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md)
 - 범위: MVP 백엔드 API 전체. 프론트엔드가 Mock을 만들 수 있는 수준의 계약을 목표로 한다.
 - 변경 이력:
@@ -20,6 +20,11 @@
     공통 계층 코드의 발생 조건 명문화(§11.1), `Authorization` 헤더 누락 시 코드 확정(§1.2),
     `AI_UPSTREAM_*`에는 `requestId`가 없음을 명시(§10.4 — contracts P16 회신),
     DELETE 계열은 대상이 없어도 `204`로 확정(§11.2), `ORDER_PRICE_CHANGED` 판정 조건을 13장 7번으로 등록
+  - v0.5 — 문의 이슈 #10·#11·#12·#19·#22 회신 반영. 코드의 값·상태는 변경 없음.
+    AI 재포장 규칙 구체화(§10.3 — `content` 키 유지, 보존 봉투 필드 4종, `ticker` 필드명 유지, 요청 본문도 camelCase),
+    AI 위키 3종 중계 경로 추가와 `POST /wiki/theses` 중계 제외 명기(§10.1), AI 중계 단발 요청/응답 명기(§10),
+    웹소켓 확정(§5.6 — 인증 실패는 STOMP ERROR 프레임, 연결 유지 중 토큰 만료 무관, 순수 WebSocket 단일),
+    전량 매도 시 `holding: null` 확정(§5.2), 상장폐지 종목 검색 제외·구분 필드 없음 확정(§5.1)
 
 > **이 문서의 성격**
 > 공통 API 규격(0-5)의 확정 내용을 담은 문서다. 프론트·AI 파트와 어긋나면 이 문서가 기준이며, 수정은 백엔드 파트가 한다.
@@ -425,6 +430,10 @@ GET /api/v1/stocks/search?keyword={검색어}&size=10
 `market`: `KOSPI` | `KOSDAQ`
 `suspended`: 거래정지 여부. `true`면 화면에 뱃지를 노출하고 매수를 막는다.
 
+**상장폐지 종목(`stock.is_active = false`)은 검색 결과에서 제외한다.** 응답에 구분 필드는 없다.
+보유 중인 종목이 상장폐지되는 상황은 MVP 범위에서 발생하지 않으므로(종목 마스터는 프로젝트 기간 중 고정 적재)
+종목 상세(§5.2)·보유 목록(§8.1) 응답에도 구분 필드를 두지 않는다. (이슈 #19)
+
 ### 5.2 종목 상세 (명세 7.1)
 
 ```
@@ -457,7 +466,9 @@ GET /api/v1/stocks/{stockCode}
 ```
 
 - `watched`: 관심 종목 등록 여부 (토글 초기 상태)
-- `holding`: 보유하지 않으면 `null`
+- `holding`: 보유하지 않으면 `null`. **전량 매도로 `quantity = 0`인 행이 남아 있는 경우도 `null`이다** —
+  잔존 행은 재매수 시 INSERT 경합을 막기 위한 내부 구현(ERD §2.6)이고 API로 노출하지 않는다.
+  프론트는 `holding !== null`로 보유 여부를 판단한다. (이슈 #19)
 
 | 에러 | 상태 |
 |---|---|
@@ -555,8 +566,11 @@ GET /api/v1/stocks/prices?stockCodes=005930,000660,035720
 
 | 항목 | 값 |
 |---|---|
+| 전송 | **순수 WebSocket 단일. SockJS 폴백은 두지 않는다** — 타깃(모바일 웹, 최신 브라우저)은 전부 WebSocket을 지원하고, WS 불가 환경은 아래 REST 폴링 폴백이 흡수한다. 접속 스킴은 `ws://`(HTTPS 배포 시 `wss://`), `sockjs-client` 불필요 (이슈 #10) |
 | 핸드셰이크 | `WS /ws` → STOMP CONNECT. 핸드셰이크 단계는 인증 없이 통과시킨다 |
-| 인증 | **CONNECT 프레임의 `Authorization: Bearer {accessToken}` 헤더.** 브라우저 `WebSocket` 생성자는 커스텀 HTTP 헤더를 붙일 수 없으므로 핸드셰이크가 아닌 CONNECT 프레임에서 검증한다. 실패 시 서버가 연결을 거부한다. URL 쿼리로 토큰을 보내지 않는다(로그 노출) |
+| 인증 | **CONNECT 프레임의 `Authorization: Bearer {accessToken}` 헤더.** 브라우저 `WebSocket` 생성자는 커스텀 HTTP 헤더를 붙일 수 없으므로 핸드셰이크가 아닌 CONNECT 프레임에서 검증한다. URL 쿼리로 토큰을 보내지 않는다(로그 노출) |
+| 인증 실패 | **STOMP ERROR 프레임을 보내고 연결을 닫는다.** ERROR 프레임의 `message` 헤더에 코드 문자열만 싣는다 — 만료는 `AUTH_TOKEN_EXPIRED`, 헤더 누락·변조·무효는 `AUTH_INVALID_TOKEN`(구분 규칙은 §1.2와 동일). §1.3의 JSON 에러 본문 형식은 따르지 않는다. 프론트 분기는 REST 인터셉터와 동일 — 만료면 재발급 후 재CONNECT, 무효면 로그인 화면 (이슈 #10) |
+| 토큰 만료 | **검증은 CONNECT 시 1회. 연결 유지 중 Access Token이 만료돼도 끊지 않는다** — 시세 topic은 사용자별 데이터가 아닌 공개 시세다. 재연결 시 CONNECT 재검증에서 만료가 잡히면 위 인증 실패 규칙을 따른다 (이슈 #10) |
 | 구독 | `/topic/prices/{stockCode}`에 **SUBSCRIBE 프레임. 프레임 자체가 구독 신호다** — 별도 구독 메시지·REST 신호 엔드포인트는 없다 |
 | 해제 | UNSUBSCRIBE 프레임 또는 연결 종료. 연결이 끊기면(탭 종료·네트워크 단절 포함) 서버가 해당 연결의 구독을 전부 회수한다 |
 | 수신 페이로드 | 5.4 단건 응답과 **동일 스키마**: `{ "stockCode": "005930", "currentPrice": 73500, "changeAmount": -900, "changeRate": -1.21, "asOf": "...", "stale": false }` |
@@ -928,6 +942,9 @@ GET /internal/v1/trades?roundId=3&cursor=&size=100
 
 호출 경로는 **프론트 → 백엔드 → AI 서버**로 확정됐다. 프론트는 AI 서버를 직접 호출하지 않고, 백엔드가 `/api/v1/ai/**` 요청을 AI 서버(`/api/ai/v1/**`)로 중계한다.
 
+**AI 중계는 모두 단발 요청/응답이다. SSE 등 스트리밍은 하지 않는다** ([AI 명세 §2.5](../../ai/docs/api-spec.md) — "스트리밍을 하려면 백엔드가 스트리밍 프록시를 먼저 만들어야 한다. 계획에 없는 작업이다").
+`POST /api/v1/ai/chat`처럼 응답이 오래 걸릴 수 있는 경로도 단발이다 — 프론트는 응답이 올 때까지 로딩 상태로 기다린다. (이슈 #12)
+
 ### 10.1 경로 매핑
 
 | 프론트가 부르는 경로 | 중계 대상 (AI 서버) | 용도 |
@@ -939,8 +956,11 @@ GET /internal/v1/trades?roundId=3&cursor=&size=100
 | `POST /api/v1/ai/orders/preview` | `POST /api/ai/v1/orders/preview` | 주문 전 점검 |
 | `GET /api/v1/ai/briefing` | `GET /api/ai/v1/briefing` | 데일리 브리핑 |
 | `POST /api/v1/ai/feedback` | `POST /api/ai/v1/feedback` | 응답 피드백 (`requestId` 기반) |
+| `GET /api/v1/ai/wiki` | `GET /api/ai/v1/wiki` | 사용자 위키 조회 |
+| `PUT /api/v1/ai/wiki/theses/{stockCode}` | `PUT /api/ai/v1/wiki/theses/{ticker}` | 투자 논지 수정 |
+| `DELETE /api/v1/ai/wiki/facts/{factId}` | `DELETE /api/ai/v1/wiki/facts/{factId}` | 위키 사실 삭제 |
 
-AI 서버의 사용자 위키 4종(`/wiki/**`)은 프론트 화면 범위가 확정되면 같은 규칙으로 추가한다.
+`POST /api/ai/v1/wiki/theses`는 AI 서비스가 내부에서 스스로 호출하는 경로라 **중계 대상이 아니다** — 프론트 호출 경로가 없다. (이슈 #12, #7 회신 기준)
 
 ### 10.2 인증
 
@@ -949,7 +969,29 @@ AI 서버의 사용자 위키 4종(`/wiki/**`)은 프론트 화면 범위가 확
 
 ### 10.3 응답 재포장 규칙
 
-백엔드는 AI 응답 봉투를 벗겨 **백엔드 형식(camelCase, 성공 시 봉투 없음)으로 재포장**해 내려준다. 단, 아래 필드는 화면 노출 필수이므로 **재포장 후에도 본문에 반드시 보존**한다.
+백엔드는 AI 응답 봉투를 벗겨 **백엔드 형식(camelCase, 성공 시 봉투 없음)으로 재포장**해 내려준다.
+재포장은 엔드포인트별 `content` 스키마를 모르는 **제네릭 변환**이다. (이슈 #10·#11·#22 확정)
+
+- **`content` 키는 유지한다** (안쪽 키를 최상위로 평탄화하지 않는다). 봉투 필드 중 아래 보존 4종만 `content` 옆에 남기고, `generated_at`·`model`·`cached` 등 나머지 봉투 필드는 걷어낸다
+- 키 표기는 **snake_case → camelCase 재귀 변환만** 적용하고, 필드 **이름 자체는 바꾸지 않는다** — AI 응답 본문의 `ticker`·`relatedTickers` 계열을 `stockCode`로 바꾸지 않는다 (경로 파라미터만 `{stockCode}`, §10.1)
+- `content` 안쪽 값은 건드리지 않는다. briefing의 `content.generatedAt`(배치 생성 시각)은 걷어내는 봉투의 `generated_at`과 별개 필드로, 자기 자리에 그대로 남는다
+
+**요청 본문도 camelCase다.** 프론트 → 백엔드 요청은 `requestId`·`linkedTradeId` 등 camelCase로 보내고,
+AI 서버로 넘길 때의 snake_case 변환은 백엔드 중계 계층이 담당한다. (이슈 #12)
+
+재포장 후 본문 예시 (`POST /ai/stocks/{stockCode}/analysis`):
+
+```json
+{
+  "content": { "riskLevel": "high", "riskScore": 72, "summary": {}, "findings": [] },
+  "requestId": "req_20260902_0001",
+  "dataAsOf": {},
+  "citations": [],
+  "disclaimer": "본 서비스는 모의투자이며 투자 자문이 아닙니다."
+}
+```
+
+아래 필드는 화면 노출 필수이므로 **재포장 후에도 본문에 반드시 보존**한다.
 
 | 보존 필드 (camelCase 변환 후) | 이유 |
 |---|---|
