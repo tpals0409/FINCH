@@ -70,7 +70,9 @@ export const authHandlers = [
       user: {
         userId: isNewUser ? 2 : 1,
         nickname: isNewUser ? '새로운핀치' : '홍길동',
-        profileImageUrl: 'https://placehold.co/96x96',
+        // 신규 유저는 프로필 사진 미동의 상태로 둔다. null 이 실제로 내려오는 경로라
+        // (카카오 선택 동의 항목) 목에서도 노출시켜 화면이 그 값을 견디는지 개발 중에 드러나게 한다.
+        profileImageUrl: isNewUser ? null : 'https://placehold.co/96x96',
       },
     });
   }),
