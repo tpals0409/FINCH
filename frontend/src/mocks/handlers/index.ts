@@ -3,6 +3,7 @@ import { authHandlers } from './auth';
 import { healthHandlers } from './health';
 import { recentHandlers } from './recent';
 import { stockHandlers } from './stocks';
+import { tradingHandlers } from './trading';
 import { watchlistHandlers } from './watchlist';
 
 /**
@@ -33,5 +34,6 @@ export const handlers = [
   ...recentHandlers,
   ...stockHandlers,
   ...watchlistHandlers,
+  ...tradingHandlers,
   ...healthHandlers,
 ];
