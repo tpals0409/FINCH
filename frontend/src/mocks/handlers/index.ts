@@ -3,6 +3,7 @@ import { authHandlers } from './auth';
 import { healthHandlers } from './health';
 import { recentHandlers } from './recent';
 import { stockHandlers } from './stocks';
+import { watchlistHandlers } from './watchlist';
 
 /**
  * MSW 핸들러 모음. 이 디렉토리의 코드는 프로덕션 번들에 들어가면 안 되므로
@@ -31,5 +32,6 @@ export const handlers = [
   ...accountHandlers,
   ...recentHandlers,
   ...stockHandlers,
+  ...watchlistHandlers,
   ...healthHandlers,
 ];
