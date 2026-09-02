@@ -70,8 +70,8 @@ export type AiAttributionEvent = z.infer<typeof AiAttributionEventSchema>;
  * 기여·감소 종목 한 줄 (AI 명세 §6). `contributors` 와 `detractors` 가 같은 모양이고
  * 기여도 부호로 갈린다.
  *
- * 종목코드 필드 이름이 `ticker` 인지 `stockCode` 인지는 미확정이다(contracts P2).
- * AI 원본 이름을 그대로 뒀다. 회신이 오면 이 디렉토리만 고친다.
+ * 종목코드 필드 이름은 AI 원본 그대로 `ticker` 다 (GitLab 이슈 #11 1번 회신, 2026-09-02).
+ * 재포장이 스키마를 모르는 제네릭 키 변환이라 `ticker` → `stockCode` 매핑 표는 두지 않는다.
  */
 export const AiAttributionRowSchema = z.object({
   ticker: StockCodeSchema,

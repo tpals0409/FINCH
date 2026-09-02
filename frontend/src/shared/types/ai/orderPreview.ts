@@ -31,7 +31,7 @@ import {
  *
  * **`side` 가 소문자다.** 백엔드 주문 API 의 `BUY`/`SELL` 과 값이 다르므로 그대로 넘기지 않는다.
  * `price` 를 생략하면 현재가로 계산하고, 응답의 `orderSummary` 에 실제 쓰인 단가가 채워진다.
- * 종목코드 필드 이름은 미확정이다 (contracts P2).
+ * 종목코드 필드 이름은 AI 원본 그대로 `ticker` 다 (GitLab 이슈 #11 1번 회신, 2026-09-02).
  */
 export const AiOrderPreviewOrderSchema = z.object({
   ticker: StockCodeSchema,

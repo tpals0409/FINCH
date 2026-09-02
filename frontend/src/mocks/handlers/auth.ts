@@ -1,34 +1,27 @@
 import { http, HttpResponse } from 'msw';
 
-import { API_BASE_PATH, API_PATHS } from '@/shared/config/apiContract';
+import { API_PATHS } from '@/shared/config/apiContract';
 import {
   AUTH_ERROR_CODES,
   COMMON_ERROR_CODES,
 } from '@/shared/types/errorCodes';
 
-/**
- * MSW 핸들러. 이 디렉토리의 코드는 프로덕션 번들에 들어가면 안 되므로
- * app 진입점의 개발 전용 동적 import 로만 불러온다 (컨벤션 §2).
- */
+import { mockPath } from '../lib/http';
+import {
+  ACCESS_TOKEN_EXPIRED,
+  ACCESS_TOKEN_FRESH,
+  clearMockRefreshToken,
+  readBearerToken,
+  readMockRefreshToken,
+  rotateMockRefreshToken,
+} from '../lib/session';
 
-/** `*` 로 시작해 오리진 설정이 절대 주소든 상대 주소든 같은 핸들러가 잡히게 한다. */
-function mockPath(path: string): string {
-  return `*${API_BASE_PATH}${path}`;
-}
-
 /**
- * 목 Refresh Token.
+ * 인증 4종 (apiSpec §2). **`handlers.ts` 에 있던 것을 동작 그대로 옮겼다.**
+ * 공용 도구만 `lib/` 로 빠졌고 응답 값과 갈래는 바뀌지 않았다.
  *
- * 실제와 다른 점 하나 — 서비스 워커 응답이라 Set-Cookie 로 HttpOnly 쿠키를 심을 수
- * 없어 핸들러가 document.cookie 로 직접 쓴다. 즉 이 쿠키는 JS 가 읽을 수 있다.
- * 새로고침을 견뎌야 부팅 복구를 확인할 수 있어서 모듈 변수 대신 쿠키를 쓴다.
- * 프론트 코드는 이 값을 읽지 않는다. 읽으면 실제 백엔드에서 깨진다.
+ * 상태 유지 범위 — Refresh 쿠키만 새로고침을 견딘다 (`lib/session.ts`).
  */
-const MOCK_REFRESH_COOKIE = 'mockRefreshToken';
-
-const ACCESS_TOKEN_FRESH = 'mock.access.token.fresh';
-/** 보호 엔드포인트가 AUTH_TOKEN_EXPIRED 로 거절하는 토큰. */
-const ACCESS_TOKEN_EXPIRED = 'mock.access.token.expired';
 
 /**
  * 인가 코드 접두사로 응답을 고른다. 백엔드 없이 네 갈래를 다 확인할 수 있다.
@@ -38,42 +31,7 @@ const KAKAO_FAIL_CODE_PREFIX = 'fail';
 const KAKAO_EXPIRED_CODE_PREFIX = 'expire';
 const KAKAO_NEW_USER_CODE_PREFIX = 'new';
 
-function readMockRefreshToken(): string | null {
-  const prefix = `${MOCK_REFRESH_COOKIE}=`;
-  const entry = document.cookie
-    .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(prefix));
-
-  return entry === undefined ? null : entry.slice(prefix.length);
-}
-
-/**
- * 회전 방식을 흉내 낸다 — 발급할 때마다 값이 바뀐다.
- * randomUUID 는 보안 컨텍스트 전용이라 폰에서 LAN 주소로 열면 없다.
- */
-function rotateMockRefreshToken(): void {
-  const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  const value = Array.from(bytes, (byte) =>
-    byte.toString(16).padStart(2, '0'),
-  ).join('');
-  document.cookie = `${MOCK_REFRESH_COOKIE}=${value}; path=/; max-age=1209600`;
-}
-
-function clearMockRefreshToken(): void {
-  document.cookie = `${MOCK_REFRESH_COOKIE}=; path=/; max-age=0`;
-}
-
-function readBearerToken(request: Request): string | null {
-  const header = request.headers.get('Authorization');
-  if (header === null || !header.startsWith('Bearer ')) {
-    return null;
-  }
-  return header.slice('Bearer '.length);
-}
-
-const authHandlers = [
+export const authHandlers = [
   http.post(mockPath(API_PATHS.auth.kakao), async ({ request }) => {
     const body = (await request.json()) as { authorizationCode?: unknown };
     const authorizationCode = body.authorizationCode;
@@ -138,9 +96,7 @@ const authHandlers = [
     clearMockRefreshToken();
     return new HttpResponse(null, { status: 204 });
   }),
-];
 
-const userHandlers = [
   http.get(mockPath(API_PATHS.users.me), ({ request }) => {
     const accessToken = readBearerToken(request);
 
@@ -173,16 +129,3 @@ const userHandlers = [
     });
   }),
 ];
-
-const healthHandlers = [
-  http.get('*/health', () =>
-    HttpResponse.json({
-      status: 'ok',
-      serverTime: new Date().toISOString(),
-      sampleIndexValue: 2734,
-      sampleChangeRatio: 0.0123,
-    }),
-  ),
-];
-
-export const handlers = [...authHandlers, ...userHandlers, ...healthHandlers];

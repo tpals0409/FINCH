@@ -14,6 +14,12 @@ import {
  * 백엔드가 AI 봉투를 벗기고 `camelCase` 로 바꿔 내려준다(C7). 그래서 여기 키는 전부
  * `camelCase` 이고 `snake_case` 자리가 없다.
  *
+ * **재포장 후에도 `content` 키가 남는다** (GitLab 이슈 #22 회신, 2026-09-02).
+ * 백엔드는 `content` 안의 키를 본문 최상위로 올리지 않는다 — 봉투 필드만 걷어내고
+ * `content` 컨테이너와 보존 필드 넷(`requestId`·`dataAsOf`·`citations`·`disclaimer`)을 남긴 뒤,
+ * `content` 내부 키에는 `snake_case` → `camelCase` 변환만 적용한다. 중계 로직이 6종의
+ * `content` 스키마를 몰라도 되는 제네릭 변환이라 이 형태로 확정됐다.
+ *
  * **`null` 규약이 백엔드 성공 응답과 같다** — 선언된 키는 값이 없어도 빠지지 않고 `null` 로 온다(C54).
  * 그래서 AI 스키마는 `.optional()` 이 아니라 `.nullable()` 로 짠다. 키 존재 여부로 분기하면
  * 값이 `null` 로 온 순간 조용히 틀린다.
@@ -133,10 +139,10 @@ export type AiDataAsOf = z.infer<typeof AiDataAsOfSchema>;
 /**
  * 백엔드가 재포장한 뒤에도 본문에 남는 필드 (apiSpec §10.3 응답 재포장 규칙 · contracts C7).
  *
- * 앞의 넷은 **화면 노출 필수라 보존이 약속된 것**이고, 뒤의 셋은 봉투에만 있던 값이라
- * 재포장 후 남는지 확인되지 않았다(contracts P4). 뒤의 셋만 `.optional()` 인 이유가 그것이다 —
- * AI 응답의 `null` 규약(C54)에 대한 예외가 아니라, **키가 아예 없을 수 있는 자리**이기 때문이다.
- * 받아만 두고 쓰지 않는다. `cached` 는 캐시 계층이 없어 항상 `false` 라 배지를 만들 이유도 없다(C56).
+ * **이 넷이 전부다** (GitLab 이슈 #10 5번 회신, 2026-09-02). 봉투에만 있던
+ * `generated_at`·`model`·`cached` 는 재포장 시 걷어내므로 본문에 오지 않는다. 그래서
+ * 스키마에 자리를 두지 않는다 — 자리를 남겨 두면 오지 않는 값을 화면이 기다리게 된다.
+ * `content` 안쪽의 `cached`·`cachedAt`(Section)은 봉투의 `cached` 와 **별개 필드라 그대로 남는다.**
  *
  * `disclaimer` 는 모든 AI 응답에 노출한다. **하드코딩하지 않고 응답 값을 표시한다** —
  * 규제 문구가 바뀌면 서버만 고치게 하기 위해서다.
@@ -147,9 +153,6 @@ const aiResponseMetaShape = {
   dataAsOf: AiDataAsOfSchema,
   citations: z.array(AiCitationSchema),
   disclaimer: z.string(),
-  generatedAt: IsoDateTimeSchema.optional(),
-  model: z.string().optional(),
-  cached: z.boolean().optional(),
 };
 
 /** 재포장 후에도 남는 필드만 따로 필요할 때 쓴다. */
@@ -157,29 +160,32 @@ export const AiResponseMetaSchema = z.object(aiResponseMetaShape);
 export type AiResponseMeta = z.infer<typeof AiResponseMetaSchema>;
 
 /**
- * AI 응답 스키마를 만든다. **재포장 형태에 대한 가정이 이 함수 하나에 갇혀 있다.**
+ * AI 응답 스키마를 만든다. **재포장 형태에 대한 지식이 이 함수 하나에 갇혀 있다.**
  *
- * §10.3 이 "봉투를 벗기고 봉투 없이 재포장"한다고 적었고 §1.3 이 "성공 시 봉투 없이
- * 리소스를 그대로" 내려준다고 적었으므로, **`content` 의 키가 본문 최상위로 올라오고
- * 보존 필드가 그 옆에 붙는 형태**로 읽었다.
+ * 본문은 `content` 컨테이너에 보존 필드 넷이 나란히 붙은 모양이다
+ * (이슈 #22 회신 — (나) `content` 키 유지).
  *
- * 이 독법은 확인되지 않았다 — `content` 키가 그대로 남는 형태로도 읽힌다.
- * 질문을 `_inbox/2026-08-25-질문-백엔드-AI재포장-형태-미발송.md` 에 올려 뒀다.
- * **회신이 `content` 유지로 오면 이 함수만 고친다.** 각 도메인의 content 스키마와
- * 화면 코드는 그대로다.
+ * ```json
+ * { "content": { … }, "requestId": "req_…", "dataAsOf": {}, "citations": [], "disclaimer": "…" }
+ * ```
+ *
+ * 각 도메인의 content 스키마는 이 함수의 인자로 그대로 들어가므로, 형태가 다시 바뀌어도
+ * 고칠 자리는 여기 하나다.
  */
 export function createAiResponseSchema<TShape extends z.ZodRawShape>(
   contentSchema: z.ZodObject<TShape>,
 ) {
-  return contentSchema.extend(aiResponseMetaShape);
+  return z.object({ content: contentSchema, ...aiResponseMetaShape });
 }
 
 /**
- * 본문 키 구성을 단정할 수 없는 AI 응답용. 보존 필드만 검증하고 나머지는 통과시킨다.
- * 지금은 `analysis` 하나가 이 자리에 있다.
+ * 본문 키 구성을 단정할 수 없는 AI 응답용. `content` 컨테이너와 보존 필드만 검증하고
+ * `content` 안쪽은 통과시킨다. 지금은 `analysis` 하나가 이 자리에 있다.
  */
-export const AiUnknownContentResponseSchema =
-  z.looseObject(aiResponseMetaShape);
+export const AiUnknownContentResponseSchema = z.object({
+  content: z.looseObject({}),
+  ...aiResponseMetaShape,
+});
 export type AiUnknownContentResponse = z.infer<
   typeof AiUnknownContentResponseSchema
 >;

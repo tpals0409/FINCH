@@ -47,10 +47,11 @@ export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
  * `POST /ai/feedback` 이 이 값으로 원본 응답을 찾으므로 피드백 슬롯을 붙일 수 있는지가
  * 이 필드의 유무로 갈린다. **백엔드 자체 에러에는 이 필드가 없다.**
  *
- * 미확정 하나 — 백엔드가 AI 에 도달하지 못해 스스로 만드는
- * `AI_UPSTREAM_UNAVAILABLE`·`AI_UPSTREAM_TIMEOUT` 에도 `requestId` 가 실리는지는
- * 확인되지 않았다 (contracts P16). 실리지 않는다면 그 응답은 이 스키마로 파싱되지 않고
- * `ErrorResponseSchema` 로 떨어지며, 피드백 슬롯을 만들지 않는 것이 맞는 처리다.
+ * 백엔드가 AI 에 도달하지 못해 스스로 만드는 `AI_UPSTREAM_UNAVAILABLE`·`AI_UPSTREAM_TIMEOUT`
+ * 에는 **최상위 `requestId` 가 없다** (GitLab 이슈 #12 4번 회신, 2026-09-02 · apiSpec §10.4).
+ * AI 서버가 응답하지 않아 `POST /ai/feedback` 으로 찾을 원본 응답 자체가 없기 때문이다.
+ * 그 응답은 이 스키마로 파싱되지 않고 `ErrorResponseSchema` 로 떨어지며,
+ * 피드백 슬롯을 만들지 않는 것이 맞는 처리다.
  */
 export const AiErrorResponseSchema = ErrorResponseSchema.extend({
   requestId: z.string().min(1),
