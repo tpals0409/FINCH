@@ -206,6 +206,11 @@ Set-Cookie: refreshToken=...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth;
 
 **Refresh Token은 본문에 싣지 않는다.** `Set-Cookie` 헤더로만 내려간다 (§1.2).
 
+**`profileImageUrl` 은 `null` 일 수 있다.** 카카오의 프로필 사진은 선택 동의 항목이라 사용자가 동의하지 않으면 값이 없다.
+빈 문자열이 아니라 `null` 로 내려간다 — `<img src="">` 는 브라우저가 현재 페이지를 다시 요청하게 만들고,
+"사진 없음" 과 "빈 URL" 을 구분할 수 없게 된다. 프론트는 기본 아바타로 대체한다.
+
+
 | 에러 | 상태 |
 |---|---|
 | `AUTH_KAKAO_FAILED` | 401 |
@@ -259,6 +264,10 @@ GET /api/v1/users/me
   "joinedAt": "2026-08-25T10:00:00+09:00"
 }
 ```
+
+**`profileImageUrl` 은 `null` 일 수 있다.** 카카오의 프로필 사진은 선택 동의 항목이라 사용자가 동의하지 않으면 값이 없다.
+빈 문자열이 아니라 `null` 로 내려간다 — `<img src="">` 는 브라우저가 현재 페이지를 다시 요청하게 만들고,
+"사진 없음" 과 "빈 URL" 을 구분할 수 없게 된다. 프론트는 기본 아바타로 대체한다.
 
 ---
 
