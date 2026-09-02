@@ -1,6 +1,6 @@
 # 백엔드 API 명세서
 
-- 문서 버전: v0.5 (확정판)
+- 문서 버전: v0.6 (확정판)
 - 작성일: 2026-08-20 / 최종 수정: 2026-09-02
 - 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md)
 - 범위: MVP 백엔드 API 전체. 프론트엔드가 Mock을 만들 수 있는 수준의 계약을 목표로 한다.
@@ -25,6 +25,8 @@
     AI 위키 3종 중계 경로 추가와 `POST /wiki/theses` 중계 제외 명기(§10.1), AI 중계 단발 요청/응답 명기(§10),
     웹소켓 확정(§5.6 — 인증 실패는 STOMP ERROR 프레임, 연결 유지 중 토큰 만료 무관, 순수 WebSocket 단일),
     전량 매도 시 `holding: null` 확정(§5.2), 상장폐지 종목 검색 제외·구분 필드 없음 확정(§5.1)
+  - v0.6 — 문의 이슈 #23 회신 반영. 최근 검색어 응답 명문화(§6.2 — 계정 기준 서버 저장,
+    GET 응답 예시 `keywordId`·`keyword`·`searchedAt`, DELETE 는 본문 없이 204·멱등)
 
 > **이 문서의 성격**
 > 공통 API 규격(0-5)의 확정 내용을 담은 문서다. 프론트·AI 파트와 어긋나면 이 문서가 기준이며, 수정은 백엔드 파트가 한다.
@@ -647,13 +649,30 @@ DELETE /api/v1/stocks/recent
 
 ### 6.2 최근 검색어 (명세 4장)
 
-최대 10건.
+최대 10건. **계정 기준 서버 저장** (ERD §2.11 `recent_search_keyword` — 회차가 아니라 `user_id` 귀속).
+같은 검색어를 다시 검색하면 새 항목을 만들지 않고 `searchedAt`만 갱신한다.
 
 ```
 GET    /api/v1/stocks/search/recent
 DELETE /api/v1/stocks/search/recent/{keywordId}
 DELETE /api/v1/stocks/search/recent
 ```
+
+**GET Response `200 OK`** — 최신순(`searchedAt` DESC)
+```json
+{
+  "items": [
+    { "keywordId": 42, "keyword": "삼성", "searchedAt": "2026-09-02T14:03:00+09:00" }
+  ]
+}
+```
+
+- `keywordId`: `DELETE .../{keywordId}`에 쓰는 식별자
+- `keyword`: 검색어 원문. 종목코드로 검색한 경우에도 문자열로 저장한다 — 최근 본 종목(§6.1)과 달리
+  시세 필드가 없는 것은 의도다 (검색어는 종목이 아니라 문자열이다)
+- `DELETE` 두 경로는 본문 없이 `204 No Content`. **없는 대상을 지워도 `204`** (§11.2의 멱등 규칙).
+  다른 사용자의 `keywordId`를 지목한 경우도 구분 없이 `204`다 — 존재 여부 자체가 정보 노출이라
+  알려주지 않는다 (이슈 #23)
 
 ### 6.3 관심 종목 (명세 6장)
 
