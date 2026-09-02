@@ -224,9 +224,12 @@ Refresh Token은 `HttpOnly` 쿠키라 JS에서 보이지 않으므로 프론트�
 
 **응답 형태와 단위 변환은 API 레이어에서 한 번만 한다.**
 
-- 백엔드 성공 응답은 봉투가 없다(C6). AI 성공 응답도 백엔드가 AI의 봉투를 벗기고 camelCase로
-  재포장한 뒤 내려주므로([`contracts.md`](./contracts.md) C7), 프론트가 받는 시점에는 이미
-  봉투가 없다. **AI 전용 봉투 해체 코드를 따로 두지 않는다**
+- 백엔드 성공 응답은 봉투가 없다(C6). AI 성공 응답은 백엔드가 AI의 나머지 봉투 필드(`generatedAt`·
+  `model`·`cached`)만 벗기고 **`content` 컨테이너는 남긴 채로** camelCase 재포장해 내려준다
+  ([`contracts.md`](./contracts.md) C7) — 최종 모양은 `{content: {...}, dataAsOf, citations, disclaimer, requestId}`다.
+  **프론트가 받는 시점에도 `content` 키는 남아 있으므로, API 레이어에서 `response.content`를 한 번 벗겨
+  화면 타입으로 넘기는 어댑터가 필요하다.** 이전 판은 이 자리를 "봉투가 없다"로 잘못 적었다
+  (이슈 #22 회신으로 (가) 평탄화 가정이 뒤집혔다)
 - 에러는 `{code, message, detail}` 형식 하나로 온다(C8). AI 중계 에러도 상태 코드와
   `code`·`message`·`detail`을 그대로 통과시킨 것이므로(C11) 형식이 갈리지 않는다
 - `snake_case` → `camelCase` 변환은 백엔드가 재포장 단계에서 끝낸다(C7·C15)
@@ -315,6 +318,9 @@ AI 호출도 다른 쿼리·뮤테이션과 똑같이 다룬다. 별도 전송 �
 > **`shared/api`에 스트림 파서를 만들지 않는다.** 다시 필요해지면 AI 파트의 구현을 먼저 확인하고 이 절을 되살린다.
 
 - AI 경로 문자열은 `shared/config` 상수 한 곳에 모은다. 중계 경로 7종은 확정됐다([`contracts.md`](./contracts.md) C3)
+- 재포장된 응답은 `{content: {...}, dataAsOf, citations, disclaimer, requestId}` 모양이다
+  ([`contracts.md`](./contracts.md) C7). Zod 스키마도 이 모양대로 `content` 키를 감싸서 짠다 — 화면
+  타입으로 정규화할 때 이 껍데기를 벗기는 것이 API 레이어(정규화 어댑터)의 일이다
 - 응답의 `dataAsOf`·`disclaimer`는 재포장 후에도 **반드시 보존된다**([`contracts.md`](./contracts.md) C7).
   Zod 스키마에서는 `.optional()`이 아니라 **`.nullable()`**로 짠다(C54) — 선언된 키는 값이 없어도 빠지지 않고 `null`로 온다
 - AI 요청은 느리다. `staleTime`을 길게 잡고 화면 진입마다 다시 부르지 않는다
@@ -407,7 +413,8 @@ AI 호출도 다른 쿼리·뮤테이션과 똑같이 다룬다. 별도 전송 �
 - TanStack Query 에러를 경계로 올리려면 `throwOnError`를 명시한다. 기본값에 기대지 않는다
 - 모든 대체 화면에는 재시도 수단을 둔다. 재시도할 수 없으면 무엇이 안 되는지라도 적는다
 - **에러 메시지는 서버가 준 `message`를 쓰고, 스택이나 응답 원문은 노출하지 않는다.** 원문은 콘솔에 남긴다
-- 오류를 리포트할 때는 응답 헤더의 `X-Request-Id`(AI는 본문 `request_id`)를 함께 담는다. 서버 로그와 잇는 유일한 키다
+- 오류를 리포트할 때는 응답 헤더의 `X-Request-Id`(AI 중계 응답은 본문 최상위 `requestId`, camelCase)를 함께 담는다. 서버 로그와 잇는 유일한 키다.
+  `AI_UPSTREAM_UNAVAILABLE`·`AI_UPSTREAM_TIMEOUT`은 이 값이 없다(C70)
 
 ---
 
