@@ -12,13 +12,17 @@ import { watchlistHandlers } from './watchlist';
  * app 진입점의 개발 전용 동적 import 로만 불러온다 (컨벤션 §2).
  *
  * **배열 순서가 곧 매칭 우선순위다.** `recentHandlers` 가 `stockHandlers` 보다 앞이어야
- * `/stocks/recent` 가 종목코드 `recent` 로 잡히지 않는다.
+ * `/stocks/recent` 가 종목코드 `recent` 로 잡히지 않는다. `recentHandlers` 는 최근 본 종목과
+ * 최근 검색어를 함께 담는다 (apiSpec §6.1·§6.2).
  *
  * ## 목이 없는 경로
  *
- * - `POST /ai/feedback` — 요청·응답 본문 미확정 (contracts P5, 이슈 #13)
- * - `GET·DELETE /stocks/search/recent` 3종 — 응답 본문이 명세에 없어 Zod 스키마도 없다
+ * - AI 위키 3종(`GET /ai/wiki` · `PUT /ai/wiki/theses/{stockCode}` · `DELETE /ai/wiki/facts/{factId}`)
+ *   — 중계 경로는 확정됐지만(contracts C80) `shared/config/apiContract.ts` 에 경로 상수부터 없다.
+ *   위키를 쓰는 화면이 아직 없어 경로 상수와 목을 함께 만들 자리다
  * - 웹소켓(`/ws`)·STOMP, `/internal/v1/*` 2종 — 프론트 범위 밖
+ *
+ * **`API_PATHS` 에 있는 경로는 전부 목이 있다.**
  *
  * ## 공통 규칙
  *
