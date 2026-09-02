@@ -69,9 +69,9 @@ export type AiBriefingItem = z.infer<typeof AiBriefingItemSchema>;
  * 네 키는 항상 실려 나온다. 조회 시 `date` 를 주지 않았고 기준 거래일도 못 잡았으면
  * `date` 가 `null` 일 수 있다.
  *
- * **`generatedAt` 이름이 봉투의 `generatedAt` 과 겹친다** — 이쪽은 배치 생성 시각이고
- * 봉투 쪽은 응답 생성 시각이다. 봉투 필드가 재포장 후에도 남는지는 미확정이라(contracts P4)
- * 겹칠 때 어느 값이 남는지도 확인되지 않았다.
+ * **봉투와 이름이 겹치지 않는다** — 봉투에도 응답 생성 시각 `generated_at` 이 있었지만
+ * 재포장 시 걷어내고(GitLab 이슈 #10 5번 회신, 2026-09-02), `content` 는 컨테이너째 남으므로
+ * (이슈 #22 회신) 이 배치 생성 시각은 `content.generatedAt` 자리에 그대로 있다.
  */
 export const AiBriefingContentSchema = z.object({
   date: IsoDateSchema.nullable(),

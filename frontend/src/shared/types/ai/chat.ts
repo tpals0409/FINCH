@@ -26,10 +26,9 @@ export type AiChatScreen = (typeof AI_CHAT_SCREENS)[number];
  * `conversationId` 를 생략하면 새 대화가 시작되고 응답이 발급한 값을 이후에 그대로 쓴다.
  * `message` 는 공백만으로는 안 되고 2,000자를 넘으면 `INVALID_REQUEST` 다.
  *
- * **요청 본문 키 표기는 미확정이다**(contracts P15). §10.3 이 정한 camelCase 재포장은
- * **응답** 규칙이고, 프론트가 백엔드로 보내는 **요청**을 `conversationId` 로 보낼지
- * AI 원본대로 `conversation_id` 로 보낼지 회신이 없다. 응답과 달리 **요청은 틀리면 그대로 422** 다.
- * 여기서는 camelCase 로 두고, 회신이 오면 AI 요청 매퍼 한 곳만 고친다.
+ * **요청 본문 키 표기도 camelCase 다** (GitLab 이슈 #12 3번 회신, 2026-09-02).
+ * AI 서버로 넘길 때의 snake_case 변환은 백엔드 중계 레이어가 맡으므로,
+ * 프론트는 요청·응답 양방향에 camelCase 하나만 쓴다.
  */
 export const AiChatRequestSchema = z.object({
   conversationId: z.string().nullish(),
@@ -37,7 +36,7 @@ export const AiChatRequestSchema = z.object({
   context: z
     .object({
       screen: z.string(),
-      /** 종목 맥락. 필드 이름이 `ticker` 인지 `stockCode` 인지는 미확정이다 (contracts P2) */
+      /** 종목 맥락. 필드 이름은 AI 원본 그대로 `ticker` 다 (GitLab 이슈 #11 1번 회신) */
       ticker: StockCodeSchema.nullish(),
     })
     .nullish(),

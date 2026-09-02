@@ -31,8 +31,9 @@ import { nowKstIso, toKstDateString } from '../lib/time';
  * **`POST /ai/feedback` 은 만들지 않았다.** 요청·응답 본문이 미확정이고(contracts P5, 이슈 #13)
  * Zod 스키마도 없다. 목으로 만들면 없는 계약이 굳는다.
  *
- * **(가) 평탄화 가정** — 백엔드가 AI 봉투를 벗기고 `content` 키를 본문 최상위로 올린다고 읽었다.
- * 가정은 `lib/ai.ts` 의 `aiResponse()` 한 곳에 갇혀 있다. **이슈 #22 답이 오면 거기를 고친다.**
+ * **(나) `content` 키 유지** — 백엔드는 봉투 필드만 걷어내고 `content` 컨테이너를 그대로 남긴다
+ * (GitLab 이슈 #22 회신, 2026-09-02). 각 핸들러는 `content` 본문만 만들고, 재포장 형태는
+ * `lib/ai.ts` 의 `aiResponse()` 한 곳에 갇혀 있다.
  *
  * **상태 유지 범위** — 보유 종목이 0개면 진단·원인 분석이 `INSUFFICIENT_DATA` 로 갈린다.
  * 계좌 리셋 뒤 그 갈래를 볼 수 있다. 그 밖의 본문은 고정 픽스처다.
@@ -131,7 +132,8 @@ export const aiHandlers = [
       );
     }
 
-    // AI 서버에 닿지 못한 두 코드에는 requestId 가 없다 (apiSpec §10.4 · contracts P16).
+    // AI 서버에 닿지 못한 두 코드에는 requestId 가 없다
+    // (apiSpec §10.4 · GitLab 이슈 #12 4번 회신, 2026-09-02).
     if (message.startsWith(CHAT_UPSTREAM_UNAVAILABLE_PREFIX)) {
       return errorResponse(
         AI_RELAY_ERROR_CODES.UPSTREAM_UNAVAILABLE,
