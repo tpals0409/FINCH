@@ -1,6 +1,7 @@
 import { accountHandlers } from './account';
 import { authHandlers } from './auth';
 import { healthHandlers } from './health';
+import { recentHandlers } from './recent';
 import { stockHandlers } from './stocks';
 
 /**
@@ -28,6 +29,7 @@ import { stockHandlers } from './stocks';
 export const handlers = [
   ...authHandlers,
   ...accountHandlers,
+  ...recentHandlers,
   ...stockHandlers,
   ...healthHandlers,
 ];
