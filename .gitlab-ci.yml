@@ -9,3 +9,4 @@
 # infra/README.md 참고.
 include:
   - local: ai/.gitlab-ci.yml
+  - local: backend/.gitlab-ci.yml
