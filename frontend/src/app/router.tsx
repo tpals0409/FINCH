@@ -105,8 +105,18 @@ export const router = createBrowserRouter([
             element: <RoutePlaceholder screen="매매 내역" />,
           },
           {
+            // 경로 미확정. `ROUTES.briefing` 주석과 ia.md §7 을 본다.
+            path: ROUTES.briefing,
+            element: <RoutePlaceholder screen="브리핑 전체" />,
+          },
+          {
             path: ROUTES.deposit,
             element: <RoutePlaceholder screen="충전" />,
+          },
+          {
+            // 경로 미확정. `ROUTES.mail` 주석과 ia.md §7 을 본다.
+            path: ROUTES.mail,
+            element: <RoutePlaceholder screen="메일" />,
           },
           {
             path: ROUTES.chat,
