@@ -1,0 +1,97 @@
+# PR 을 막는 유일한 관문이다. Sprint 0~2 는 워크플로가 없어 PR #1~#5 가 검증 없이 머지됐다.
+#
+# 파트별로 경로를 걸러 돌린다. 문서만 고친 PR 이 gradle 빌드를 돌릴 이유가 없고,
+# 그렇게 두면 느려서 아무도 CI 를 기다리지 않게 된다.
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# 같은 PR 에 새 커밋이 올라오면 이전 실행을 버린다. 어차피 최신 것만 보면 된다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.github/workflows/ci.yml'
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # package.json engines 는 >=20.19.0 이다. LTS 라인으로 고정한다 —
+          # 러너 기본값을 쓰면 어느 날 조용히 바뀐다.
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # npm install 은 lock 을 고쳐가며 진행해서 다른 사람이 클론한 상황을 재현하지 못한다.
+      - run: npm ci
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run build
+
+      # 디자인 토큰의 APCA 대비. 회귀하면 여기서 막힌다 (docs/design/finch-seed.md §5)
+      - run: npm run design:contrast
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      # build.gradle 의 toolchain 이 21 을 요구한다. 러너 기본 JDK 와 무관하게 21 을 깐다.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Testcontainers 가 postgres·redis 를 띄운다. ubuntu 러너에는 Docker 가 이미 있다.
+      # Ryuk(정리 컨테이너)은 러너가 잡째로 사라지므로 필요 없다.
+      - run: ./gradlew build
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: backend-test-results
+          path: backend/build/reports/tests/test
+          retention-days: 7
