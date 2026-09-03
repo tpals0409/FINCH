@@ -9,8 +9,8 @@ import { PageMain } from '@/shared/ui/PageMain';
 export function MyPage() {
   return (
     <PageMain>
-      <h1 className="text-lg font-semibold text-slate-900">마이페이지</h1>
-      <p className="mt-1 text-xs text-slate-400">
+      <h1 className="text-lg font-semibold text-text-primary">마이페이지</h1>
+      <p className="mt-1 text-xs text-text-muted">
         프로필 · 계좌 리셋 · 회차 조회는 별도 티켓입니다
       </p>
 

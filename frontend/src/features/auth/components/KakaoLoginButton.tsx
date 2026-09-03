@@ -33,7 +33,7 @@ export function KakaoLoginButton({ redirectTo }: KakaoLoginButtonProps) {
         카카오로 시작하기
       </Button>
       {isConfigured ? null : (
-        <p className="mt-2 text-center text-xs text-slate-500">
+        <p className="mt-2 text-center text-xs text-text-secondary">
           카카오 REST API 키가 설정되지 않았습니다 (
           <code>VITE_KAKAO_REST_API_KEY</code>)
         </p>

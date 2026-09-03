@@ -22,11 +22,11 @@ export function RoutePlaceholder({ screen }: RoutePlaceholderProps) {
 
   return (
     <PageMain>
-      <h1 className="text-lg font-semibold text-slate-900">{screen}</h1>
-      <p className="mt-1 text-sm text-slate-500">
+      <h1 className="text-lg font-semibold text-text-primary">{screen}</h1>
+      <p className="mt-1 text-sm text-text-secondary">
         아직 구현되지 않은 화면입니다. 라우트 자리만 잡혀 있습니다.
       </p>
-      <p className="mt-4 text-xs text-slate-400">
+      <p className="mt-4 text-xs text-text-muted">
         <code>{`${location.pathname}${location.search}`}</code>
       </p>
     </PageMain>

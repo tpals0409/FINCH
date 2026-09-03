@@ -10,7 +10,7 @@ type SkeletonProps = {
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse rounded bg-slate-200 ${className}`}
+      className={`animate-pulse rounded-sm bg-skeleton ${className}`}
       aria-hidden="true"
     />
   );
