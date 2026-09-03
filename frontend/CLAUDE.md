@@ -12,7 +12,6 @@
 
 - UI 레퍼런스: 토스증권
 - 플랫폼: 모바일 웹 (반응형, 모바일 우선). 기준 뷰포트 375px, 최소 지원 320px
-- 최종 발표 2026-09-28. 기능 동결 9/18, 전면 동결 9/23
 
 ## 레포 구조
 
@@ -26,9 +25,8 @@ infra/      배포
 docs/       팀 공용 문서
 ```
 
-**`frontend/`와 `docs/` 밖의 파일을 고치지 않는다.**
-다른 파트 디렉토리에서 문제를 발견하면 고치지 말고 보고한다.
-팀 프로젝트에서 남의 코드를 조용히 바꾸는 것이 가장 나쁘다.
+**`frontend/` 밖을 고칠 때는 그 파트의 `CLAUDE.md` 를 먼저 읽고, 별도 커밋으로 분리한다.**
+한 커밋이 두 파트에 걸치면 나중에 어느 쪽 결정이었는지 되짚을 수 없다.
 
 ## 읽어야 할 문서
 
@@ -38,7 +36,8 @@ docs/       팀 공용 문서
 docs/spec/featureSpec.md              기능 명세서 (확정판)
 docs/api/apiSpec.md                   백엔드 API 명세
 docs/convention/gitConvention.md      브랜치·커밋·MR 절차
-docs/convention/mrConvention.md       MR 템플릿
+docs/convention/mrConvention.md       PR 템플릿
+docs/adr/sprints/                     관련 스프린트 결정. grep 으로 찾는다
 docs/convention/frontConvention.md    프론트가 다른 파트와 공유하는 계약
 frontend/docs/frontConvention.md      프론트 내부 규약 (폴더 구조, 네이밍, 상태 경계)
 frontend/docs/ia.md                   화면 목록과 IA
@@ -96,7 +95,7 @@ npm run build
 초기 세팅이나 의존성을 건드린 작업은 `node_modules`를 지우고 `npm ci`부터 다시 확인한다.
 `npm install`은 lock을 고쳐가며 진행하므로 다른 사람이 클론한 상황을 재현하지 못한다.
 
-## 커밋과 MR
+## 커밋과 PR
 
 `docs/convention/gitConvention.md`를 따른다. 자주 어기는 것만 옮겨 적는다.
 
@@ -104,6 +103,6 @@ npm run build
 - 본문은 제목만으로 "왜"가 안 드러날 때만 쓴다. 기본은 한 줄이다
 - 제목 끝에 마침표를 붙이지 않는다
 - 한 커밋에는 한 가지 문제만 담는다
-- 브랜치는 `S15P21A101-{티켓번호}-{기능명}`
-- 1브랜치 n커밋 1MR
-- **MR은 작성자 본인이 머지하지 않는다.** 리뷰한 팀원이 머지한다
+- 브랜치는 `<type>/sprint-<N>-<설명>`. 루트 `CLAUDE.md` 참고
+- 1브랜치 n커밋 1PR, squash 머지
+- CI 가 녹색이어야 머지한다

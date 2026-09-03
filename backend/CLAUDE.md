@@ -10,7 +10,6 @@
 백엔드가 중계한다. AI 는 백엔드를 읽어 분석과 설명을 제공할 뿐 원장을 쓰지 않는다.
 
 - 프론트가 쓰는 Base URL 은 `/api/v1` 하나다
-- 최종 발표 2026-09-28. 기능 동결 9/18, 전면 동결 9/23
 
 ## 레포 구조
 
@@ -24,9 +23,8 @@ infra/      배포
 docs/       팀 공용 문서
 ```
 
-**`backend/`와 `docs/` 밖의 파일을 고치지 않는다.**
-다른 파트 디렉토리에서 문제를 발견하면 고치지 말고 보고한다.
-팀 프로젝트에서 남의 코드를 조용히 바꾸는 것이 가장 나쁘다.
+**`backend/` 밖을 고칠 때는 그 파트의 `CLAUDE.md` 를 먼저 읽고, 별도 커밋으로 분리한다.**
+한 커밋이 두 파트에 걸치면 나중에 어느 쪽 결정이었는지 되짚을 수 없다.
 
 ## 읽어야 할 문서
 
@@ -38,13 +36,14 @@ docs/api/apiSpec.md                   백엔드 API 명세. 응답 형식·멱�
 docs/spec/featureSpec.md              기능 명세서
 docs/convention/backConvention.md     백엔드 컨벤션 (패키지 구조, 계층 경계, 도메인 규약)
 docs/convention/gitConvention.md      브랜치·커밋·MR 절차
-docs/convention/mrConvention.md       MR 템플릿
+docs/convention/mrConvention.md       PR 템플릿
+docs/adr/sprints/                     관련 스프린트 결정. grep 으로 찾는다
 docs/api/aiApiSpec.md                 AI 파트 인터페이스 계약
 ai/docs/openapi.json                  AI 서버의 실제 구현 스키마. AI 파트 문서보다 이쪽이 사실이다
 frontend/docs/contracts.md            프론트가 백엔드 회신을 기다리는 미확정·충돌 항목
 ```
 
-배포·운영 명세(infraSpec, infraRunbook)는 레포가 아니라 노션에 있다.
+배포·운영은 `infra/CLAUDE.md` 와 `~/Desktop/finch-gitops` 에 있다.
 클러스터 구성이나 배포 절차가 필요한 작업이면 그쪽을 먼저 확인한다.
 
 ## 기술 스택
@@ -76,7 +75,7 @@ JUnit 5 + Testcontainers
 - **IntelliJ 에서 import 가 전부 빨갛다면** Gradle 프로젝트가 연결되지 않은 것이다.
   `backend/build.gradle` 우클릭 → Link Gradle Project. 코드 문제가 아니므로 코드를 고치지 않는다
 
-## 커밋과 MR
+## 커밋과 PR
 
 `docs/convention/gitConvention.md` 를 따른다. 자주 어기는 것만 옮겨 적는다.
 
@@ -84,9 +83,9 @@ JUnit 5 + Testcontainers
 - 본문은 제목만으로 "왜"가 안 드러날 때만 쓴다. 기본은 한 줄이다
 - 제목 끝에 마침표를 붙이지 않는다
 - 한 커밋에는 한 가지 문제만 담는다
-- 브랜치는 `S15P21A101-{티켓번호}-{기능명}`
-- 1브랜치 n커밋 1MR
-- **MR 은 작성자 본인이 머지하지 않는다.** 리뷰한 팀원이 머지한다
+- 브랜치는 `<type>/sprint-<N>-<설명>`. 루트 `CLAUDE.md` 참고
+- 1브랜치 n커밋 1PR, squash 머지
+- CI 가 녹색이어야 머지한다
 
 ## 다른 파트에 물어야 할 것
 
