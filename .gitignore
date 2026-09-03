@@ -95,7 +95,8 @@ _inbox/
 ### 빈 디렉토리 유지용 (절대 무시하지 말 것) ###
 !.gitkeep
 
-# .claude/commands/** 는 tracked — 스프린트 명령의 SSOT
+# .claude/commands/** 와 .claude/agents/** 는 tracked — 스프린트 명령·역할 에이전트의 SSOT
 # 나머지 .claude/* 는 untracked — 로컬 세션·설정
 .claude/*
 !.claude/commands/
+!.claude/agents/
