@@ -1,0 +1,176 @@
+# 이미지를 만들어 GHCR 에 올리고 finch-gitops 의 이미지 태그를 갱신한다.
+# ci.yml 과 나눈 이유는 실패의 의미가 다르기 때문이다 — ci.yml 이 빨간 것은 코드가 잘못된 것이고,
+# 여기가 빨간 것은 배포가 막힌 것이다. 한 워크플로에 섞으면 어느 쪽인지 로그를 열어야 안다.
+#
+# PR 에서는 빌드만 하고 푸시하지 않는다. Sprint 3 전까지 Dockerfile 을 아무도 빌드하지 않아
+# 깨져도 알 방법이 없었다. PR 빌드가 그 안전망이다.
+name: Images
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+env:
+  # finch-gitops 의 apps/prod/*/values.yaml image.repository 와 정확히 같아야 한다.
+  # 어긋나면 태그만 갱신되고 클러스터는 없는 이미지를 당긴다.
+  IMAGE_PREFIX: ghcr.io/tpals0409/finch-
+  GITOPS_REPO: tpals0409/finch-gitops
+
+# master push 는 gitops 저장소에 커밋을 밀어 넣는다. 두 실행이 겹치면 push 가 경합하므로
+# 취소하지 않고 줄을 세운다. PR 은 최신 커밋만 보면 되니 이전 실행을 버린다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      # paths-filter 는 매칭된 필터 이름을 JSON 배열로도 내놓는다. 그대로 matrix 에 먹인다.
+      services: ${{ steps.filter.outputs.changes }}
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'infra/docker/backend.Dockerfile'
+              - '.github/workflows/images.yml'
+            frontend:
+              - 'frontend/**'
+              - 'infra/docker/frontend.Dockerfile'
+              - 'infra/nginx/nginx.conf'
+              - '.github/workflows/images.yml'
+            ai:
+              - 'ai/**'
+              - 'infra/docker/ai.Dockerfile'
+              - '.github/workflows/images.yml'
+
+      # GitOps 에 들어가는 태그는 반드시 불변이어야 한다. latest 같은 가변 태그를 쓰면
+      # 매니페스트가 그대로인데 이미지 내용만 바뀌어 Argo CD 가 변화를 보지 못한다.
+      # 커밋 SHA 는 정의상 다시 쓰이지 않는다.
+      - id: tag
+        run: echo "tag=sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.services != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      # 한 서비스가 깨져도 나머지가 어떤 상태인지는 같은 실행에서 알아야 한다.
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.changes.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # 레이어 캐시(type=gha)는 buildx 빌더에서만 동작한다. 기본 docker 빌더로는 못 쓴다.
+      - uses: docker/setup-buildx-action@v3
+
+      # PR 은 푸시하지 않으므로 로그인도 필요 없다.
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          # 세 Dockerfile 모두 COPY 를 backend/ · frontend/ · ai/ 로 시작한다. 컨텍스트는 저장소 루트다.
+          context: .
+          file: infra/docker/${{ matrix.service }}.Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ env.IMAGE_PREFIX }}${{ matrix.service }}:${{ needs.changes.outputs.tag }}
+          # Vite 는 빌드 시점에 값을 번들에 박는다. 런타임 환경변수로는 못 바꾸므로 여기서 넣어야 한다.
+          # frontend 외 Dockerfile 은 이 ARG 를 선언하지 않아 무시한다 (경고만 뜬다).
+          # 공개 client_id 라 번들에 실려도 되는 값이다 (infra/.env.example 참고).
+          build-args: |
+            VITE_KAKAO_REST_API_KEY=${{ secrets.KAKAO_CLIENT_ID }}
+          # 서비스별로 캐시를 나눈다. 한 스코프를 셋이 공유하면 서로의 레이어를 밀어낸다.
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  # 빌드된 서비스의 태그를 한 커밋으로 모아 갱신한다. 서비스마다 커밋하면 같은 배포가
+  # Argo CD 동기화 3번으로 쪼개지고, 세 job 이 동시에 push 해서 경합한다.
+  bump:
+    needs: [changes, build]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # FINCH_TOKEN 은 FINCH 의 크로스 레포 git 작업에 공통으로 쓰는 토큰이다.
+      # 이 워크플로가 쓰는 용도는 하나 — finch-gitops 의 apps/prod/*/values.yaml 태그 갱신.
+      # finch-gitops 는 비공개라 이 저장소의 GITHUB_TOKEN 으로는 닿지 않는다.
+      # 없을 때 checkout 이 내는 것은 원인을 알 수 없는 403 이므로 여기서 먼저 끊는다.
+      - name: FINCH_TOKEN 확인
+        env:
+          FINCH_TOKEN: ${{ secrets.FINCH_TOKEN }}
+        run: |
+          if [ -z "$FINCH_TOKEN" ]; then
+            echo "::error::FINCH_TOKEN 시크릿이 없다. 이미지는 GHCR 에 올라갔지만 finch-gitops 의 태그는 그대로다. 저장소 Settings > Secrets and variables > Actions 에 tpals0409/finch-gitops 의 contents:write 권한을 가진 토큰을 FINCH_TOKEN 으로 등록할 것."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.GITOPS_REPO }}
+          ref: main
+          token: ${{ secrets.FINCH_TOKEN }}
+          path: gitops
+
+      - name: 이미지 태그 갱신
+        working-directory: gitops
+        env:
+          SERVICES: ${{ needs.changes.outputs.services }}
+          TAG: ${{ needs.changes.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for svc in $(echo "$SERVICES" | jq -r '.[]'); do
+            f="apps/prod/$svc/values.yaml"
+            if [ ! -f "$f" ]; then
+              echo "::error::$f 가 없다. 서비스 이름이 finch-gitops 의 디렉터리와 어긋났다."
+              exit 1
+            fi
+            sed -i "s|^  tag: .*|  tag: $TAG|" "$f"
+            # sed 는 매칭이 없어도 조용히 성공한다. 갱신됐는지 확인해야 무음 실패를 막는다.
+            if ! grep -qx "  tag: $TAG" "$f"; then
+              echo "::error::$f 의 image.tag 를 갱신하지 못했다. 들여쓰기나 키 위치가 바뀌었는지 확인할 것."
+              exit 1
+            fi
+            echo "$f -> $TAG"
+          done
+
+      - name: gitops 커밋
+        working-directory: gitops
+        env:
+          TAG: ${{ needs.changes.outputs.tag }}
+          SERVICES: ${{ needs.changes.outputs.services }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "변경 없음 — 같은 태그가 이미 들어 있다"
+            exit 0
+          fi
+          git config user.name "finch-ci[bot]"
+          git config user.email "finch-ci@users.noreply.github.com"
+          git commit -am "chore: 이미지 태그 갱신 $TAG" \
+            -m "대상: $(echo "$SERVICES" | jq -r 'join(", ")')" \
+            -m "출처: ${{ github.repository }}@${{ github.sha }}"
+          # concurrency 가 이 워크플로의 실행은 줄 세우지만, 사람이 같은 순간에 밀어넣을 수 있다.
+          for i in 1 2 3; do
+            if git push; then exit 0; fi
+            echo "push 경합 — rebase 후 재시도 ($i/3)"
+            git pull --rebase
+          done
+          echo "::error::finch-gitops push 를 3회 실패했다."
+          exit 1
