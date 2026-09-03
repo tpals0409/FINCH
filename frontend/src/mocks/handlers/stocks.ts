@@ -18,15 +18,22 @@ import {
 } from '../lib/catalog';
 import { errorResponse, mockPath, searchParam } from '../lib/http';
 import { requireAuth } from '../lib/session';
-import { findHolding, store, touchRecentStock } from '../lib/store';
+import {
+  findHolding,
+  store,
+  touchRecentSearchKeyword,
+  touchRecentStock,
+} from '../lib/store';
 import { nowKstIso, toKstDateString } from '../lib/time';
 import { profitRate } from '../lib/valuation';
 
 /**
  * 종목 조회 · 검색 · 차트 · 시세 (apiSpec §5).
  *
- * **상태 유지 범위** — 종목 카탈로그는 고정이고 바뀌지 않는다. `GET /stocks/{stockCode}`
- * 호출이 최근 본 종목을 갱신하는 것만 상태를 건드린다 (contracts C51 — 별도 등록 API 가 없다).
+ * **상태 유지 범위** — 종목 카탈로그는 고정이고 바뀌지 않는다. 상태를 건드리는 것은 둘이다.
+ * `GET /stocks/{stockCode}` 호출이 최근 본 종목을, `GET /stocks/search` 호출이 최근 검색어를
+ * 갱신한다. **둘 다 별도 등록 API 가 없어 조회 자체가 기록이다** (contracts C51 · apiSpec §6.2).
+ * 두 목록의 목은 `handlers/recent.ts` 에 있다.
  *
  * ## 어느 입력이 어느 응답을 내는가
  *
@@ -118,6 +125,13 @@ export const stockHandlers = [
         { size: '1 이상 100 이하여야 합니다' },
       );
     }
+
+    /*
+     * **검색 성공이 최근 검색어에 기록을 남긴다** (apiSpec §6.2 — 등록 API 가 없다).
+     * 결과가 0건이어도 기록한다 — 저장되는 것은 종목이 아니라 사용자가 입력한 문자열이다.
+     * 검증 실패(`INVALID_REQUEST`)는 검색이 실행되지 않은 것이라 기록하지 않는다.
+     */
+    touchRecentSearchKeyword(keyword);
 
     const items = MOCK_STOCKS.filter(
       (stock) =>

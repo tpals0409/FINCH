@@ -231,7 +231,33 @@ export const AddWatchlistRequestSchema = z.object({
 export type AddWatchlistRequest = z.infer<typeof AddWatchlistRequestSchema>;
 
 /**
- * 최근 검색어(apiSpec §6.2)는 스키마를 만들지 않았다.
- * §6.2 가 경로 셋만 적고 응답 본문을 정의하지 않는다. `DELETE .../{keywordId}` 로 보아
- * 항목에 식별자와 키워드가 있을 것 같지만 그것은 추측이라 계약으로 굳히지 않는다.
+ * `GET /stocks/search/recent` 항목 (apiSpec §6.2 최근 검색어). 최대 10건이다.
+ *
+ * **최근 본 종목(§6.1)과 대칭 계열이지만 시세 필드가 없다. 그것이 의도다** —
+ * 검색어는 종목이 아니라 문자열이라서, 종목코드로 검색한 경우에도 문자열로 저장된다
+ * (이슈 #23 2번 회신). 그래서 `stockCode` 자리가 없고 `keyword` 문자열 하나가 전부다.
+ * 이 목록에서 종목 상세로 곧장 보내는 화면을 만들 수 없다 — 검색을 다시 실행해야 한다.
+ *
+ * `keywordId` 는 서버 테이블(ERD §2.11 `recent_search_keyword`)의 PK 이고
+ * `DELETE .../{keywordId}` 에 그대로 쓴다. 종목코드처럼 문자열이 아니라 숫자다.
  */
+export const RecentSearchKeywordSchema = z.object({
+  keywordId: z.number().int().positive(),
+  keyword: z.string(),
+  searchedAt: IsoDateTimeSchema,
+});
+export type RecentSearchKeyword = z.infer<typeof RecentSearchKeywordSchema>;
+
+/**
+ * `GET /stocks/search/recent` 응답 (apiSpec §6.2). `searchedAt` 최신순으로 내려온다.
+ *
+ * **DELETE 두 경로는 본문이 없다** (`204 No Content`). 없는 대상을 지워도, 남의
+ * `keywordId` 를 지목해도 `204` 다 — 존재 여부 자체가 정보 노출이라 구분하지 않는다
+ * (§6.2 · §11.2 멱등 규칙). 그래서 삭제 응답용 스키마를 두지 않는다.
+ */
+export const RecentSearchKeywordsResponseSchema = createItemsSchema(
+  RecentSearchKeywordSchema,
+);
+export type RecentSearchKeywordsResponse = z.infer<
+  typeof RecentSearchKeywordsResponseSchema
+>;

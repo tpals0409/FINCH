@@ -1,5 +1,6 @@
 import {
   INITIAL_CASH_BALANCE,
+  RECENT_SEARCH_KEYWORDS_MAX_COUNT,
   RECENT_STOCKS_MAX_COUNT,
 } from '@/shared/config/apiContract';
 
@@ -9,7 +10,7 @@ import { nowKstIso } from './time';
  * 목 서버의 가변 상태.
  *
  * **상태 유지 범위 — 모듈 변수다. 새로고침하면 아래 초기값으로 돌아간다.**
- * 주문·충전·관심 종목 추가·삭제·최근 본 종목은 한 세션 안에서만 이어진다.
+ * 주문·충전·관심 종목 추가·삭제·최근 본 종목·최근 검색어·AI 피드백은 한 세션 안에서만 이어진다.
  * 새로고침을 견뎌야 하는 것은 인증 쿠키 하나뿐이라(`lib/session.ts`) 나머지를
  * `localStorage` 로 빼지 않았다. 목 데이터가 브라우저에 눌어붙으면 초기 상태를
  * 다시 보려고 저장소를 뒤지게 된다.
@@ -59,6 +60,32 @@ export interface MockRecentStock {
   viewedAt: string;
 }
 
+/**
+ * 최근 검색어 한 건 (apiSpec §6.2). **최근 본 종목과 달리 종목코드가 아니라 문자열이다** —
+ * 종목코드로 검색해도 문자열로 저장한다. `keywordId` 는 서버 테이블의 PK 를 대신하는 값이라
+ * 한 번 쓴 번호를 삭제·재검색 뒤에 다시 쓰지 않는다.
+ */
+export interface MockRecentSearchKeyword {
+  keywordId: number;
+  keyword: string;
+  searchedAt: string;
+}
+
+/**
+ * `POST /ai/feedback` 이 접수한 평가 한 건 (AI 명세 §10).
+ *
+ * **`requestId` 를 키로 덮어쓴다** (contracts C66). 목이 배열이 아니라 맵을 쓰는 이유가
+ * 이것이다 — 배열로 쌓으면 누적되지 않는다는 계약을 목이 어긴다. 취소 API 가 없어
+ * 지우는 경로도 두지 않았다.
+ */
+export interface MockAiFeedback {
+  requestId: string;
+  rating: 'up' | 'down';
+  reasons: string[];
+  comment: string | null;
+  submittedAt: string;
+}
+
 interface MockStore {
   activeRoundId: number;
   rounds: MockRound[];
@@ -68,6 +95,11 @@ interface MockStore {
   holdings: MockHolding[];
   watchlist: MockWatchlistEntry[];
   recentStocks: MockRecentStock[];
+  /** 최신순이다. `GET /stocks/search/recent` 는 이 순서를 그대로 쓴다 */
+  recentSearchKeywords: MockRecentSearchKeyword[];
+  nextSearchKeywordId: number;
+  /** `requestId` → 마지막 평가. 누적하지 않고 덮어쓴다 (contracts C66) */
+  aiFeedback: Record<string, MockAiFeedback>;
   /** 최신순이다. `GET /transactions` 는 이 순서를 그대로 쓴다 */
   transactions: MockTransaction[];
   nextTransactionId: number;
@@ -117,6 +149,21 @@ export const store: MockStore = {
     { stockCode: '005930', viewedAt: '2026-09-01T14:48:00+09:00' },
     { stockCode: '068270', viewedAt: '2026-08-31T11:20:00+09:00' },
   ],
+  recentSearchKeywords: [
+    { keywordId: 42, keyword: '삼성', searchedAt: '2026-09-01T15:01:00+09:00' },
+    {
+      keywordId: 41,
+      keyword: '하이닉스',
+      searchedAt: '2026-09-01T14:40:00+09:00',
+    },
+    {
+      keywordId: 40,
+      keyword: '005930',
+      searchedAt: '2026-08-31T11:18:00+09:00',
+    },
+  ],
+  nextSearchKeywordId: 43,
+  aiFeedback: {},
   transactions: [
     {
       transactionId: 305,
@@ -250,6 +297,36 @@ export function touchRecentStock(stockCode: string): void {
     { stockCode, viewedAt: nowKstIso() },
     ...store.recentStocks.filter((entry) => entry.stockCode !== stockCode),
   ].slice(0, RECENT_STOCKS_MAX_COUNT);
+}
+
+/**
+ * 최근 검색어를 갱신한다. **`GET /stocks/search` 호출 자체가 기록이다** — 최근 본 종목과
+ * 같이 별도 등록 API 가 없다(apiSpec §6.2 에 POST 경로가 없다).
+ *
+ * 같은 검색어면 새 항목을 만들지 않고 `searchedAt` 만 갱신해 최상단으로 올린다
+ * (`keywordId` 는 그대로 유지된다 — 이슈 #23 1번 회신). 최대 10건이고 넘치면
+ * 가장 오래된 것이 밀려난다.
+ */
+export function touchRecentSearchKeyword(keyword: string): void {
+  const existing = store.recentSearchKeywords.find(
+    (entry) => entry.keyword === keyword,
+  );
+  const searchedAt = nowKstIso();
+
+  if (existing !== undefined) {
+    existing.searchedAt = searchedAt;
+    store.recentSearchKeywords = [
+      existing,
+      ...store.recentSearchKeywords.filter((entry) => entry !== existing),
+    ];
+    return;
+  }
+
+  store.recentSearchKeywords = [
+    { keywordId: store.nextSearchKeywordId, keyword, searchedAt },
+    ...store.recentSearchKeywords,
+  ].slice(0, RECENT_SEARCH_KEYWORDS_MAX_COUNT);
+  store.nextSearchKeywordId += 1;
 }
 
 /** 계좌 리셋 (apiSpec §3.2). 원장을 지우지 않고 회차를 갈아 끼운다. */

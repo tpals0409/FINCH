@@ -2,6 +2,10 @@ import { http, HttpResponse } from 'msw';
 
 import { API_PATHS } from '@/shared/config/apiContract';
 import {
+  AI_FEEDBACK_COMMENT_MAX_LENGTH,
+  AI_FEEDBACK_REASONS,
+} from '@/shared/types/ai/feedback';
+import {
   AI_RELAY_ERROR_CODES,
   AI_SERVICE_ERROR_CODES,
 } from '@/shared/types/errorCodes';
@@ -28,15 +32,17 @@ import { nowKstIso, toKstDateString } from '../lib/time';
 /**
  * AI 중계 6종 (apiSpec §10 · AI 명세 §3~§8). **`briefing` 만 GET 이다** (contracts C3).
  *
- * **`POST /ai/feedback` 은 만들지 않았다.** 요청·응답 본문이 미확정이고(contracts P5, 이슈 #13)
- * Zod 스키마도 없다. 목으로 만들면 없는 계약이 굳는다.
+ * **`POST /ai/feedback` 은 접수만 하는 일곱 번째 경로다** (contracts C3). 요청·응답 본문은
+ * 이슈 #13 11:02 회신과 `ai/docs/openapi.json` 의 `FeedbackIn`·`FeedbackContent` 로 확정됐다.
  *
  * **(나) `content` 키 유지** — 백엔드는 봉투 필드만 걷어내고 `content` 컨테이너를 그대로 남긴다
  * (GitLab 이슈 #22 회신, 2026-09-02). 각 핸들러는 `content` 본문만 만들고, 재포장 형태는
  * `lib/ai.ts` 의 `aiResponse()` 한 곳에 갇혀 있다.
  *
  * **상태 유지 범위** — 보유 종목이 0개면 진단·원인 분석이 `INSUFFICIENT_DATA` 로 갈린다.
- * 계좌 리셋 뒤 그 갈래를 볼 수 있다. 그 밖의 본문은 고정 픽스처다.
+ * 계좌 리셋 뒤 그 갈래를 볼 수 있다. `POST /ai/feedback` 이 접수한 평가는 `store.aiFeedback` 에
+ * `requestId` 를 키로 남는다 — **누적하지 않고 덮어쓴다**(contracts C66). 그 밖의 본문은
+ * 고정 픽스처다.
  *
  * ## 어느 입력이 어느 응답을 내는가
  *
@@ -50,9 +56,16 @@ import { nowKstIso, toKstDateString } from '../lib/time';
  * | 진단·원인 분석 · 보유 종목 0개 | `409 INSUFFICIENT_DATA` — 에러가 아니라 정상 거절이다 (contracts C12) |
  * | `GET /ai/briefing?date=` 에 오늘이 아닌 날짜 | `status: 'empty'` + 빈 `items` (200) |
  * | `POST /ai/orders/preview` 주문 금액이 예수금 초과 | `feasible: false` + `shortfall` — **200 응답의 본문이다** |
+ * | `POST /ai/feedback` `requestId` 누락 · `rating` 열거값 밖 · `reasons` 열거값 밖 · `comment` 1,000자 초과 | `400 INVALID_REQUEST` |
+ * | `POST /ai/feedback` 정상 | `content: {recorded: true}` — 같은 `requestId` 로 다시 보내면 앞의 평가를 덮어쓴다 |
+ * | `POST /ai/feedback` 모르는 `requestId` | **갈래를 만들지 않았다.** 정상 접수로 답한다 — 아래 참고 |
  *
  * `requestId` 유무가 피드백 슬롯을 붙일 수 있는지를 가른다 (contracts C14). 목이 그 두 갈래를
  * 모두 낸다.
+ *
+ * **모르는 `requestId` 의 에러 갈래는 만들지 않았다.** apiSpec §11.2 가 그 처리를 "AI 서버 몫"
+ * 이라고만 적고 발행 코드를 정하지 않았다. 목이 코드를 골라 버리면 없는 계약이 굳는다.
+ * 목은 어느 `requestId` 든 접수하고, 화면은 성공 경로만 이 목으로 확인한다.
  */
 
 /**
@@ -64,7 +77,13 @@ const CHAT_UPSTREAM_UNAVAILABLE_PREFIX = 'upstream';
 const CHAT_UPSTREAM_TIMEOUT_PREFIX = 'timeout';
 const CHAT_GUARDRAIL_PREFIX = 'guardrail';
 
-/** 보유 종목이 없을 때의 정상 거절 (AI 명세 §2.6). `detail.reason` 열거값은 미확정이다 (P5). */
+/**
+ * 보유 종목이 없을 때의 정상 거절 (AI 명세 §2.6).
+ *
+ * **`detail.reason` 을 싣지 않는다.** 열거값은 `llm_key_missing`·`ledger_unavailable` 둘이
+ * 전부이고(contracts C63), 보유 종목 없음은 그 둘 중 하나가 아니라 `reason` 자체가 없는
+ * 경우다. 프론트가 `reason` 없는 갈래를 반드시 처리해야 하므로 목이 그 갈래를 낸다.
+ */
 function insufficientData(requestId: string) {
   return aiErrorResponse(
     AI_SERVICE_ERROR_CODES.INSUFFICIENT_DATA,
@@ -602,5 +621,95 @@ export const aiHandlers = [
         { portfolio: nowKstIso(), price: nowKstIso() },
       ),
     );
+  }),
+
+  http.post(mockPath(API_PATHS.ai.feedback), async ({ request }) => {
+    const unauthorized = requireAuth(request);
+    if (unauthorized !== null) {
+      return unauthorized;
+    }
+
+    const body = await readJsonBody(request);
+    const requestId = typeof body?.requestId === 'string' ? body.requestId : '';
+    const rating = body?.rating;
+    const reasons = body?.reasons;
+    const comment = body?.comment;
+
+    /*
+     * 요청 키는 camelCase 다 — `request_id` 가 아니라 `requestId` 를 읽는다
+     * (GitLab 이슈 #12 3번 회신 · contracts C75). AI 서버로 넘길 때의 snake_case 변환은
+     * 백엔드 중계 레이어 몫이라 프론트·목 양쪽 다 camelCase 하나만 쓴다.
+     */
+    if (requestId === '') {
+      return errorResponse(
+        AI_SERVICE_ERROR_CODES.INVALID_REQUEST,
+        '평가할 응답을 찾을 수 없어요',
+        400,
+        { requestId: '필수입니다' },
+      );
+    }
+
+    if (rating !== 'up' && rating !== 'down') {
+      return errorResponse(
+        AI_SERVICE_ERROR_CODES.INVALID_REQUEST,
+        '평가 값이 올바르지 않습니다',
+        400,
+        { rating: 'up 또는 down 이어야 합니다' },
+      );
+    }
+
+    const normalizedReasons =
+      reasons === undefined || reasons === null ? [] : reasons;
+    if (
+      !Array.isArray(normalizedReasons) ||
+      normalizedReasons.some(
+        (reason) =>
+          typeof reason !== 'string' ||
+          !AI_FEEDBACK_REASONS.includes(
+            reason as (typeof AI_FEEDBACK_REASONS)[number],
+          ),
+      )
+    ) {
+      return errorResponse(
+        AI_SERVICE_ERROR_CODES.INVALID_REQUEST,
+        '평가 사유가 올바르지 않습니다',
+        400,
+        {
+          reasons: `${AI_FEEDBACK_REASONS.join(' · ')} 중에서 고를 수 있습니다`,
+        },
+      );
+    }
+
+    if (
+      typeof comment === 'string' &&
+      comment.length > AI_FEEDBACK_COMMENT_MAX_LENGTH
+    ) {
+      return errorResponse(
+        AI_SERVICE_ERROR_CODES.INVALID_REQUEST,
+        '의견이 너무 깁니다',
+        400,
+        { comment: `${AI_FEEDBACK_COMMENT_MAX_LENGTH}자 이하여야 합니다` },
+      );
+    }
+
+    /*
+     * **같은 `requestId` 는 덮어쓴다** (contracts C66 · AI 명세 §10). 배열에 쌓지 않고
+     * 맵에 넣는 것이 그 계약이다. 취소 API 가 없으므로 지우는 경로도 두지 않았다
+     * (화면은 재전송으로 수정만 한다).
+     */
+    store.aiFeedback[requestId] = {
+      requestId,
+      rating,
+      reasons: normalizedReasons as string[],
+      comment: typeof comment === 'string' ? comment : null,
+      submittedAt: nowKstIso(),
+    };
+
+    /*
+     * 응답도 다른 여섯 종과 같은 재포장 형태다 (contracts C7). **`requestId` 는 평가 대상의
+     * 값을 그대로 되돌려준다** — 접수 응답에 새 번호를 발급하면 화면이 어느 응답의
+     * 영수증인지 대조할 수 없다.
+     */
+    return HttpResponse.json(aiResponse({ recorded: true }, requestId));
   }),
 ];
