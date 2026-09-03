@@ -39,7 +39,7 @@
 #### 2.1 전체 트리
 
 ```
-com.ssafy.finch
+com.finch
 ├── FinchApplication.java
 ├── global/                     # 도메인에 속하지 않는 것만. 도메인을 참조하지 않는다
 │   ├── apiPayload/
