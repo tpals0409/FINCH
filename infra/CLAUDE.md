@@ -26,27 +26,23 @@ docker/
   backend.Dockerfile     Gradle 빌드 → JRE 이미지. Actions 가 이걸로 finch-backend 를 만든다
   frontend.Dockerfile    Vite 빌드 → nginx:alpine. finch-frontend
   ai.Dockerfile          pip → uvicorn. CMD 가 alembic upgrade head 를 먼저 돈다. finch-ai
-  jenkins.Dockerfile     레거시. SSAFY 젠킨스용. 지워도 된다
 nginx/nginx.conf         frontend 이미지에 들어가는 설정
 docker-compose.yml       로컬 앱 스택 (nginx · backend · ai · postgres 2대 · redis)
-docker-compose.infra.yml 레거시. jenkins · gitlab-runner. 지워도 된다
 docker-compose.observability.yml  prometheus · loki · alloy · grafana. finch-gitops 로 옮길 대상
-setup-server.sh          레거시. SSAFY EC2 초기화. 부트스트랩은 finch-gitops/bootstrap/ 으로 간다
 ```
 
-## 레거시로 남은 것
+## CI
 
-SSAFY 팀 환경에 묶여 있어 GitHub 에서 동작하지 않는다. 지우는 건 자유고, 살려두는 건 아무 이득이 없다.
+`.github/workflows/ci.yml` 하나다. 파트별로 경로를 걸러 `frontend`(검증 4종 + 대비 검사)와
+`backend`(`./gradlew build`)를 돌린다. Testcontainers 는 ubuntu 러너의 Docker 를 그대로 쓴다.
 
-- 루트 `.gitlab-ci.yml`, `ai/.gitlab-ci.yml`, `backend/.gitlab-ci.yml`, `frontend/.gitlab-ci.yml`
-- 루트 `Jenkinsfile` (자격증명 ID `a101-env`, 호스트 `j15a101.p.ssafy.io` 에 묶임)
-- `.gitlab/issue_templates/`
-- 위의 jenkins · gitlab-runner 관련 파일
+SSAFY 시절의 GitLab CI · Jenkins 파일은 Sprint 3 에서 전부 지웠다. GitHub 에서 돌지 않는데
+남아 있으면 "CI 가 있다"는 착각을 준다.
 
 ## 이 저장소에서 고쳐야 finch-gitops 가 동작하는 것
 
 1. **`nginx/nginx.conf` 의 `/api/` 프록시 제거.** k8s 에서는 Ingress 가 `/api` 를 backend 로 직접 보낸다.
-   frontend 이미지의 nginx 는 정적 파일만 서빙한다. `/jenkins/` location 도 같이 지운다
+   frontend 이미지의 nginx 는 정적 파일만 서빙한다. 젠킨스가 사라졌으므로 `/jenkins/` location 도 같이 지운다
 2. **`ai.Dockerfile` 의 마이그레이션 분리.** CMD 에 붙은 `alembic upgrade head` 는 replica 1 에서만 안전하다.
    늘릴 때 finch-gitops 차트의 `bootstrap.enabled` 로 Job 을 분리하고 CMD 에서 뺀다
 
