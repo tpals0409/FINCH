@@ -45,11 +45,13 @@ export const ROUTES = {
   deposit: '/deposit',
   chat: '/chat',
   /**
-   * 메일 — Finch 가 물어다 놓는 것 열람. **경로 미확정** (ia.md §1·§7).
-   * 프로토타입의 화면 id(`isMail`·`goMail`)를 따라 프론트가 제안한 값이고 팀 확인을
-   * 받지 않았다. **API 계약도 아직 없다** — GitLab 이슈 #26 1번으로 문의 중이다.
+   * 알림함 — Finch 가 물어다 놓는 것 열람. **경로 미확정** (ia.md §1·§7).
+   * 경로 `/inbox` 와 키 `inbox` 는 프론트가 제안한 값이고 팀 확인을 받지 않았다.
+   * **프로토타입(`finch-screens.dc.html`) 내부 식별자는 여전히 `isMail`·`goMail` 이다** —
+   * 라우트 이름만 `/inbox` 로 옮겼으므로 프로토타입을 보고 `/mail` 로 되돌리지 않는다.
+   * **API 계약도 아직 없다** — GitLab 이슈 #26 1번으로 문의 중이다.
    */
-  mail: '/mail',
+  inbox: '/inbox',
   my: '/my',
   myWiki: '/my/wiki',
   /** ia.md 에 없는 개발 전용 배선 점검 화면. 화면 17개에 포함되지 않는다. */

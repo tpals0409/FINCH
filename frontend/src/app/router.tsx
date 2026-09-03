@@ -32,7 +32,7 @@ import { RoutePlaceholder } from './RoutePlaceholder';
  * **탭 바를 다는 화면은 ia.md §3 이 지목한 넷뿐이다.** 2026-09-03 개정으로 4번째
  * 자리가 `AI`(`/chat`) 에서 `내 정보`(`/my`) 로 바뀌었다 — AI 는 화면 맥락을 물고
  * 들어가는 플로팅 버튼으로 옮겨졌다(ia.md §3). `/chat` 은 라우트만 남아 탭 밖이다.
- * §3 이 관심 종목·최근 본 종목·매매 내역·충전·메일·브리핑 전체를 "탭에 두지 않고
+ * §3 이 관심 종목·최근 본 종목·매매 내역·충전·알림함·브리핑 전체를 "탭에 두지 않고
  * 홈·포트폴리오·탐색·내 정보 안에서 들어간다"로 적었다. 그 화면들이 탭 바를 **달고 있어야 하는지**는 ia.md 에 없다.
  * 여기서는 달지 않는 쪽을 기본값으로 골랐다 — 흐름 안으로 들어간 화면에서 탭을
  * 누르면 하던 일이 사라진다. 뒤집으려면 라우트를 `TabBarLayout` 아래로 옮기면 된다.
@@ -114,9 +114,10 @@ export const router = createBrowserRouter([
             element: <RoutePlaceholder screen="충전" />,
           },
           {
-            // 경로 미확정. `ROUTES.mail` 주석과 ia.md §7 을 본다.
-            path: ROUTES.mail,
-            element: <RoutePlaceholder screen="메일" />,
+            // 경로 미확정. `ROUTES.inbox` 주석과 ia.md §7 을 본다.
+            // 라우트는 `/inbox` 지만 프로토타입 내부 식별자는 `isMail`·`goMail` 이다.
+            path: ROUTES.inbox,
+            element: <RoutePlaceholder screen="알림함" />,
           },
           {
             path: ROUTES.chat,
