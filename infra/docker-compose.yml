@@ -27,15 +27,10 @@ services:
     image: a101/nginx:latest
     container_name: a101-nginx
     mem_limit: 256m
+    # TLS 는 더 이상 여기서 끊지 않는다 (nginx.conf 참고). 배포는 k8s 의 Ingress 가 맡고
+    # 로컬은 평문 80 이면 충분하다. 인증서 마운트도 같이 사라졌다.
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      # 인증서는 호스트의 certbot 이 관리한다. 컨테이너는 읽기만 한다.
-      # 이 마운트가 없으면 nginx 가 ssl_certificate 를 못 찾아 기동 자체에 실패한다.
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-      # ACME 챌린지 파일은 certbot 이 호스트에 쓰고 nginx 가 80 으로 서빙한다.
-      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - backend
       - ai

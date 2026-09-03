@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# DB 2종(backend·ai) pg_dump 백업. cron 이 매일 04:00 에 실행한다 (setup-server.sh 가 등록).
-# 수동 실행: sudo infra/scripts/backup-db.sh
+# 로컬 compose 스택의 DB 2종(backend·ai) pg_dump 백업.
+# 수동 실행: infra/scripts/backup-db.sh
+#
+# 예전에는 setup-server.sh 가 cron 에 등록했지만 그 스크립트는 Sprint 3 에서 지웠다.
+# 지금 이 파일을 자동으로 부르는 것은 없다. 운영 DB 백업은 k8s 쪽에서 따로 정한다.
 set -euo pipefail
 
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/a101}"

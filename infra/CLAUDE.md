@@ -33,16 +33,30 @@ docker-compose.observability.yml  prometheus · loki · alloy · grafana. finch-
 
 ## CI
 
-`.github/workflows/ci.yml` 하나다. 파트별로 경로를 걸러 `frontend`(검증 4종 + 대비 검사)와
-`backend`(`./gradlew build`)를 돌린다. Testcontainers 는 ubuntu 러너의 Docker 를 그대로 쓴다.
+워크플로가 둘이다. 나눈 이유는 실패의 의미가 달라서다 — `ci.yml` 이 빨간 것은 코드가
+잘못된 것이고, `images.yml` 이 빨간 것은 배포가 막힌 것이다.
+
+| 파일 | 하는 일 |
+|---|---|
+| `.github/workflows/ci.yml` | 검증. `frontend`(검증 4종 + 대비 검사) · `backend`(`./gradlew build`) |
+| `.github/workflows/images.yml` | 이미지 빌드 → GHCR push → finch-gitops 태그 갱신 |
+
+`images.yml` 은 PR 에서 빌드만 하고 push 하지 않는다. master push 에서만 GHCR 에 올리고
+`sha-<커밋 12자리>` 로 finch-gitops 의 `apps/prod/*/values.yaml` 을 한 커밋으로 갱신한다.
+가변 태그를 GitOps 에 넣으면 매니페스트가 그대로인데 이미지 내용만 바뀌어 Argo CD 가
+변화를 못 본다. 크로스 레포 쓰기라 `secrets.FINCH_TOKEN` 이 필요하다.
 
 SSAFY 시절의 GitLab CI · Jenkins 파일은 Sprint 3 에서 전부 지웠다. GitHub 에서 돌지 않는데
 남아 있으면 "CI 가 있다"는 착각을 준다.
 
 ## 이 저장소에서 고쳐야 finch-gitops 가 동작하는 것
 
-1. **`nginx/nginx.conf` 의 `/api/` 프록시 제거.** k8s 에서는 Ingress 가 `/api` 를 backend 로 직접 보낸다.
-   frontend 이미지의 nginx 는 정적 파일만 서빙한다. 젠킨스가 사라졌으므로 `/jenkins/` location 도 같이 지운다
+1. ~~**`nginx/nginx.conf` 의 TLS 제거.**~~ Sprint 3 에서 했다. 443 블록이 컨테이너에 없는
+   `/etc/letsencrypt/live/j15a101.p.ssafy.io/` 를 가리켜 k8s 에서 nginx 가 기동조차 못 했다
+   (실측: `nginx -t` 가 `[emerg] cannot load certificate`). `/jenkins/` 도 같이 지웠다.
+   **`/api/` 프록시는 남겨 뒀다** — 로컬 compose 가 호스트에 nginx 80 하나만 열어서
+   브라우저가 같은 오리진의 `/api` 를 부를 길이 그것뿐이다. k8s 에서는 Ingress 의 `/api` 가
+   `/` 보다 긴 프리픽스라 먼저 매칭돼 이 블록에 요청이 닿지 않는다. compose 를 버리는 날 같이 지운다
 2. **`ai.Dockerfile` 의 마이그레이션 분리.** CMD 에 붙은 `alembic upgrade head` 는 replica 1 에서만 안전하다.
    늘릴 때 finch-gitops 차트의 `bootstrap.enabled` 로 Job 을 분리하고 CMD 에서 뺀다
 

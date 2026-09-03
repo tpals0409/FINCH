@@ -1,236 +1,92 @@
-# infra — 배포 인프라
+# infra
 
-인프라 결정의 배경과 근거는 팀 결정서(A101 인프라 결정서)를 참고한다.
-모든 서버 설정은 이 디렉터리에 코드로 남긴다 — 서버에서 손으로 만진 설정은 서버 이사 때 잃어버린다.
+Dockerfile 3종, 로컬 개발용 compose, frontend 이미지의 nginx 설정.
 
-## 서버 (SSAFY 지급 EC2)
+**배포 상태의 단일 진실 공급원은 이 디렉터리가 아니다.** k8s 매니페스트·Helm·ArgoCD 는
+[`finch-gitops`](https://github.com/tpals0409/finch-gitops) 에 있다. 여기 있는 compose 는
+로컬에서만 쓴다. 둘을 평행으로 유지하려 하지 않는다.
 
-| 항목 | 값 |
-|---|---|
-| 서버명 | J15A101 |
-| 도메인 | `j15a101.p.ssafy.io` |
-| OS / 계정 | Ubuntu / `ubuntu` |
-| 접속 | `ssh -i J15A101T.pem ubuntu@j15a101.p.ssafy.io` |
-| 서비스 URL | `https://j15a101.p.ssafy.io/` (http 접근은 443 으로 301) |
-| Jenkins | `http://j15a101.p.ssafy.io/jenkins/` (nginx 80 경유) |
+파트 지침은 `infra/CLAUDE.md` 다. 이 문서는 손으로 돌리는 절차만 적는다.
 
-- `*.pem` 은 `.gitignore` 에 있다 — 절대 커밋하지 않는다. 팀원 간 공유는 별도 채널로. 키 유출 = 서버 무방비 노출.
-- 제공 기간: 프로젝트 종료 시까지 (종료 후 7일 이내 삭제). 웹 콘솔 없음, SSH 만 가능.
-- **ufw 는 반드시 enable 상태로 유지한다** (SSAFY 규정 — 지급 시 이미 enable + 22 만 허용 상태).
-  `setup-server.sh` 가 22·80·443 만 허용하고 enable 한다. `sudo ufw status numbered` 로 확인.
-  - 포트 추가: `sudo ufw allow <port>/tcp` (active 상태에서 즉시 반영). 절대 `ufw disable` 하지 않는다.
-  - 포트 삭제: `sudo ufw status numbered` 로 번호 확인 → `sudo ufw delete <번호>` (하나씩) → **`sudo ufw enable` 다시 실행해야 적용**.
-  - 방화벽 작업 전 ssh 터미널을 2~3개 열어 둔다. 22 가 막히면 복구 불가(초기화 요청만 가능).
-- 솔루션 기본 포트(8080·9000·5000 등)는 외부에 열지 않는다. 우리 구성은 host 에 80 만 publish 하고
-  Jenkins·backend·ai·DB 는 Docker 내부 네트워크에만 둔다 — 이것이 공지의 "기본 포트 변경" 요구를 충족하는 방식이다.
-- `/home`·시스템 디렉터리 퍼미션, `~/.ssh/authorized_keys` 를 건드리지 않는다. 해킹·감염 시 복구 불가(초기화만 가능).
-- DB 비밀번호 등은 `.env.example` 의 `change-me` 를 반드시 강한 값으로 바꾼다.
-- **비밀값의 원본은 Jenkins Credentials 다** (`a101-env`, `a101-ai-env`). 배포 때마다 서버의
-  `infra/.env`·`infra/ai.env` 로 주입되고 배포 후 삭제되므로, 서버 파일과 팀원 로컬 사본은
-  **재설정용 백업일 뿐 원본이 아니다.** 값을 바꿀 때는 Credentials 를 먼저 고치고 나머지를 맞춘다 —
-  사본이 세 곳(로컬·서버·Credentials)이라 원본을 정해두지 않으면 조용히 갈라진다.
-- Jenkins 설치는 project.ssafy.com > Help > 매뉴얼 게시판의 "[CI/CD] Jenkins 설치 가이드" 도 참고 (우리는 Docker 로 띄운다 — 아래).
-- 이전에 쓰던 NCP VM(Rocky 8.8) 은 폐기 예정. `setup-server.sh` 는 두 OS 를 모두 지원하므로 필요 시 재사용 가능.
+## 이미지
 
-## 구성
+| Dockerfile | 이미지 | 빌드 컨텍스트 |
+|---|---|---|
+| `docker/backend.Dockerfile` | `ghcr.io/tpals0409/finch-backend` | 저장소 루트 |
+| `docker/frontend.Dockerfile` | `ghcr.io/tpals0409/finch-frontend` | 저장소 루트 |
+| `docker/ai.Dockerfile` | `ghcr.io/tpals0409/finch-ai` | 저장소 루트 |
 
-| 파일 | 역할 |
-|---|---|
-| `setup-server.sh` | 서버 초기 세팅: swap 4GB, docker, 방화벽(ufw), 백업 cron |
-| `docker-compose.yml` | 앱 스택: nginx(+frontend) · backend · ai · PostgreSQL×2 · Redis |
-| `docker-compose.infra.yml` | CI/CD 스택: Jenkins · gitlab-runner (앱과 수명 주기 분리) |
-| `nginx/nginx.conf` | 단일 진입점 라우팅: `/`→정적파일, `/api`→backend, `/jenkins`→Jenkins |
-| `docker/*.Dockerfile` | 파트별 이미지 정의 (파트 디렉터리 소유권을 건드리지 않도록 여기 모음) |
-| `scripts/backup-db.sh` | DB 2종 pg_dump 백업 (cron 이 매일 04:00 실행) |
-| `scripts/restore-db.sh` | 백업 파일로 DB 복원 (서버 이전·롤백용) |
-| `.env.example` | 서버 `.env` 템플릿 — 실제 값은 Jenkins Credentials 에 보관 |
+만드는 것은 `.github/workflows/images.yml` 이다. PR 에서는 빌드만 하고, master push 에서
+GHCR 에 올린 뒤 finch-gitops 의 `apps/prod/<서비스>/values.yaml` 태그를 갱신한다.
+태그는 `sha-<커밋 12자리>` — 가변 태그를 GitOps 에 넣으면 매니페스트가 그대로인데 이미지
+내용만 바뀌어 Argo CD 가 변화를 보지 못한다.
 
-## 서버 첫 구축 순서
+손으로 확인할 때 (컨텍스트가 루트라 저장소 루트에서 실행한다):
 
 ```bash
-# 0. EC2 보안그룹: 22, 80, 443 만 개방 (Jenkins 는 80의 /jenkins 경로 경유). DB 포트(5432·6379)는 절대 열지 않는다.
-#    VM 내부 ufw 는 1번 스크립트가 같은 포트로 맞춘다.
-#    (Jenkins 는 nginx 경유 https://j15a101.p.ssafy.io/jenkins/ 로 접근·수신한다.
-#     lab.ssafy.com 이 webhook 대상에 유효한 인증서를 요구하므로 https 가 전제다)
-
-# 1. 서버 세팅 (재로그인 필요 — docker 그룹 적용)
-sudo mkdir -p /srv && sudo chown ubuntu:ubuntu /srv
-git clone <repo> /srv/S15P21A101
-cd /srv/S15P21A101
-sudo ./infra/setup-server.sh /srv/S15P21A101
-
-# 2. 비밀값 배치 (git 에 커밋 금지)
-cp infra/.env.example infra/.env   # DB 계정 작성
-cp ai/.env.example   infra/ai.env  # AI 외부 API 키 작성
-
-# 3. 앱 스택 기동
-cd infra
-docker compose up -d --build
-
-# 4. CI/CD 스택 기동
-docker compose -f docker-compose.infra.yml up -d --build
-# 초기 비밀번호: docker exec a101-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-
-# 5. gitlab-runner 등록 (토큰: GitLab → Settings → CI/CD → Runners)
-docker exec -it a101-gitlab-runner gitlab-runner register \
-  --url https://lab.ssafy.com \
-  --executor docker --docker-image alpine:latest \
-  --docker-volumes /var/run/docker.sock:/var/run/docker.sock
+docker build -f infra/docker/frontend.Dockerfile -t finch-frontend:test .
 ```
 
-## NCP → EC2 이전 절차 (데이터 옮기기)
-
-앱은 이미지로 다시 빌드되므로 옮길 것은 **DB 2종 + 비밀값 파일 + Jenkins 설정** 뿐이다.
-
-```bash
-# [NCP] 1. 최신 덤프 생성 → 로컬로 가져오기
-sudo /srv/S15P21A101/infra/scripts/backup-db.sh
-scp -i <ncp키> <ncp계정>@<ncp공인IP>:/var/backups/a101/*.sql.gz ./
-scp -i <ncp키> <ncp계정>@<ncp공인IP>:/srv/S15P21A101/infra/{.env,ai.env} ./   # 비밀값
-
-# [EC2] 2. 위 "서버 첫 구축 순서" 0~3 까지 진행 (DB 컨테이너가 healthy 상태여야 한다)
-scp -i J15A101T.pem backend-*.sql.gz ai-*.sql.gz .env ai.env ubuntu@j15a101.p.ssafy.io:/tmp/
-mv /tmp/.env /tmp/ai.env /srv/S15P21A101/infra/
-
-# [EC2] 3. 복원 (기존 데이터를 지우고 덮어쓴다 — 첫 기동 직후 빈 DB 상태에서 실행)
-cd /srv/S15P21A101/infra
-docker compose stop backend ai
-sudo ./scripts/restore-db.sh /tmp/backend-<stamp>.sql.gz /tmp/ai-<stamp>.sql.gz
-docker compose start backend ai
-
-# [EC2] 4. CI/CD 스택 기동 후 Jenkins 재설정 (jenkins_home 볼륨은 새로 만드는 편이 깔끔하다)
-#   - Credentials 2건 재등록: a101-env, a101-ai-env (Secret file)
-#   - job: Pipeline from SCM, branch master
-#   - GitLab webhook URL 변경: http://j15a101.p.ssafy.io/jenkins/project/<job이름>
-```
-
-이전 완료 후 GitLab webhook 이 새 서버로만 가는지 확인하고 NCP 쪽 Jenkins 는 내려둔다
-(두 서버가 동시에 배포를 받으면 안 된다).
-
-## 배포 (루트 `Jenkinsfile` 이 수행)
-
-master 머지 webhook → Jenkins 가 자기 워크스페이스에서:
-
-1. 직전 성공 빌드와 `git diff` 로 변경 파트 감지 (backend / ai / nginx)
-2. Credentials(`a101-env`, `a101-ai-env`)를 `infra/.env`·`infra/ai.env` 로 주입
-3. `docker compose build <변경 서비스>` → `up -d <변경 서비스>` (수 초 다운타임)
-4. 종료 시 워크스페이스의 비밀값 파일 삭제
-
-compose 프로젝트 이름을 `a101` 로 고정했으므로, 수동 기동(위 3번)과 Jenkins 배포가
-서로 다른 디렉터리에서 실행돼도 같은 컨테이너·볼륨을 관리한다.
-
-Jenkins job 설정(최초 1회)과 Credentials 목록은 `Jenkinsfile` 상단 주석 참고.
-수동 전체 배포가 필요하면 job 의 `FORCE_ALL` 파라미터를 켜고 실행한다.
-
-## HTTPS 와 인증서
-
-발급처는 Let's Encrypt, 대상은 `j15a101.p.ssafy.io` 한 건이다.
-
-**발급과 갱신의 방식이 다르다.** 최초 발급은 nginx 가 없던 시점이라 `standalone`
-(certbot 이 직접 80 을 점유해 검증) 으로 했다. 갱신까지 standalone 으로 두면 갱신할 때마다
-nginx 를 내려야 해서 서비스가 끊긴다. 그래서 갱신은 `webroot` 로 한다 — nginx 가 뜬 채로
-`/.well-known/acme-challenge/` 만 서빙하면 되므로 무중단이다.
-
-- 인증서: `/etc/letsencrypt/live/j15a101.p.ssafy.io/` (호스트). nginx 컨테이너에 읽기 전용 마운트
-- 챌린지 경로: `/var/www/certbot` (호스트). certbot 이 쓰고 nginx 가 읽는다
-- 갱신: `infra/scripts/renew-cert.sh`, 매일 04:20 cron. 만료가 임박하지 않으면 아무것도 하지 않는다
-- 로그: `/var/log/a101-cert.log`
-
-수동 확인:
-
-```bash
-sudo openssl x509 -in /etc/letsencrypt/live/j15a101.p.ssafy.io/fullchain.pem -noout -dates
-sudo /home/ubuntu/S15P21A101/infra/scripts/renew-cert.sh
-```
-
-**nginx.conf 를 고칠 때 주의.** 80 의 `/.well-known/acme-challenge/` location 을 지우거나
-`location /` 리다이렉트 뒤로 옮기면 갱신이 조용히 실패한다. 인증서가 만료되기 전까지
-증상이 나타나지 않으므로 발견이 늦는다.
-
-**배포 전 검증.** 인증서 경로가 틀리면 nginx 가 기동 자체에 실패해 사이트 전체가 죽는다.
-설정을 바꾸면 반드시 실제 인증서를 마운트한 채 문법 검사를 돌린다.
-
-```bash
-docker run --rm \n  -v $PWD/infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro \n  -v /etc/letsencrypt:/etc/letsencrypt:ro \n  nginx:1.27-alpine nginx -t
-```
-
-## 관측 스택 (Prometheus, Grafana, Loki, Alloy)
-
-`docker-compose.observability.yml`. 앱과 CI 스택에서 분리해 띄운다 — 앱을 재배포해도 지표 이력이 남는다.
+## 로컬 스택
 
 ```bash
 cd infra
-docker compose -f docker-compose.observability.yml up -d
+cp .env.example .env    # DB 계정·JWT·카카오 키 작성
+cp ../ai/.env.example ai.env
+docker compose up -d --wait && docker compose ps
 ```
+
+호스트에 여는 것은 nginx 80 하나다. `http://localhost` 로 SPA 가 뜨고 `/api` 는 nginx 가
+backend 로 넘긴다. **이 프록시는 compose 전용이다** — k8s 에서는 Ingress 가 같은 일을 한다
+(`nginx/nginx.conf` 주석 참고).
+
+프런트만 고칠 때는 compose 대신 vite dev 서버가 빠르다. `frontend/vite.config.ts` 가
+`/api` 를 `http://localhost:8080` 으로 프록시한다.
+
+nginx 설정을 고쳤으면 문법 검사부터:
+
+```bash
+docker run --rm -v "$PWD/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+  nginx:1.27-alpine nginx -t
+```
+
+## 백업
+
+`scripts/backup-db.sh` · `scripts/restore-db.sh` 는 compose 의 `a101-postgres-*` 컨테이너를
+상대로 동작한다. 자동으로 부르는 것은 없다 — cron 을 걸던 `setup-server.sh` 는 Sprint 3 에서
+지웠다. 운영 DB 백업은 k8s 로 옮길 때 다시 정한다.
+
+## 관측 스택
+
+`docker-compose.observability.yml` (prometheus · loki · alloy · grafana).
+앱과 분리해 띄우므로 앱을 재배포해도 지표 이력이 남는다.
+
+```bash
+cd infra && docker compose -f docker-compose.observability.yml up -d
+```
+
+Grafana·Prometheus 는 `127.0.0.1` 에만 바인딩한다. `GRAFANA_ADMIN_PASSWORD` 가 비면
+Grafana 는 기동을 거부한다 — 설정을 빠뜨린 배포가 `admin/admin` 으로 뜨는 것을 막는
+의도적 설계다.
 
 ### 왜 지표와 로그를 둘 다 두는가
 
-지표는 "언제 이상한가"에 답하고 로그는 "왜 그런가"에 답한다. 둘은 대체재가 아니다.
+지표는 "언제 이상한가"에, 로그는 "왜 그런가"에 답한다. 대체재가 아니다.
 지연이 튀는 것은 지표에서만 보이고, 그 순간 무슨 예외가 났는지는 로그에만 있다.
-장애 대응은 지표에서 시각을 찾고 로그에서 원인을 찾는 순서로 흐른다.
 
-### 구성
-
-| 컨테이너 | 역할 | 접근 |
-|---|---|---|
-| `a101-prometheus` | 지표 수집과 저장 (15일, 4GB 상한) | `127.0.0.1:9090` |
-| `a101-grafana` | 지표와 로그 조회 | `127.0.0.1:3000` |
-| `a101-loki` | 로그 저장 (7일) | 내부 전용 |
-| `a101-alloy` | 컨테이너 stdout 수집 → Loki | 내부 전용 |
-| `a101-node-exporter` | 호스트 CPU, 메모리, 디스크 | 내부 전용 |
-
-**외부에 포트를 열지 않는다.** Grafana 와 Prometheus 는 `127.0.0.1` 에만 바인딩한다.
-커널이 외부 인터페이스에 소켓을 붙이지 않으므로 ufw 규칙과 무관하게 외부에서 닿지 않는다.
-보는 방법은 SSH 터널이다.
-
-```bash
-ssh -i J15A101T.pem -L 3000:127.0.0.1:3000 ubuntu@j15a101.p.ssafy.io
-# 브라우저에서 http://localhost:3000
-```
-
-nginx 로 `/grafana` 를 열지 않은 이유는 공개 로그인 화면을 하나 더 늘리지 않기 위해서다.
-팀 전원이 이미 서버 pem 을 갖고 있어 터널로 충분하다. 공개가 필요해지면 그때 논의한다.
-
-### 앱 코드를 고치지 않는다
-
-Alloy 는 도커 API 로 컨테이너 목록을 가져와 각 컨테이너의 stdout 을 읽는다.
-애플리케이션은 평소대로 표준 출력에 찍기만 하면 되고, 로깅 라이브러리나 파일 경로를 맞출 필요가 없다.
-새 컨테이너가 뜨면 자동으로 수집 대상이 되므로 배포마다 설정을 고칠 일도 없다.
-
-k3s 로 옮겨도 같은 원리가 유지된다. 컨테이너 런타임의 로그 규약(stdout → 런타임 로그 파일)이
-같기 때문에, 오케스트레이터가 바뀌어도 수집 방식은 그대로다.
-
-### 조회 축
-
-Loki 는 로그 본문을 색인하지 않고 **라벨만** 색인한다. 그래서 먼저 라벨로 좁힌 뒤 본문을 훑는다.
-
-| 라벨 | 값 예 | 출처 |
-|---|---|---|
-| `container` | `a101-backend` | 도커 컨테이너 이름 |
-| `service` | `backend` | compose 서비스명 (컨테이너를 다시 만들어도 유지) |
-| `stack` | `a101`, `a101-infra` | compose 프로젝트명 |
+Loki 는 로그 본문을 색인하지 않고 **라벨만** 색인한다. 먼저 라벨로 좁힌 뒤 본문을 훑는다.
 
 ```logql
-{service="backend"}                          # 백엔드 로그
-{stack="a101"} |= "ERROR"                     # 앱 스택 전체에서 ERROR
-{job="docker"} |= "3fa85f64-5717-4562"        # 요청 ID 로 backend 와 ai 교차 조회
+{service="backend"}                     # 백엔드 로그
+{stack="a101"} |= "ERROR"                # 앱 스택 전체에서 ERROR
+{job="docker"} |= "3fa85f64-5717-4562"   # 요청 ID 로 backend 와 ai 교차 조회
 ```
 
-마지막 것이 중요하다. 분산 추적(Jaeger 등)을 도입하지 않기로 한 대신,
-`X-Request-Id` 로 서비스 간 로그를 잇는다. 홉이 최대 3단계라 이 방법으로 충분하다.
+마지막 것이 중요하다. 분산 추적을 도입하지 않기로 한 대신 `X-Request-Id` 로 서비스 간
+로그를 잇는다. 홉이 최대 3단계라 이 방법으로 충분하다.
 
-### 지금 없는 것
-
-- **AI 애플리케이션 지표** — FastAPI 가 `/metrics` 를 노출하지 않는다(실측 404).
-  계측 추가는 `ai/` 소유인 AI 파트에 요청해야 한다 (ADR-0002).
-- **컨테이너별 자원 지표** — cAdvisor 를 넣으려 했으나 이 서버의 Docker 스토리지 드라이버가
-  `overlayfs`(Docker 25+ 의 새 이름)라 cAdvisor v0.49~v0.52 가 컨테이너를 식별하지 못한다.
-  `S15P21A101-59`(리소스 실측) 때는 `docker stats` 로 직접 재고,
-  `S15P21A101-39`(k3s 전환) 후에는 kubelet 이 같은 지표를 내장 노출하므로 그때 job 을 추가한다.
-
-### 설정을 고칠 때
-
-배포 전에 각 도구로 검증한다. 잘못된 설정은 컨테이너가 조용히 재시작 루프에 빠지는 형태로 나타난다.
+설정을 고쳤으면 각 도구로 검증한다. 잘못된 설정은 컨테이너가 조용히 재시작 루프에 빠지는
+형태로 나타난다.
 
 ```bash
 cd infra/observability
@@ -239,15 +95,9 @@ docker run --rm -v $PWD/loki-config.yml:/c.yml grafana/loki:3.3.2 -config.file=/
 docker run --rm -v $PWD/alloy-config.alloy:/c.alloy grafana/alloy:v1.5.1 fmt /c.alloy
 ```
 
-`GRAFANA_ADMIN_PASSWORD` 가 비어 있으면 Grafana 는 기동을 거부한다.
-설정을 빠뜨린 배포가 `admin/admin` 으로 뜨는 것을 막기 위한 의도적 설계다.
+### 남은 것
 
-## 남은 작업 (초안 상태)
-
-- [ ] `docker/backend.Dockerfile` — backend 파트가 `build.gradle`·`gradlew` 커밋 후 동작. Java 버전 확인
-- [ ] nginx `/api` 프리픽스 전달 방식 — backend 컨트롤러 매핑이 정해지면 확정
-- [ ] 루트 `.gitlab-ci.yml` 에 `include: - local: ai/.gitlab-ci.yml` 추가 (팀 결정, ADR-0002)
-- [ ] Jenkins job 생성: Pipeline from SCM + GitLab webhook 연결 + Credentials 2건 등록 (S15P21A101-115)
-- [x] HTTPS 적용: 443 종단, 80 → 443 리다이렉트, webroot 갱신 cron (2026-09-01, S15P21A101-114)
-- [x] 관측 스택: Prometheus, Grafana, Loki, Alloy 와 기본 대시보드 (2026-09-01, S15P21A101-52, -116)
-- [x] EC2 전환: `setup-server.sh` Ubuntu/ufw 대응, 접속 정보·이전 절차 문서화 (2026-08-31)
+- **AI 애플리케이션 지표** — FastAPI 가 `/metrics` 를 노출하지 않는다(실측 404). 계측 추가는
+  `ai/` 소유인 AI 파트에 요청해야 한다 (ADR-0002)
+- **관측 스택 자체를 finch-gitops 로** — 컨테이너·대시보드 이름이 아직 `a101` 이다.
+  옮기면서 같이 고친다
