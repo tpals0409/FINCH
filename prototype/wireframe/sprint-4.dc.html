@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+
+<!-- Sprint 4 · 백엔드 원장 와이어프레임.
+     GET /account · GET /deposits/limit · POST /deposits · GET /transactions 넷에 대응하는 화면만 그린다.
+     아직 없는 데이터(보유 종목·시세·주문)를 그리면 다음 사람이 그걸 구현 대상으로 읽는다.
+
+     토큰은 여기서 손으로 적지 않는다. 앱이 쓰는 파일을 그대로 불러온다.
+     tokens.css 를 고치면 이 페이지도 같이 바뀐다 (prototype/README.md).
+     상대 경로라 저장소 안에서 열 때만 해석된다. -->
+<link rel="stylesheet" href="../../frontend/src/styles/tokens.css">
+
+<style>
+/* 앱이 서빙하는 서브셋 woff2 를 그대로 쓴다. index.css 의 @font-face 와 같은 굵기 범위. */
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-light.woff2') format('woff2'); font-weight:100 399; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-medium.woff2') format('woff2'); font-weight:400 599; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-bold.woff2') format('woff2'); font-weight:600 900; font-display:swap }
+
+/* 캔버스 바닥색만 여기 적는다 — 앱 색이 아니라 시트 배경이다 (styleguide.dc.html 과 같은 값).
+   앱에 쓰이는 색·크기·반경·그림자는 전부 토큰에서 온다. */
+body { margin:0; background:#EDEFF3; font-family:var(--finch-font-family-sans);
+  color:var(--finch-color-fg-neutral); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; padding:44px }
+/* 캔버스 런타임 없이 브라우저로 열었을 때의 배치. 런타임이 있으면 런타임 스타일이 이긴다. */
+body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
+
+/* ── 아트보드 ── */
+.ab { width:var(--w,390px); display:flex; flex-direction:column; gap:12px; box-sizing:content-box }
+.ab-wide { width:1240px }
+.ab-tag { font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--finch-color-fg-placeholder) }
+.ab-name { font-size:17px; font-weight:700; letter-spacing:-.015em; margin-top:-4px }
+.ab-api { font-size:12px; line-height:17px; color:var(--finch-color-fg-neutral-subtle); font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+
+/* 아트보드 밖 주석. 화면 안에 개발 얘기를 쓰지 않기 위한 자리다. */
+.note { background:var(--finch-color-bg-layer-default); border:1px dashed var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:14px 16px; font-size:12px; line-height:1.7;
+  color:var(--finch-color-fg-neutral-subtle) }
+.note b { color:var(--finch-color-fg-neutral) }
+.note code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--finch-color-fg-neutral) }
+.note ul { margin:6px 0 0; padding-left:16px }
+
+/* ── 390×844 프레임 ── */
+.ph { width:var(--w,390px); height:844px; box-sizing:border-box; background:var(--finch-color-bg-layer-basement);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:20px; overflow:hidden;
+  display:flex; flex-direction:column; position:relative;
+  font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+
+/* 상단 내비 — z-sticky */
+.nav { flex:none; height:56px; display:flex; align-items:center; gap:4px; padding:0 8px 0 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.nav .t { flex:1; font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3); letter-spacing:-.015em }
+/* 터치 대상 44×44 (frontConvention 9) */
+.icon { width:44px; height:44px; flex:none; display:grid; place-items:center; color:var(--finch-color-fg-neutral) }
+.icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+.scroll { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 20px }
+.scroll.flush { padding:0 }
+
+/* ── 카드 ── */
+.card { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:18px 16px }
+.card.tight { padding:0 }
+.sec { font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label);
+  font-weight:var(--finch-font-weight-label); color:var(--finch-color-fg-neutral-muted); padding:0 2px }
+
+/* 값 행 */
+.kv { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:32px }
+.kv + .kv { border-top:1px solid var(--finch-color-stroke-neutral-subtle); margin-top:10px; padding-top:10px }
+.kv .k { color:var(--finch-color-fg-neutral-subtle); font-size:var(--finch-font-size-body-2) }
+.kv .v { font-weight:600; text-align:right }
+.hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.cap { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.meta { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder) }
+
+/* 인라인 링크 행 (예수금 → 충전하기) */
+.linkrow { display:flex; align-items:center; gap:2px; min-height:44px; margin:-6px -6px -6px 0; padding:0 6px;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-label); font-weight:600;
+  color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected) }
+.linkrow svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 버튼 ── */
+.btn { display:flex; min-height:54px; width:100%; box-sizing:border-box; align-items:center; justify-content:center;
+  gap:8px; border-radius:var(--finch-radius-control); padding:0 16px; border:0; font-family:inherit;
+  font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label); font-weight:600 }
+.btn[data-v="primary"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.btn[data-v="secondary"] { background:var(--finch-color-bg-layer-default); color:var(--finch-color-fg-neutral);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.btn[data-v="disabled"] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+/* 하단 고정 CTA — z-sticky. 노치에서 잘리지 않게 safe-area 를 더한다 */
+.cta { flex:none; background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:8px;
+  position:relative; z-index:var(--finch-z-sticky); box-shadow:var(--finch-shadow-float) }
+
+/* ── 하단 탭바 ── */
+.tabbar { flex:none; display:flex; background:var(--finch-color-bg-layer-default);
+  border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-bottom:env(safe-area-inset-bottom);
+  position:relative; z-index:var(--finch-z-sticky) }
+.tabbar a { flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-size:11px; color:var(--finch-color-fg-placeholder); text-decoration:none }
+.tabbar a[aria-current] { color:var(--finch-color-fg-neutral); font-weight:600 }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 선택 행 (결제 수단) ── */
+.pick { display:flex; align-items:center; gap:12px; min-height:60px; padding:0 14px; box-sizing:border-box;
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-control) }
+/* 선택은 면 하나로 알리지 않는다. 테두리 무게와 글자 굵기가 같이 움직인다 (finch-seed 4) */
+.pick[aria-checked="true"] { border-color:var(--finch-color-stroke-neutral-contrast); border-width:2px;
+  padding:0 13px; background:var(--finch-color-bg-transparent-selected); font-weight:600 }
+.pick .dot { width:20px; height:20px; flex:none; border-radius:999px; border:1.5px solid var(--finch-color-stroke-neutral-weak) }
+.pick[aria-checked="true"] .dot { border:0; background:var(--finch-color-bg-neutral-solid); display:grid; place-items:center }
+.pick[aria-checked="true"] .dot::after { content:''; width:7px; height:7px; border-radius:999px; background:var(--finch-color-fg-neutral-inverted) }
+.pick .lb { flex:1 }
+.pick .lb i { display:block; font-style:normal; font-weight:400; color:var(--finch-color-fg-neutral-subtle);
+  font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption) }
+
+/* ── 금액 입력 ── */
+.amt { display:flex; align-items:baseline; gap:6px; min-height:56px; padding:0 14px; box-sizing:border-box;
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-control) }
+.amt[data-err] { border-color:var(--finch-color-stroke-critical-solid); border-width:2px; padding:0 13px }
+.amt b { flex:1; font-size:var(--finch-font-size-title-2); line-height:56px; font-weight:700; letter-spacing:-.02em }
+.amt b[data-ph] { color:var(--finch-color-fg-placeholder); font-weight:400 }
+.amt span { font-size:var(--finch-font-size-body-1); color:var(--finch-color-fg-neutral-subtle) }
+.presets { display:flex; gap:8px }
+.presets button { flex:1; min-height:44px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:600; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+
+/* ── 위험·에러 알림. 모노톤에서 위험은 색이 아니라 잉크 채움·굵기·형태다 (finch-seed 4) ── */
+.alert { display:flex; gap:10px; padding:14px; border-radius:var(--finch-radius-card);
+  background:var(--finch-color-bg-critical-weak); color:var(--finch-color-fg-critical) }
+.alert svg { width:18px; height:18px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+.alert .m { font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+.alert .s { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  font-weight:400; margin-top:3px; color:var(--finch-color-fg-neutral-muted) }
+/* 필드 아래 인라인 에러 — 테두리·굵기·아이콘 셋이 함께 움직인다 */
+.ferr { display:flex; gap:6px; align-items:flex-start; color:var(--finch-color-fg-critical);
+  font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption); font-weight:700 }
+.ferr svg { width:15px; height:15px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* ── 필터 탭 ── */
+.tabs { display:flex; gap:6px; padding:10px 16px; background:var(--finch-color-bg-layer-default);
+  border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); position:relative; z-index:var(--finch-z-sticky) }
+.tabs button { flex:1; min-height:44px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:400; color:var(--finch-color-fg-neutral-subtle);
+  background:transparent; border:1px solid transparent }
+.tabs button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-transparent-selected); border-color:var(--finch-color-stroke-neutral-contrast) }
+
+/* ── 내역 행 ── */
+.rows { display:flex; flex-direction:column; background:var(--finch-color-bg-layer-default) }
+.row { display:flex; align-items:center; gap:12px; padding:14px 16px; min-height:44px; box-sizing:border-box }
+.row + .row { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.row .l { flex:1; min-width:0 }
+.row .l b { display:block; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:600 }
+.row .l span { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle); margin-top:2px }
+.row .r { text-align:right; font-size:var(--finch-font-size-body-2); font-weight:700; white-space:nowrap }
+.daysep { padding:12px 16px 6px; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder); background:var(--finch-color-bg-layer-basement) }
+.listend { padding:18px 16px calc(18px + env(safe-area-inset-bottom)); text-align:center;
+  font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-placeholder) }
+
+/* ── 빈 상태 ── */
+.empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:32px 24px; text-align:center }
+.empty .g { width:56px; height:56px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; margin-bottom:6px; color:var(--finch-color-fg-placeholder) }
+.empty .g svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+.empty b { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:600 }
+.empty span { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+
+/* ── 로딩 ── */
+.sk { background:var(--finch-color-bg-skeleton); border-radius:var(--finch-radius-chip); height:14px }
+.spin { width:20px; height:20px; border-radius:999px; border:2px solid var(--finch-color-bg-skeleton);
+  border-top-color:var(--finch-color-fg-neutral); animation:spin 800ms linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+.loadmore { display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:20px 16px calc(20px + env(safe-area-inset-bottom)); font-size:var(--finch-font-size-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+
+/* ── 딤 + 바텀시트 — z-overlay ── */
+.dim { position:absolute; inset:0; background:var(--finch-color-bg-overlay); z-index:var(--finch-z-overlay) }
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:var(--finch-z-overlay);
+  background:var(--finch-color-bg-layer-default); border-radius:var(--finch-radius-sheet) var(--finch-radius-sheet) 0 0;
+  box-shadow:var(--finch-shadow-float); padding:22px 16px calc(16px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:14px }
+.sheet .h { font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3) }
+
+/* ── 완료 화면 ── */
+.done { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px }
+.done .mark { width:64px; height:64px; border-radius:999px; background:var(--finch-color-bg-neutral-solid);
+  display:grid; place-items:center; color:var(--finch-color-fg-neutral-inverted); margin-bottom:8px }
+.done .mark svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round }
+
+/* 진행 단계 표시 */
+.steps { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--finch-color-fg-placeholder); padding:0 2px }
+.steps i { flex:1; height:3px; border-radius:999px; background:var(--finch-color-bg-skeleton) }
+.steps i[data-on] { background:var(--finch-color-bg-neutral-solid) }
+
+/* 표 (범위 밖 필드 문서용) */
+.tb { width:100%; border-collapse:collapse; font-size:12px }
+.tb th, .tb td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); vertical-align:top }
+.tb th { color:var(--finch-color-fg-placeholder); font-weight:600; white-space:nowrap }
+.tb code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px }
+</style>
+</helmet>
+
+
+<!-- ═════════════════ 0 · 범위 ═════════════════ -->
+<section class="ab ab-wide">
+<div class="ab-tag">FINCH · SPRINT 4 · WIREFRAME</div>
+<div class="ab-name">백엔드 원장 — 화면 범위</div>
+<div class="note" style="border-style:solid">
+<b>이 캔버스는 Sprint 4 가 실제로 내려주는 값만 그린다.</b> 아직 없는 데이터를 그리면 다음 사람이 그걸 구현 대상으로 읽는다.
+<table class="tb" style="margin-top:12px">
+<tr><th>엔드포인트</th><th>화면</th><th>이번 스프린트의 제약</th></tr>
+<tr>
+  <td><code>GET /account</code></td>
+  <td>주식 잔고 요약 (아트보드 1·2)</td>
+  <td><code>evaluationAmount</code> 가 <b>항상 0</b> 이다. 보유가 없어서가 아니라 <code>holding</code>·<code>price</code> 도메인이 아직 없어서다.
+      따라서 <code>totalAsset</code> 은 <code>cashBalance</code> 와 같다. <b>보유 종목 목록(명세 9.2)은 범위 밖</b> — "보유 없음" 이 이 스프린트의 정상 화면이다.</td>
+</tr>
+<tr>
+  <td><code>GET /deposits/limit</code><br><code>POST /deposits</code></td>
+  <td>충전 플로우 (3~6) · 에러 (7~9)</td>
+  <td>한도 수치는 화면이 계산하지 않고 응답의 <code>perRequestLimit</code>·<code>cumulativeLimit</code>·<code>remainingAmount</code> 를 그대로 쓴다.
+      <b>충전 취소 API 는 존재하지 않는다</b> — 확인 화면에 "충전은 취소할 수 없습니다" 를 고정 노출한다 (명세 3.2).</td>
+</tr>
+<tr>
+  <td><code>GET /transactions</code></td>
+  <td>매매 내역 (10~14)</td>
+  <td>필터는 <code>ALL</code>·<code>BUY</code>·<code>SELL</code>·<code>DEPOSIT</code> 넷이고 화면 이름은 <b>전체·매수·매도·충전</b> 이다.
+      주문이 없으므로 <b>매수·매도 탭은 항상 빈 결과</b>다. <code>type=ALL</code> 은 <code>INITIAL_GRANT</code> 1건이 항상 있어 <b>절대 비지 않는다</b>.</td>
+</tr>
+</table>
+</div>
+
+<div class="note">
+<b>화면 문구는 서버가 완성해서 내려준다</b> (apiSpec 1.3). 이 캔버스의 에러 문구는 새로 만든 것이 아니라
+<code>DepositErrorCode.kt</code>·<code>GeneralErrorCode.kt</code> 의 <code>message</code> 를 그대로 옮긴 것이다. 화면마다 문구를 다시 만들지 않는다.
+<ul>
+<li><code>DEPOSIT_AMOUNT_INVALID</code> · 400 — 충전 금액은 1원 이상이어야 합니다 <span style="color:var(--finch-color-fg-placeholder)">→ 아트보드 7</span></li>
+<li><code>DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED</code> · 409 — 1회 충전 한도는 1,000만 원입니다 <span style="color:var(--finch-color-fg-placeholder)">→ 아트보드 7</span></li>
+<li><code>DEPOSIT_LIMIT_EXCEEDED</code> · 409 — 누적 충전 한도(1억 원)를 초과했습니다 <span style="color:var(--finch-color-fg-placeholder)">→ 아트보드 8, <code>detail.remainingAmount</code> 동반</span></li>
+<li><code>IDEMPOTENCY_IN_PROGRESS</code> · 409 — 같은 요청을 처리하고 있습니다. 잠시 후 다시 시도해 주세요 <span style="color:var(--finch-color-fg-placeholder)">→ 아트보드 9</span></li>
+</ul>
+</div>
+
+<div class="note">
+<b>이번 스프린트에 나오지 않는 행 형태 — 그리지 않았다.</b> 명세 8장이 정의한 <b>체결 건</b> 행(일시·종목명·구분·체결가·수량·체결 금액,
+매도는 <code>realizedProfit</code>·<code>realizedProfitRate</code> 추가)은 주문 도메인이 생긴 뒤에 그린다. 지금 그리면 시세·수익률 색을
+쓸 자리가 생기고, 그건 이 스프린트가 내려주지 않는 값이다. <code>GET /transactions</code> 응답의 <code>stockCode</code>·<code>stockName</code>·
+<code>price</code>·<code>quantity</code>·<code>realizedProfit</code>·<code>realizedProfitRate</code> 가 충전·초기 지급 행에서 전부 <code>null</code> 인 것이
+행 형태가 둘로 갈리는 이유다.
+</div>
+
+<div class="note">
+<b>토큰을 새로 만들지 않았다.</b> 이 캔버스의 모든 색·반경·그림자·타이포는 기존 역할 토큰으로 해결된다. 판단이 들어간 자리는 셋이다.
+<ul>
+<li><b>위험·에러 알림에 등락 적색을 쓰지 않는다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크) bold + 아이콘.
+    적색이면 "떨어졌다" 로 오독된다 (finch-seed §4).</li>
+<li><b>충전·초기 지급 금액에 up/down 색을 쓰지 않는다.</b> 유입이지만 시세 방향이 아니다. 부호(<code>+</code>)가 방향을 말하고 색은 잉크다.</li>
+<li><b>선택 상태(결제 수단·필터 탭)를 면 하나로 알리지 않는다.</b> <code>bg-transparent-selected</code> 는 APCA 바닥 아래(Lc 0)라
+    물리적으로 안 보인다. <code>stroke-neutral-contrast</code> 테두리와 글자 굵기가 함께 움직인다 (finch-seed §4).</li>
+</ul>
+</div>
+</section>
+
+
+<!-- ═════════════════ 1 · 잔고 요약 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 1 · 주식 잔고</div>
+<div class="ab-name">잔고 요약 — 보유 없음 (정상)</div>
+<div class="ab-api">GET /account · /portfolio</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">포트폴리오</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg></div>
+  </div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">총자산</div>
+      <div class="hero" style="margin-top:4px">7,000,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 14:31 기준</div>
+
+      <div style="height:14px"></div>
+      <div class="kv">
+        <span class="k">예수금</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <b class="v">7,000,000원</b>
+          <span class="linkrow">충전하기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+        </span>
+      </div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">0원</span></div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">보유 종목</div>
+    <div class="card" style="flex:1;display:flex;padding:0">
+      <div class="empty">
+        <div class="g"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 14l3-3 2.5 2.5L17 9"/></svg></div>
+        <b>보유 중인 종목이 없습니다</b>
+        <span>종목을 매수하면 평가금액과 함께 여기에 표시됩니다</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>평가금액 0원은 오류가 아니다.</b> 총자산 = 예수금 + 평가금액이고 평가금액이 0이므로 두 숫자가 같다.
+화면에는 그 이유를 쓰지 않는다 — 사용자에게는 "보유 종목이 없다" 가 이유의 전부다.
+<code>asOf</code> 는 "갱신 시각" 으로 표시한다 (명세 9.3).
+<br><br><b>포트폴리오 전체 수익률·총자산 추이 그래프는 MVP 범위 밖이다</b> (명세 9.1). 요약 카드에 자리를 비워두지 않았다 —
+비워두면 다음 사람이 채울 것으로 읽는다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 2 · 잔고 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 2 · 주식 잔고 · 상태</div>
+<div class="ab-name">잔고 요약 — 로딩</div>
+<div class="ab-api">GET /account · pending</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">포트폴리오</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="sk" style="width:52px;height:13px"></div>
+      <div class="sk" style="width:196px;height:32px;margin-top:8px;border-radius:var(--finch-radius-control)"></div>
+      <div class="sk" style="width:132px;height:12px;margin-top:10px"></div>
+      <div style="height:16px"></div>
+      <div class="kv"><span class="sk" style="width:54px"></span><span class="sk" style="width:104px"></span></div>
+      <div class="kv"><span class="sk" style="width:66px"></span><span class="sk" style="width:44px"></span></div>
+    </div>
+    <div class="sec" style="margin-top:4px">보유 종목</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;justify-content:space-between"><span class="sk" style="width:120px"></span><span class="sk" style="width:76px"></span></div>
+      <div style="display:flex;justify-content:space-between"><span class="sk" style="width:96px"></span><span class="sk" style="width:88px"></span></div>
+      <div style="display:flex;justify-content:space-between"><span class="sk" style="width:134px"></span><span class="sk" style="width:64px"></span></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+자리표시자는 <code>bg-skeleton</code>(gray-300) 하나만 쓴다. 흰 카드 위 Lc 15.3 — 경계 기준 15 를 겨우 넘는 값이고
+한 단계 더 진하면 자리표시자가 실제 내용보다 무거워진다. <b>스피너와 섞지 않는다</b> — 첫 로드는 골격, 추가 로드는 스피너다 (아트보드 14).
+</div>
+</section>
+
+
+<!-- ═════════════════ 3 · 충전 1/3 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 3 · 충전 1/3</div>
+<div class="ab-name">결제 수단 선택</div>
+<div class="ab-api">/deposit</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">충전</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="steps"><span>1 / 3</span><i data-on></i><i></i><i></i></div>
+    <div class="sec">결제 수단</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="pick" aria-checked="true">
+        <span class="dot"></span>
+        <span class="lb">가상 카드<i>VIRTUAL_CARD</i></span>
+      </div>
+      <div class="pick" aria-checked="false">
+        <span class="dot"></span>
+        <span class="lb">가상 계좌이체<i>VIRTUAL_TRANSFER</i></span>
+      </div>
+    </div>
+    <div class="alert" style="margin-top:4px">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M12 11v5"/></svg>
+      <div><div class="m">모의 결제입니다</div>
+      <div class="s">실제 금전 이동은 없습니다. 선택한 수단은 내역에 기록만 됩니다.</div></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="primary">다음</button></div>
+</div>
+<div class="note">
+<code>paymentMethod</code> 는 <code>VIRTUAL_CARD</code> | <code>VIRTUAL_TRANSFER</code> 둘뿐이다 (apiSpec 4.2).
+enum 값은 시안에만 적었다 — 화면에는 한글 라벨만 나온다.
+<br><br>선택 표시는 <b>테두리 무게 + 글자 굵기 + 라디오 채움</b> 셋이 함께 움직인다. <code>bg-transparent-selected</code> 면만으로는
+Lc 0 이라 보이지 않는다 (finch-seed §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 4 · 충전 2/3 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 4 · 충전 2/3</div>
+<div class="ab-name">금액 입력</div>
+<div class="ab-api">GET /deposits/limit</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">충전</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="steps"><span>2 / 3</span><i data-on></i><i data-on></i><i></i></div>
+    <div class="sec">충전 금액</div>
+    <div class="amt"><b>1,000,000</b><span>원</span></div>
+    <div class="presets">
+      <button>+1만</button><button>+10만</button><button>+100만</button>
+    </div>
+    <div class="card" style="margin-top:6px">
+      <div class="kv"><span class="k">1회 한도</span><span class="v">10,000,000원</span></div>
+      <div class="kv"><span class="k">누적 한도</span><span class="v">100,000,000원</span></div>
+      <div class="kv"><span class="k">잔여 한도</span><span class="v">95,000,000원</span></div>
+    </div>
+    <div class="cap" style="padding:0 2px">현재 예수금 6,000,000원</div>
+  </div>
+  <div class="cta"><button class="btn" data-v="primary">다음</button></div>
+</div>
+<div class="note">
+프리셋은 <b>더하기</b>다 (명세 3.2 "+1만 / +10만 / +100만"). 대치가 아니므로 라벨에 <code>+</code> 를 남긴다 — 없으면 "1만으로 바꾼다" 로 읽힌다.
+<br><br>세 한도 수치는 <b>화면이 계산하지 않는다</b>. <code>GET /deposits/limit</code> 의 <code>perRequestLimit</code>·<code>cumulativeLimit</code>·<code>remainingAmount</code> 를
+그대로 쓴다. <code>depositedAmount</code>(=누적 충전액)는 이 화면에 쓰지 않았다 — 잔여 한도가 이미 그 값을 담고 있어서 둘을 같이 보이면
+"둘을 더해야 하나" 가 된다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 5 · 충전 3/3 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 5 · 충전 3/3</div>
+<div class="ab-name">확인 — 취소 불가 고정 노출</div>
+<div class="ab-api">POST /deposits · Idempotency-Key</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">충전 확인</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="steps"><span>3 / 3</span><i data-on></i><i data-on></i><i data-on></i></div>
+    <div class="card">
+      <div class="cap">충전 금액</div>
+      <div class="hero" style="margin-top:4px">1,000,000원</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">결제 수단</span><span class="v">가상 카드</span></div>
+      <div class="kv"><span class="k">충전 전 예수금</span><span class="v">6,000,000원</span></div>
+      <div class="kv"><span class="k">충전 후 예수금</span><span class="v">7,000,000원</span></div>
+    </div>
+
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17v.01"/></svg>
+      <div><div class="m">충전은 취소할 수 없습니다</div>
+      <div class="s">확인을 누르면 예수금이 즉시 늘어나고 내역에 기록됩니다. 되돌릴 방법은 없습니다.</div></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">1,000,000원 충전하기</button>
+  </div>
+</div>
+<div class="note">
+<b>"충전은 취소할 수 없습니다" 는 고정 노출이다</b> (명세 3.2). 접었다 펴는 안내나 토스트로 바꾸지 않는다 — 충전 취소 API 가 아예 없어서
+사용자가 이 문장을 못 본 채 확인을 누르면 되돌릴 경로가 하나도 없다.
+<br><br>모노톤에서 위험은 색이 아니라 <b>잉크 채움 · 굵기 · 형태</b>다. 이 알림은 <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크) bold + 삼각 아이콘이다.
+등락 적색을 쓰면 "떨어졌다" 로 오독된다.
+<br><br>확인 버튼에 <b>금액을 다시 적는다</b>. 사용자가 마지막으로 보는 숫자와 실제로 나가는 숫자가 같은 줄에 있어야 한다.
+<br><br><code>Idempotency-Key</code>(UUID v4)는 이 버튼을 <b>처음 누를 때 한 번</b> 만든다. 같은 클릭의 재시도는 같은 키다 (apiSpec 1.4).
+<b>캐릭터(핀치·블루치)를 넣지 않는다</b> — 충전 확인 단계는 AI 설명 자리가 아니다 (ia.md §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 6 · 충전 완료 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 6 · 충전 완료</div>
+<div class="ab-name">완료</div>
+<div class="ab-api">201 Created</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t"></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+  </div>
+  <div class="done">
+    <div class="mark"><svg viewBox="0 0 24 24"><path d="M5 13l4.5 4.5L19 7"/></svg></div>
+    <div style="font-size:var(--finch-font-size-title-2);line-height:var(--finch-line-height-title-2);font-weight:700;letter-spacing:-.02em">1,000,000원이<br>충전됐습니다</div>
+    <div class="cap" style="margin-top:2px">2026-09-04 14:31</div>
+    <div class="card" style="width:100%;box-sizing:border-box;margin-top:18px;text-align:left">
+      <div class="kv"><span class="k">결제 수단</span><span class="v">가상 카드</span></div>
+      <div class="kv"><span class="k">충전 후 예수금</span><span class="v">7,000,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">확인</button>
+    <button class="btn" data-v="secondary">충전 내역 보기</button>
+  </div>
+</div>
+<div class="note">
+응답의 <code>cashBalanceAfter</code>·<code>paymentMethod</code>·<code>depositedAt</code> 을 그대로 보여준다.
+<code>depositId</code> 는 화면에 쓰지 않는다 — 사용자가 지목할 대상이 아니다.
+<br><br>"확인" 은 잔고로, "충전 내역 보기" 는 <code>/transactions?type=DEPOSIT</code> 으로 간다. <b>뒤로가기로 확인 화면에 돌아가지 못하게 한다</b> —
+돌아갈 수 있으면 같은 화면에서 버튼을 다시 눌러 새 멱등성 키로 두 번째 충전이 된다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 7 · 입력 오류 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 7 · 상태 · 에러</div>
+<div class="ab-name">금액 입력 — 입력 오류</div>
+<div class="ab-api">400 DEPOSIT_AMOUNT_INVALID · 409 DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">충전</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="steps"><span>2 / 3</span><i data-on></i><i data-on></i><i></i></div>
+    <div class="sec">충전 금액</div>
+    <div class="amt" data-err><b>12,000,000</b><span>원</span></div>
+    <div class="ferr">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <span>1회 충전 한도는 1,000만 원입니다</span>
+    </div>
+    <div class="presets">
+      <button>+1만</button><button>+10만</button><button>+100만</button>
+    </div>
+    <div class="card" style="margin-top:6px">
+      <div class="kv"><span class="k">1회 한도</span><span class="v">10,000,000원</span></div>
+      <div class="kv"><span class="k">누적 한도</span><span class="v">100,000,000원</span></div>
+      <div class="kv"><span class="k">잔여 한도</span><span class="v">95,000,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="disabled">다음</button></div>
+</div>
+<div class="note">
+<b>두 코드가 이 한 자리를 쓴다.</b> 금액이 원인인 에러라 필드 옆에서 고칠 수 있어야 하고, 확인 화면까지 갔다가 되돌아오면
+같은 값을 두 번 입력하게 된다.
+<ul>
+<li><code>DEPOSIT_AMOUNT_INVALID</code> — 충전 금액은 1원 이상이어야 합니다</li>
+<li><code>DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED</code> — 1회 충전 한도는 1,000만 원입니다 <span style="color:var(--finch-color-fg-placeholder)">(그림)</span></li>
+</ul>
+셋이 함께 움직인다 — 입력 테두리 <code>stroke-critical-solid</code>(2px), 메시지 <code>fg-critical</code> + bold, 아이콘 (finch-seed §4).
+<b>색만으로 알리지 않는다.</b>
+<br><br>CTA 는 <code>bg-disabled</code>(gray-400) 면 + <code>fg-disabled</code>(gray-600) 라벨이다. <code>opacity</code> 로 흐리지 않는다 —
+그러면 겹친 자식 아이콘까지 사라진다. paper 위 Lc 22.8 로 버튼 모양은 남는다.
+<br><br>두 값 모두 <code>GET /deposits/limit</code> 으로 클라이언트가 미리 알 수 있어 <b>서버 왕복 없이 막는 것이 정상 경로</b>다.
+이 화면은 그 판단이 어긋났을 때 서버 문구가 도착하는 자리다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 8 · 누적 한도 초과 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 8 · 상태 · 에러</div>
+<div class="ab-name">확인 — 누적 한도 초과</div>
+<div class="ab-api">409 DEPOSIT_LIMIT_EXCEEDED · detail.remainingAmount</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">충전 확인</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <div><div class="m">누적 충전 한도(1억 원)를 초과했습니다</div>
+      <div class="s">잔여 한도 <b style="font-weight:700">3,000,000원</b> 까지 충전할 수 있습니다.</div></div>
+    </div>
+    <div class="card">
+      <div class="cap">충전 금액</div>
+      <div class="hero" style="margin-top:4px">5,000,000원</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">결제 수단</span><span class="v">가상 카드</span></div>
+      <div class="kv"><span class="k">잔여 한도</span><span class="v">3,000,000원</span></div>
+    </div>
+    <!-- 에러가 떠도 이 문장은 사라지지 않는다. 면을 빼고 잉크 굵기와 아이콘만 남겨
+         위 에러 알림과 무게가 겹치지 않게 했다. -->
+    <div class="ferr" style="padding:0 2px">
+      <svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17v.01"/></svg>
+      <span>충전은 취소할 수 없습니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">금액 다시 입력</button>
+    <button class="btn" data-v="secondary">잔여 한도 3,000,000원 충전하기</button>
+  </div>
+</div>
+<div class="note">
+<b>이 에러만 서버 왕복이 꼭 필요하다.</b> 1회 한도와 0원 검증은 클라이언트가 미리 막지만(아트보드 7), 누적 한도는
+<code>GET /deposits/limit</code> 을 받은 뒤 다른 탭·세션에서 충전이 일어나면 <code>remainingAmount</code> 가 낡는다.
+그래서 이 문구가 도착하는 자리는 <b>확인 화면</b>이다.
+<br><br><b>잔여 금액은 <code>detail.remainingAmount</code> 에서 온다.</b> 화면이 <code>cumulativeLimit − depositedAmount</code> 로 다시 계산하지 않는다 —
+그 두 값도 같은 이유로 낡아 있다.
+<br><br>두 번째 버튼은 <b>선택 사항</b>이다. 넣으면 사용자가 금액 입력으로 돌아가지 않고 끝낼 수 있지만, 확인 화면의 금액과 실제 나가는
+금액이 달라지는 유일한 자리이므로 라벨에 <b>금액을 반드시 적는다</b>. 라벨이 "충전하기" 뿐이면 5,000,000원이 나갈 것으로 읽힌다.
+<b>이 버튼은 새 멱등성 키를 쓴다</b> — 금액이 바뀌었으니 같은 키로 보내면 <code>IDEMPOTENCY_CONFLICT</code> 다 (apiSpec 1.4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 9 · 처리 중 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 9 · 상태 · 에러</div>
+<div class="ab-name">확인 — 처리 중 (중복 충전이 만들어지는 자리)</div>
+<div class="ab-api">409 IDEMPOTENCY_IN_PROGRESS</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"></div><div class="t">충전 확인</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="steps"><span>3 / 3</span><i data-on></i><i data-on></i><i data-on></i></div>
+    <div class="card">
+      <div class="cap">충전 금액</div>
+      <div class="hero" style="margin-top:4px">1,000,000원</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">결제 수단</span><span class="v">가상 카드</span></div>
+      <div class="kv"><span class="k">충전 후 예수금</span><span class="v">7,000,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="disabled">처리 중…</button></div>
+
+  <div class="dim"></div>
+  <div class="sheet">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div class="spin" style="margin-top:3px"></div>
+      <div>
+        <div class="h">같은 요청을 처리하고 있습니다</div>
+        <div class="cap" style="margin-top:6px">잠시 후 다시 시도해 주세요. 충전은 <b style="color:var(--finch-color-fg-neutral);font-weight:700">한 번만</b> 처리됩니다.</div>
+      </div>
+    </div>
+    <button class="btn" data-v="primary">다시 시도</button>
+  </div>
+</div>
+<div class="note">
+<b>이 화면이 중복 충전을 만드는 자리다.</b> 서버 문구는 "잠시 후 다시 시도해 주세요" 인데 화면에 재시도 버튼이 없으면
+사용자는 원래 충전 버튼을 다시 누른다. 그건 <b>새 멱등성 키</b>가 되어 <b>두 번째 충전</b>이 된다.
+<br><br>그래서 셋을 함께 건다.
+<ul>
+<li><b>재시도 버튼을 시트 안에 둔다.</b> 같은 <code>Idempotency-Key</code> 로 재요청하므로 서버가 최초 결과를 그대로 돌려준다 (apiSpec 1.4).</li>
+<li><b>딤으로 원래 CTA 를 덮는다.</b> <code>bg-overlay</code> + <code>z-overlay</code>. 덮지 않으면 뒤 버튼이 여전히 눌린다.</li>
+<li><b>뒤의 CTA 자체도 비활성으로 바꾼다.</b> 딤은 시각적 차단이고 이건 입력 차단이다. 둘 중 하나만 하면 키보드·스크린리더로 뚫린다.</li>
+</ul>
+문구를 새로 만들지 않았다 — <code>GeneralErrorCode.IDEMPOTENCY_IN_PROGRESS</code> 의 <code>message</code> 를 제목과 본문으로 쪼갠 것이다.
+<br><br><code>IDEMPOTENCY_CONFLICT</code>(같은 키로 다른 요청)에는 화면을 그리지 않았다. <b>클라이언트 버그 신호이고 재시도 금지</b>라서
+사용자가 할 수 있는 일이 없다 — 일반 오류 화면으로 보낸다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 10 · 내역 전체 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 10 · 매매 내역</div>
+<div class="ab-name">전체 — 마지막 페이지</div>
+<div class="ab-api">GET /transactions?type=ALL</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">매매 내역</div><div class="icon"></div>
+  </div>
+  <div class="tabs">
+    <button aria-selected="true">전체</button><button>매수</button><button>매도</button><button>충전</button>
+  </div>
+  <div class="scroll flush">
+    <div class="daysep">2026.09.04</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>충전</b><span>14:31 · 가상 카드</span></span><span class="r">+1,000,000원</span></div>
+    </div>
+    <div class="daysep">2026.09.03</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>충전</b><span>10:02 · 가상 계좌이체</span></span><span class="r">+5,000,000원</span></div>
+    </div>
+    <div class="daysep">2026.08.20</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>초기 지급</b><span>09:00 · 계정 생성</span></span><span class="r">+1,000,000원</span></div>
+    </div>
+    <div class="listend">마지막 내역입니다</div>
+  </div>
+</div>
+<div class="note">
+<b><code>type=ALL</code> 은 비어 있을 수 없다.</b> 계정 생성과 함께 <code>INITIAL_GRANT</code> 1,000,000원 1건이 반드시 생기므로
+이 탭에서 "내역이 없습니다" 는 <b>나올 수 없는 상태</b>다. 그려두면 다음 사람이 도달 경로를 찾다 시간을 버린다.
+필터별 빈 상태는 아트보드 12·13 이다.
+<br><br><b>초기 지급은 가장 오래된 행이라 목록의 맨 끝</b>(마지막 페이지)에 있다. 어느 필터에서도 안 보이는 행이 아니다 (apiSpec 8.2).
+<br><br><b>금액에 up/down 색을 쓰지 않는다.</b> <code>+</code> 는 원장 유입을 뜻할 뿐 시세 방향이 아니다. 부호가 방향을 말하고 색은 잉크다.
+<br><br>정렬은 최신순 고정이고 기간·종목 필터는 확장 범위다. 날짜 구분선은 <code>occurredAt</code> 으로 화면이 묶는다 — 응답에 그룹 필드는 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 11 · 내역 충전 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 11 · 매매 내역</div>
+<div class="ab-name">충전 — 초기 지급이 빠진다</div>
+<div class="ab-api">GET /transactions?type=DEPOSIT</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">매매 내역</div><div class="icon"></div>
+  </div>
+  <div class="tabs">
+    <button>전체</button><button>매수</button><button>매도</button><button aria-selected="true">충전</button>
+  </div>
+  <div class="scroll flush">
+    <div class="daysep">2026.09.04</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>충전</b><span>14:31 · 가상 카드</span></span><span class="r">+1,000,000원</span></div>
+    </div>
+    <div class="daysep">2026.09.03</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>충전</b><span>10:02 · 가상 계좌이체</span></span><span class="r">+5,000,000원</span></div>
+    </div>
+    <div class="listend">마지막 내역입니다</div>
+  </div>
+</div>
+<div class="note">
+<b>필터 이름은 "충전" 이다. "입금" 으로 바꾸지 않는다.</b> 이 탭은 모의 결제 건만 담고 초기 지급 1,000,000원은 없다.
+"입금" 이면 사용자가 초기 지급도 여기 있을 것으로 기대하는데 실제로는 없다 — 이름이 계약과 어긋나는 자리다 (명세 8장, apiSpec 8.2).
+<br><br><b>이 탭 금액의 합계 = <code>GET /deposits/limit</code> 의 <code>depositedAmount</code></b> 여야 한다 (여기서는 6,000,000원).
+둘이 어긋나면 "충전 내역을 다 더했는데 한도 화면 숫자와 다르다" 가 된다. 초기 지급을 이 필터에 넣으면 바로 그렇게 된다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 12 · 매수 빈 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 12 · 상태 · 빈 결과</div>
+<div class="ab-name">매수 — 이번 스프린트에 항상 빈다</div>
+<div class="ab-api">GET /transactions?type=BUY · items []</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">매매 내역</div><div class="icon"></div>
+  </div>
+  <div class="tabs">
+    <button>전체</button><button aria-selected="true">매수</button><button>매도</button><button>충전</button>
+  </div>
+  <div class="scroll flush" style="background:var(--finch-color-bg-layer-basement)">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></div>
+      <b>매수 내역이 없습니다</b>
+      <span>종목을 매수하면 체결 내역이 여기에 표시됩니다</span>
+    </div>
+  </div>
+</div>
+<div class="note">
+필터 축 넷 중 이 셋(<code>BUY</code>·<code>SELL</code>·<code>DEPOSIT</code>)만 원장 유형과 1:1 로 대응한다. <code>ALL</code> 은 원장 유형이 아니다.
+<br><br><b>빈 상태 문구가 탭마다 다르다.</b> "내역이 없습니다" 하나로 합치면 <code>ALL</code> 에서 나올 수 없는 문구를 재사용하게 되고,
+사용자는 어느 축이 비었는지 모른다. 아이콘도 축을 따라 바뀐다 (매수 ↑ / 매도 ↓).
+<br><br><b>빈 상태에 "종목 매수하기" 버튼을 넣지 않았다.</b> 주문 화면이 아직 없어 눌러도 갈 곳이 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 13 · 매도 빈 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 13 · 상태 · 빈 결과</div>
+<div class="ab-name">매도 — 이번 스프린트에 항상 빈다</div>
+<div class="ab-api">GET /transactions?type=SELL · items []</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">매매 내역</div><div class="icon"></div>
+  </div>
+  <div class="tabs">
+    <button>전체</button><button>매수</button><button aria-selected="true">매도</button><button>충전</button>
+  </div>
+  <div class="scroll flush" style="background:var(--finch-color-bg-layer-basement)">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M12 5v14M18.5 12.5 12 19l-6.5-6.5"/></svg></div>
+      <b>매도 내역이 없습니다</b>
+      <span>보유 종목을 매도하면 실현손익과 함께 여기에 표시됩니다</span>
+    </div>
+  </div>
+</div>
+<div class="note">
+매도 행만 <code>realizedProfit</code>·<code>realizedProfitRate</code> 를 갖는다 (명세 8장). 그 행 형태는 이 스프린트에 나오지 않으므로
+그리지 않았다 — 빈 상태 보조문에 <b>"실현손익과 함께"</b> 를 남겨 그 자리가 있다는 것만 표시한다.
+<br><br>실현손익이 그려질 때는 <code>fg-up</code>·<code>fg-down</code>(700단계, 본문용)이고 <code>-vivid</code>(600)가 아니다. 목록 행 숫자는 18px 미만이다 (finch-seed §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 14 · 다음 페이지 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 14 · 상태 · 로딩</div>
+<div class="ab-name">전체 — 다음 페이지 로딩 (무한 스크롤)</div>
+<div class="ab-api">?cursor=eyJpZCI6Mjk5fQ== · hasNext true</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div><div class="t">매매 내역</div><div class="icon"></div>
+  </div>
+  <div class="tabs">
+    <button aria-selected="true">전체</button><button>매수</button><button>매도</button><button>충전</button>
+  </div>
+  <div class="scroll flush">
+    <div class="daysep">2026.09.04</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>충전</b><span>14:31 · 가상 카드</span></span><span class="r">+1,000,000원</span></div>
+      <div class="row"><span class="l"><b>충전</b><span>11:20 · 가상 카드</span></span><span class="r">+100,000원</span></div>
+    </div>
+    <div class="daysep">2026.09.03</div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>충전</b><span>10:02 · 가상 계좌이체</span></span><span class="r">+5,000,000원</span></div>
+      <div class="row"><span class="l"><b>충전</b><span>09:14 · 가상 카드</span></span><span class="r">+10,000원</span></div>
+    </div>
+    <div class="rows">
+      <div class="row"><span class="l"><span class="sk" style="width:52px;display:block"></span><span class="sk" style="width:132px;display:block;margin-top:6px;height:12px"></span></span><span class="sk" style="width:92px"></span></div>
+      <div class="row"><span class="l"><span class="sk" style="width:52px;display:block"></span><span class="sk" style="width:118px;display:block;margin-top:6px;height:12px"></span></span><span class="sk" style="width:78px"></span></div>
+    </div>
+    <div class="loadmore"><span class="spin"></span>불러오는 중</div>
+  </div>
+</div>
+<div class="note">
+<b>커서는 불투명 문자열이다.</b> <code>nextCursor</code> 를 그대로 되돌려 보내고 파싱·해석하지 않는다 (apiSpec 1.5).
+화면에 페이지 번호를 만들지 않는 이유도 그것이다 — 커서에서 번호를 꺼낼 수 없다.
+<br><br>첫 로드는 골격(아트보드 2), <b>추가 로드는 골격 행 + 스피너</b>다. 이미 읽고 있는 목록이 통째로 골격으로 바뀌면
+스크롤 위치를 잃는다.
+<br><br><code>nextCursor</code> 가 <code>null</code> 이면 "마지막 내역입니다"(아트보드 10)로 바뀐다. 두 상태를 같은 자리에 그려
+<b>목록 끝에 무엇이 오는지가 늘 명시되게</b> 한다 — 아무것도 없으면 사용자가 더 있는지 없는지 모른 채 계속 당긴다.
+</div>
+</section>
+
+</x-dc>
+</body>
+</html>

@@ -7,23 +7,32 @@
 
 ## 구조
 
-| 디렉터리 | 담는 것 |
-|---|---|
-| `wireframe/` | 저해상도 와이어프레임. 레이아웃과 요소 배치를 정하는 단계의 산출물 |
-| `screen/` | 화면 시안과 프로토타입 캡처 |
-| `character/` | 캐릭터 디자인 |
-| `brand/` | 로고, 심볼, 아이콘의 SVG 원본 |
+| 위치 | 담는 것 | 형식 |
+|---|---|---|
+| 루트 | 토큰 체계 그 자체를 그린 것 (`styleguide.dc.html`) | `.dc.html` |
+| `wireframe/` | 저해상도 와이어프레임. 레이아웃과 요소 배치를 정하는 단계의 산출물 | `.dc.html` |
+| `screen/` | 화면 시안과 프로토타입 캡처 | `.dc.html` · 확정본 PNG |
+| `character/` | 캐릭터 디자인 | SVG |
+| `brand/` | 로고, 심볼, 아이콘의 SVG 원본 | SVG |
+
+**화면을 그리는 것은 `.dc.html`(design canvas)이 기본이다.** 다중 아트보드를 한 캔버스에 놓고
+`tokens.css` 를 실제로 불러와 그린다. 이전 판은 와이어프레임을 PNG 로만 적어 뒀는데 루트에 이미
+`styleguide.dc.html` 이 있었다 — 문서가 현실과 어긋난 자리였다. PNG 규칙은 아래 "형식" 절을 본다.
 
 ## 파일명
 
 `<화면 또는 대상>-<변형>.<확장자>` 형식으로 소문자와 하이픈만 쓴다.
 
 ```
-wireframe/login.png
+wireframe/sprint-4.dc.html
 screen/stock-detail-character.png
 character/finch-default.svg
 brand/logo-wordmark.svg
 ```
+
+와이어프레임은 한 캔버스에 여러 화면을 담으므로 화면 이름이 아니라 **그 캔버스가 다루는 범위**로
+이름 짓는다. `sprint-4.dc.html` 은 Sprint 4 가 계약을 완성한 화면들이라는 뜻이다.
+`deposit.dc.html` 처럼 화면 하나로 이름 붙이면 같은 캔버스 안의 잔고·내역이 이름 밖에 남는다.
 
 날짜나 `final`, `v2` 같은 접미사는 붙이지 않는다. 이력은 git 이 갖고 있고,
 파일명에 버전을 적기 시작하면 어느 것이 최신인지 파일명만으로는 알 수 없게 된다.
