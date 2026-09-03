@@ -1,8 +1,8 @@
 # 백엔드 API 명세서
 
-- 문서 버전: v0.6 (확정판)
-- 작성일: 2026-08-20 / 최종 수정: 2026-09-02
-- 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md)
+- 문서 버전: v0.7 (확정판)
+- 작성일: 2026-08-20 / 최종 수정: 2026-09-03
+- 기준 문서: [기능 명세서 v2.2](../spec/featureSpec.md)
 - 범위: MVP 백엔드 API 전체. 프론트엔드가 Mock을 만들 수 있는 수준의 계약을 목표로 한다.
 - 변경 이력:
   - v0.1 — 기능 명세서에서 도출한 초안
@@ -27,6 +27,12 @@
     전량 매도 시 `holding: null` 확정(§5.2), 상장폐지 종목 검색 제외·구분 필드 없음 확정(§5.1)
   - v0.6 — 문의 이슈 #23 회신 반영. 최근 검색어 응답 명문화(§6.2 — 계정 기준 서버 저장,
     GET 응답 예시 `keywordId`·`keyword`·`searchedAt`, DELETE 는 본문 없이 204·멱등)
+  - v0.7 — **투자 회차·계좌 리셋 제거** (요청 이슈 #27). **기존 계약을 깨는 변경이다.**
+    엔드포인트 2개 삭제(`POST /account/reset`, `GET /rounds`), 응답의 `roundId`·`currentRoundId` 필드와
+    `roundId` 쿼리 파라미터 전부 삭제, 에러 코드 `ROUND_READ_ONLY` 삭제,
+    원장 유형 6종 → 4종(`ROUND_OPEN`·`ROUND_CLOSE` 삭제),
+    충전 누적 한도의 기준을 회차 → 계정 전체로 변경(§4.1 응답 필드명 포함),
+    투자 회차 규칙(§1.6)을 계좌 규칙으로 대체
 
 > **이 문서의 성격**
 > 공통 API 규격(0-5)의 확정 내용을 담은 문서다. 프론트·AI 파트와 어긋나면 이 문서가 기준이며, 수정은 백엔드 파트가 한다.
@@ -163,11 +169,12 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 - `nextCursor`가 `null`이면 마지막 페이지다.
 - 커서는 **불투명 문자열**이다. 클라이언트는 파싱·조작·해석하지 않고 `nextCursor`를 그대로 되돌려 보낸다. 인코딩 방식은 서버 구현 상세이며 예고 없이 바뀔 수 있다.
 
-### 1.6 투자 회차 규칙 (명세 2.3)
+### 1.6 계좌 규칙 (명세 2.1)
 
-- 모든 쓰기 요청은 **활성 회차**를 대상으로 한다. 요청에 `roundId`를 받지 않는다.
-- 조회 요청은 `roundId`를 선택적으로 받으며, 생략하면 활성 회차를 조회한다.
-- 종료된 회차에 쓰기를 시도하면 `409 ROUND_READ_ONLY`.
+- 계좌는 **사용자당 하나**이고 계정 생성과 함께 만들어진다.
+- 모든 요청은 토큰의 사용자로 계좌를 찾는다. **요청에 계좌 식별자를 받지 않고 응답에도 내려주지 않는다.**
+  클라이언트가 지목할 대상이 아니기 때문이다.
+- 계좌 초기화(리셋)와 투자 회차는 **없다.** 원장은 계정 생성부터 이어지는 하나의 연속된 시계열이다. (이슈 #27)
 
 ---
 
@@ -180,7 +187,7 @@ POST /api/v1/auth/kakao
 ```
 
 인증 불필요. 카카오 인가 코드를 받아 계정을 조회하거나 생성한다.
-**최초 로그인이면 계정과 함께 가상 계좌, 1회차, 초기 예수금 1,000,000원을 생성한다.** (명세 2.1, 2.2)
+**최초 로그인이면 계정과 함께 계좌, 초기 예수금 1,000,000원을 생성한다.** (명세 2.1, 2.2)
 
 **Request**
 ```json
@@ -258,10 +265,9 @@ GET /api/v1/users/me
 
 프론트가 앱 부팅 시 세션을 복구하는 데 쓴다. 사용자 식별자는 토큰에서만 나오며 경로·본문·쿼리로 받지 않는다 (§1.2).
 
-**⚠️ `currentRoundId` 는 현재 구현에서 항상 `null` 이다** (2026-09-02). 최초 로그인 시 `investment_round` 를
-생성하는 코드가 아직 없어(erd.md §3.1, 소유 도메인 미구현) 조회할 회차가 없다. 0·1 같은 값을 채우지 않는다 —
-프론트가 그것을 실제 회차 ID 로 믿고 조회에 쓴다. **그때까지 프론트는 이 필드의 `null` 을 허용한다.**
-회차 생성이 붙으면 아래 예시대로 값이 들어가고 이 문단은 지운다.
+**⚠️ `currentRoundId` 필드가 v0.7 에서 삭제됐다.** 투자 회차가 없어졌고(§1.6), 계좌는 사용자당 하나라
+클라이언트가 식별자로 들고 있을 이유가 없다. 계좌 도메인이 붙어도 `accountId` 로 되살리지 않는다.
+직전까지 이 필드는 항상 `null` 이었으므로 값을 쓰던 프론트 코드는 없다.
 
 **Response `200 OK`**
 ```json
@@ -269,7 +275,6 @@ GET /api/v1/users/me
   "userId": 1,
   "nickname": "홍길동",
   "profileImageUrl": "https://...",
-  "currentRoundId": 3,
   "joinedAt": "2026-08-25T10:00:00+09:00"
 }
 ```
@@ -280,7 +285,7 @@ GET /api/v1/users/me
 
 ---
 
-## 3. 계좌 · 투자 회차 API
+## 3. 계좌 API
 
 ### 3.1 계좌 요약 조회 (명세 9.1)
 
@@ -293,7 +298,6 @@ GET /api/v1/account
 **Response `200 OK`**
 ```json
 {
-  "roundId": 3,
   "cashBalance": 1250000,
   "evaluationAmount": 735000,
   "totalAsset": 1985000,
@@ -310,53 +314,9 @@ GET /api/v1/account
 
 > 포트폴리오 전체 수익률과 총자산 추이는 MVP 범위 밖이다. (명세 9.1)
 
-### 3.2 계좌 리셋 (명세 2.3)
-
-```
-POST /api/v1/account/reset
-```
-
-현재 회차를 종료하고 새 회차를 생성한다. 원장은 삭제하지 않는다.
-**새 회차에서는 누적 충전 한도도 초기화된다.** (명세 1.1)
-
-**Response `200 OK`**
-```json
-{
-  "closedRound": {
-    "roundId": 3,
-    "startedAt": "2026-08-25T10:00:00+09:00",
-    "closedAt": "2026-09-10T15:00:00+09:00",
-    "finalTotalAsset": 1985000
-  },
-  "newRound": {
-    "roundId": 4,
-    "startedAt": "2026-09-10T15:00:00+09:00",
-    "cashBalance": 1000000
-  }
-}
-```
-
-원장에 `ROUND_CLOSE`, `ROUND_OPEN`, `INITIAL_GRANT`를 기록한다.
-
-### 3.3 회차 목록 조회
-
-```
-GET /api/v1/rounds
-```
-
-매매 내역 화면의 회차 선택기에 사용한다.
-
-**Response `200 OK`**
-```json
-{
-  "items": [
-    { "roundId": 4, "status": "ACTIVE", "startedAt": "...", "closedAt": null, "finalTotalAsset": null },
-    { "roundId": 3, "status": "CLOSED", "startedAt": "...", "closedAt": "...", "finalTotalAsset": 1985000 }
-  ]
-}
-```
-
-`status`: `ACTIVE` | `CLOSED`
+> **`POST /account/reset`(계좌 리셋)과 `GET /rounds`(회차 목록)는 v0.7 에서 삭제됐다.** 실제 투자
+> 서비스에는 계좌를 초기화하는 기능이 없고, 투자 회차는 리셋 시점을 경계로 원장을 나누던 부산물이라
+> 함께 사라졌다. (이슈 #27)
 
 ---
 
@@ -372,11 +332,14 @@ GET /api/v1/deposits/limit
 ```json
 {
   "perRequestLimit": 10000000,
-  "roundCumulativeLimit": 100000000,
-  "roundDepositedAmount": 3000000,
+  "cumulativeLimit": 100000000,
+  "depositedAmount": 3000000,
   "remainingAmount": 97000000
 }
 ```
+
+**누적 한도의 기준은 계정 전체다** (명세 1.1). 회차가 없어지면서 한도를 되돌릴 경로도 없어졌다.
+v0.6 의 `roundCumulativeLimit`·`roundDepositedAmount` 가 `cumulativeLimit`·`depositedAmount` 로 바뀌었다.
 
 ### 4.2 충전
 
@@ -410,7 +373,7 @@ Idempotency-Key: {UUID}   ← 필수
 |---|---|---|
 | `DEPOSIT_AMOUNT_INVALID` | 400 | 0원 이하 |
 | `DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED` | 409 | 1회 1,000만 원 초과 |
-| `DEPOSIT_LIMIT_EXCEEDED` | 409 | 회차 누적 1억 원 초과. `detail.remainingAmount` 포함 |
+| `DEPOSIT_LIMIT_EXCEEDED` | 409 | 계정 누적 1억 원 초과. `detail.remainingAmount` 포함 |
 | `IDEMPOTENCY_KEY_REQUIRED` | 400 | 헤더 누락 |
 
 > **충전 취소 API는 제공하지 않는다.** (명세 1.1, 3.2)
@@ -656,7 +619,7 @@ DELETE /api/v1/stocks/recent
 
 ### 6.2 최근 검색어 (명세 4장)
 
-최대 10건. **계정 기준 서버 저장** (ERD §2.11 `recent_search_keyword` — 회차가 아니라 `user_id` 귀속).
+최대 10건. **계정 기준 서버 저장** (ERD §2.11 `recent_search_keyword` — 계좌가 아니라 `user_id` 귀속).
 같은 검색어를 다시 검색하면 새 항목을 만들지 않고 `searchedAt`만 갱신한다.
 
 ```
@@ -829,7 +792,6 @@ GET /api/v1/portfolio?sort=EVALUATION
 **Response `200 OK`**
 ```json
 {
-  "roundId": 3,
   "cashBalance": 1250000,
   "evaluationAmount": 735000,
   "totalAsset": 1985000,
@@ -856,21 +818,19 @@ GET /api/v1/portfolio?sort=EVALUATION
 
 ### 8.2 매매 내역 (명세 8장)
 
-원장 기반 통합 내역이다. 충전과 회차 전환도 함께 조회된다.
+원장 기반 통합 내역이다. 충전도 함께 조회된다.
 
 ```
-GET /api/v1/transactions?roundId=3&type=ALL&cursor=&size=30
+GET /api/v1/transactions?type=ALL&cursor=&size=30
 ```
 
 | 파라미터 | 값 |
 |---|---|
-| `roundId` | 생략 시 활성 회차 |
 | `type` | `ALL`(기본) \| `BUY` \| `SELL` \| `DEPOSIT` |
 
 **Response `200 OK`**
 ```json
 {
-  "roundId": 3,
   "items": [
     {
       "transactionId": 301,
@@ -904,7 +864,7 @@ GET /api/v1/transactions?roundId=3&type=ALL&cursor=&size=30
 }
 ```
 
-`type` 전체 값 (명세 8장 원장 유형): `INITIAL_GRANT` | `DEPOSIT` | `BUY` | `SELL` | `ROUND_OPEN` | `ROUND_CLOSE`
+`type` 전체 값 (명세 8장 원장 유형): `INITIAL_GRANT` | `DEPOSIT` | `BUY` | `SELL`
 정렬은 최신순 고정. 기간·종목 필터는 확장 범위.
 
 ---
@@ -928,7 +888,6 @@ GET /internal/v1/portfolio
 
 ```json
 {
-  "roundId": 3,
   "cashBalance": 1250000,
   "asOf": "2026-08-20T14:30:00+09:00",
   "holdings": [
@@ -946,12 +905,11 @@ GET /internal/v1/portfolio
 ### 9.2 거래 이력 조회
 
 ```
-GET /internal/v1/trades?roundId=3&cursor=&size=100
+GET /internal/v1/trades?cursor=&size=100
 ```
 
 ```json
 {
-  "roundId": 3,
   "trades": [
     {
       "tradeId": 101,
@@ -1068,7 +1026,6 @@ AI 서버로 넘길 때의 snake_case 변환은 백엔드 중계 계층이 담�
 | `IDEMPOTENCY_KEY_REQUIRED` | 400 |
 | `IDEMPOTENCY_IN_PROGRESS` | 409 |
 | `IDEMPOTENCY_CONFLICT` | 409 |
-| `ROUND_READ_ONLY` | 409 |
 | `METHOD_NOT_ALLOWED` | 405 |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 |
 | `INTERNAL_ERROR` | 500 |
@@ -1149,10 +1106,8 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | POST | `/auth/logout` | — | Refresh 쿠키가 없어도 `204`. Access Token은 있어야 한다 |
 | GET | `/users/me` | — | |
 | GET | `/account` | — | |
-| POST | `/account/reset` | — | 활성 회차는 항상 하나 있으므로 `ROUND_READ_ONLY`는 나오지 않는다 |
-| GET | `/rounds` | — | |
 | GET | `/deposits/limit` | — | |
-| POST | `/deposits` | `DEPOSIT_AMOUNT_INVALID` · `DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED` · `DEPOSIT_LIMIT_EXCEEDED` · `ROUND_READ_ONLY` | 판정 순서: 멱등성 → `paymentMethod` 열거값(`INVALID_REQUEST`) → 금액 0 이하 → 1회 한도 → 회차 상태 → 누적 한도(`detail.remainingAmount`) |
+| POST | `/deposits` | `DEPOSIT_AMOUNT_INVALID` · `DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED` · `DEPOSIT_LIMIT_EXCEEDED` | 판정 순서: 멱등성 → `paymentMethod` 열거값(`INVALID_REQUEST`) → 금액 0 이하 → 1회 한도 → 누적 한도(`detail.remainingAmount`) |
 | GET | `/stocks/search` | — | `keyword` 2글자 미만 · `size` 범위 밖 → `INVALID_REQUEST`. 결과 없음은 빈 `items` |
 | GET | `/stocks/{stockCode}` | `STOCK_NOT_FOUND` | 상장폐지 종목 노출 여부는 별도 확정 항목(프론트 contracts P18) |
 | GET | `/stocks/{stockCode}/candles` | `STOCK_NOT_FOUND` | `period` 열거값 밖 → `INVALID_REQUEST` |
@@ -1165,10 +1120,10 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | GET | `/watchlist` | — | `sort` 열거값 밖 → `INVALID_REQUEST` |
 | POST | `/watchlist` | `STOCK_NOT_FOUND` · `WATCHLIST_ALREADY_EXISTS` · `WATCHLIST_LIMIT_EXCEEDED` | 판정 순서: 종목 존재 → 중복 → 한도. 이미 등록된 종목은 한도가 찼어도 `ALREADY_EXISTS` |
 | DELETE | `/watchlist/{stockCode}` | — | 대상이 없어도 `204` |
-| POST | `/orders` | `ORDER_QUANTITY_INVALID` · `STOCK_NOT_FOUND` · `ROUND_READ_ONLY` · `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` · `ORDER_INSUFFICIENT_CASH` · `ORDER_INSUFFICIENT_QUANTITY` · `ORDER_PRICE_CHANGED` | 판정 순서: 멱등성 → `side` 열거값(`INVALID_REQUEST`) → 수량 0 이하 → 종목 존재 → 회차 상태 → §7.2 1~5단계. `ORDER_INSUFFICIENT_CASH`는 매수, `ORDER_INSUFFICIENT_QUANTITY`는 매도에서만. **`ORDER_PRICE_CHANGED`의 판정 조건은 13장 7번 확정 전까지 발행하지 않는다** |
+| POST | `/orders` | `ORDER_QUANTITY_INVALID` · `STOCK_NOT_FOUND` · `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` · `ORDER_INSUFFICIENT_CASH` · `ORDER_INSUFFICIENT_QUANTITY` · `ORDER_PRICE_CHANGED` | 판정 순서: 멱등성 → `side` 열거값(`INVALID_REQUEST`) → 수량 0 이하 → 종목 존재 → §7.2 1~5단계. `ORDER_INSUFFICIENT_CASH`는 매수, `ORDER_INSUFFICIENT_QUANTITY`는 매도에서만. **`ORDER_PRICE_CHANGED`의 판정 조건은 13장 7번 확정 전까지 발행하지 않는다** |
 | GET | `/orders/available` | `STOCK_NOT_FOUND` | `side` 열거값 밖 → `INVALID_REQUEST`. `tradable: false`의 `reason`은 `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` 중 하나이며 **HTTP 200**이다 (§7.3) |
 | GET | `/portfolio` | — | `sort` 열거값 밖 → `INVALID_REQUEST`. 보유 없음은 빈 `holdings` |
-| GET | `/transactions` | `RESOURCE_NOT_FOUND` | `roundId`가 내 회차가 아니거나 없음. `type` 열거값 밖 · `cursor` 손상 · `size` 범위 밖 → `INVALID_REQUEST` |
+| GET | `/transactions` | — | `type` 열거값 밖 · `cursor` 손상 · `size` 범위 밖 → `INVALID_REQUEST`. 내역 없음은 빈 `items` |
 | POST | `/ai/stocks/{stockCode}/analysis` | `AI_UPSTREAM_UNAVAILABLE` · `AI_UPSTREAM_TIMEOUT` + **AI 서버 발행 코드 통과** | AI 서버 코드 목록은 [aiApiSpec §3](./aiApiSpec.md). 백엔드는 종목 존재를 미리 검사하지 않는다 — AI 서버의 `INSTRUMENT_NOT_FOUND`(404)가 그대로 내려간다. `AI_UPSTREAM_*`에는 `requestId`가 없다 (§10.4) |
 | POST | `/ai/chat` | 위와 동일 | |
 | POST | `/ai/portfolio/diagnosis` | 위와 동일 | 보유 종목 0개는 AI 서버의 `INSUFFICIENT_DATA`(409)이며 정상 거절이다 |
@@ -1176,7 +1131,7 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | POST | `/ai/orders/preview` | 위와 동일 | |
 | GET | `/ai/briefing` | 위와 동일 | |
 | POST | `/ai/feedback` | 위와 동일 | 모르는 `requestId`의 처리는 AI 서버 몫이다 (프론트 contracts P14) |
-| GET | `/internal/v1/portfolio` · `/internal/v1/trades` | `AUTH_INVALID_TOKEN` · `RESOURCE_NOT_FOUND` | `X-Internal-Token` 누락·불일치 → `401 AUTH_INVALID_TOKEN`. `X-User-Id`에 해당하는 사용자 없음 · `roundId`가 그 사용자 것이 아님 → `404 RESOURCE_NOT_FOUND`. 사용자 JWT 인증은 적용되지 않는다 |
+| GET | `/internal/v1/portfolio` · `/internal/v1/trades` | `AUTH_INVALID_TOKEN` · `RESOURCE_NOT_FOUND` | `X-Internal-Token` 누락·불일치 → `401 AUTH_INVALID_TOKEN`. `X-User-Id`에 해당하는 사용자 없음 → `404 RESOURCE_NOT_FOUND`. 사용자 JWT 인증은 적용되지 않는다 |
 
 **표에 없는 코드는 그 엔드포인트에서 나오지 않는다.** 구현 중 새 사유가 생기면 이 표와 §11 목록을 먼저 고치고 코드를 붙인다. 백엔드 테스트(`ErrorCodeContractTest`)가 enum 전체와 §11 목록의 일치를 검사한다.
 
@@ -1191,8 +1146,6 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | 인증 | POST | `/api/v1/auth/logout` | |
 | 인증 | GET | `/api/v1/users/me` | |
 | 계좌 | GET | `/api/v1/account` | |
-| 계좌 | POST | `/api/v1/account/reset` | |
-| 계좌 | GET | `/api/v1/rounds` | |
 | 충전 | GET | `/api/v1/deposits/limit` | |
 | 충전 | POST | `/api/v1/deposits` | **필수** |
 | 종목 | GET | `/api/v1/stocks/search` | |
