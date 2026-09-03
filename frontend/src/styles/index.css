@@ -1,8 +1,32 @@
 @import 'tailwindcss';
 
-/* 본문 한글 폰트. design.md §4 가 Pretendard 를 지정한다.
-   dynamic-subset 은 실제로 쓰인 글자만 내려받는 판이라 전체 웨이트를 받지 않는다. */
-@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+/* 서체 — Gmarket Sans. 발표자료(FINCH-presentation)와 같은 얼굴을 앱에도 쓴다.
+   원본 TTF 는 한 굵기에 2.3MB 라 fonts-src/ 에 두고 서빙하지 않는다. 브라우저가 받는 건
+   fonts-src/build.sh 가 뽑은 public/fonts/*.woff2 (완성형 2350자 + ASCII + 자모 + 기호) 뿐이다.
+
+   굵기 세 개뿐이라 범위로 매핑한다. 토큰이 600 을 요청하면 Bold, 400 이면 Medium 이 나온다.
+   그래서 아래 --text-*--font-weight 값은 손대지 않았다. 발표자료 typography.css 와 같은 방식.
+
+   font-display: swap — 첫 렌더는 시스템 서체로 그리고 도착하면 바꾼다. 발표자료는 block 이지만
+   그쪽은 로컬 파일이고 여기는 네트워크다. 모바일에서 빈 화면을 200ms 이상 보여주지 않는다. */
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/gmarket-sans-light.woff2') format('woff2');
+  font-weight: 100 399;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/gmarket-sans-medium.woff2') format('woff2');
+  font-weight: 400 599;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Gmarket Sans';
+  src: url('/fonts/gmarket-sans-bold.woff2') format('woff2');
+  font-weight: 600 900;
+  font-display: swap;
+}
 
 /*
  * 디자인 토큰. 단일 출처는 이 파일이다.
@@ -78,7 +102,9 @@
   --color-disabled-text: #8b95a1;
 
   /* ── 타이포 (design.md §4 Type Scale) ─────────────────────────────── */
-  --font-sans: Pretendard, system-ui, -apple-system, sans-serif;
+  --font-sans:
+    'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    system-ui, sans-serif;
 
   --text-display: 36px;
   --text-display--line-height: 44px;
