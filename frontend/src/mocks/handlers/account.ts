@@ -2,43 +2,39 @@ import { http, HttpResponse } from 'msw';
 
 import {
   API_PATHS,
+  DEPOSIT_CUMULATIVE_LIMIT,
   DEPOSIT_PER_REQUEST_LIMIT,
-  DEPOSIT_ROUND_CUMULATIVE_LIMIT,
-  INITIAL_CASH_BALANCE,
 } from '@/shared/config/apiContract';
 import {
   COMMON_ERROR_CODES,
   DEPOSIT_ERROR_CODES,
 } from '@/shared/types/errorCodes';
 
-import {
-  errorResponse,
-  mockPath,
-  readJsonBody,
-  searchParam,
-} from '../lib/http';
+import { errorResponse, mockPath, readJsonBody } from '../lib/http';
 import { checkIdempotency } from '../lib/idempotency';
 import { requireAuth } from '../lib/session';
-import { recordTransaction, resetAccount, store } from '../lib/store';
+import { recordTransaction, store } from '../lib/store';
 import { nowKstIso } from '../lib/time';
 import { evaluationAmount, totalAsset } from '../lib/valuation';
 
 /**
- * 계좌 · 회차 · 충전 (apiSpec §3 · §4).
+ * 계좌 · 충전 (apiSpec §3 · §4).
  *
- * **상태 유지 범위** — 예수금·누적 충전액·회차·원장이 모두 `lib/store.ts` 의 모듈 변수다.
- * 충전과 계좌 리셋이 그 값을 실제로 바꾸므로 잔고 화면이 갱신되는 것을 볼 수 있고,
+ * **상태 유지 범위** — 예수금·누적 충전액·원장이 모두 `lib/store.ts` 의 모듈 변수다.
+ * 충전이 그 값을 실제로 바꾸므로 잔고 화면이 갱신되는 것을 볼 수 있고,
  * 새로고침하면 초기값으로 돌아간다.
+ *
+ * **`POST /account/reset`·`GET /rounds` 는 apiSpec v0.7 에서 사라졌다** (이슈 #27).
+ * `GET /account` 도 계좌 식별자를 받지 않고 내려주지 않는다 (§1.6).
  *
  * ## 어느 입력이 어느 응답을 내는가
  *
  * | 입력 | 응답 |
  * | --- | --- |
- * | `GET /account?roundId=` 에 없는 회차 번호 | `404 RESOURCE_NOT_FOUND` |
  * | `POST /deposits` 멱등성 헤더 없음·`a` 로 시작하는 키·같은 키 다른 본문 | `lib/idempotency.ts` 표 참고 |
  * | `POST /deposits` `amount <= 0` | `400 DEPOSIT_AMOUNT_INVALID` |
  * | `POST /deposits` `amount > 10,000,000` | `409 DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED` |
- * | `POST /deposits` 회차 누적 1억 초과 | `409 DEPOSIT_LIMIT_EXCEEDED` (`detail.remainingAmount`) |
+ * | `POST /deposits` 계정 누적 1억 초과 | `409 DEPOSIT_LIMIT_EXCEEDED` (`detail.remainingAmount`) |
  * | `POST /deposits` `paymentMethod` 열거값 밖 | `400 INVALID_REQUEST` |
  *
  * 판정 순서는 apiSpec §11.2 를 따른다 — 멱등성 → `paymentMethod` → 금액 → 1회 한도 → 누적 한도.
@@ -53,67 +49,11 @@ export const accountHandlers = [
       return unauthorized;
     }
 
-    // 조회는 roundId 를 선택적으로 받는다 (apiSpec §1.6). 없는 회차는 404 다.
-    const roundIdParam = searchParam(request, 'roundId');
-    if (
-      roundIdParam !== null &&
-      !store.rounds.some((round) => String(round.roundId) === roundIdParam)
-    ) {
-      return errorResponse(
-        COMMON_ERROR_CODES.RESOURCE_NOT_FOUND,
-        '요청한 회차를 찾을 수 없습니다',
-        404,
-      );
-    }
-
     return HttpResponse.json({
-      roundId: store.activeRoundId,
       cashBalance: store.cashBalance,
       evaluationAmount: evaluationAmount(),
       totalAsset: totalAsset(),
       asOf: nowKstIso(),
-    });
-  }),
-
-  http.post(mockPath(API_PATHS.account.reset), ({ request }) => {
-    const unauthorized = requireAuth(request);
-    if (unauthorized !== null) {
-      return unauthorized;
-    }
-
-    const finalTotalAsset = totalAsset();
-    const { closedRoundId, closedStartedAt, newRoundId, at } =
-      resetAccount(finalTotalAsset);
-
-    return HttpResponse.json({
-      closedRound: {
-        roundId: closedRoundId,
-        startedAt: closedStartedAt,
-        closedAt: at,
-        finalTotalAsset,
-      },
-      newRound: {
-        roundId: newRoundId,
-        startedAt: at,
-        cashBalance: INITIAL_CASH_BALANCE,
-      },
-    });
-  }),
-
-  http.get(mockPath(API_PATHS.account.rounds), ({ request }) => {
-    const unauthorized = requireAuth(request);
-    if (unauthorized !== null) {
-      return unauthorized;
-    }
-
-    return HttpResponse.json({
-      items: store.rounds.map((round) => ({
-        roundId: round.roundId,
-        status: round.status,
-        startedAt: round.startedAt,
-        closedAt: round.closedAt,
-        finalTotalAsset: round.finalTotalAsset,
-      })),
     });
   }),
 
@@ -125,10 +65,9 @@ export const accountHandlers = [
 
     return HttpResponse.json({
       perRequestLimit: DEPOSIT_PER_REQUEST_LIMIT,
-      roundCumulativeLimit: DEPOSIT_ROUND_CUMULATIVE_LIMIT,
-      roundDepositedAmount: store.roundDepositedAmount,
-      remainingAmount:
-        DEPOSIT_ROUND_CUMULATIVE_LIMIT - store.roundDepositedAmount,
+      cumulativeLimit: DEPOSIT_CUMULATIVE_LIMIT,
+      depositedAmount: store.depositedAmount,
+      remainingAmount: DEPOSIT_CUMULATIVE_LIMIT - store.depositedAmount,
     });
   }),
 
@@ -188,12 +127,11 @@ export const accountHandlers = [
       );
     }
 
-    const remainingAmount =
-      DEPOSIT_ROUND_CUMULATIVE_LIMIT - store.roundDepositedAmount;
+    const remainingAmount = DEPOSIT_CUMULATIVE_LIMIT - store.depositedAmount;
     if (amount > remainingAmount) {
       return errorResponse(
         DEPOSIT_ERROR_CODES.LIMIT_EXCEEDED,
-        '이번 회차에 충전할 수 있는 금액을 넘었어요',
+        '충전할 수 있는 금액을 넘었어요',
         409,
         { remainingAmount },
       );
@@ -201,7 +139,7 @@ export const accountHandlers = [
 
     const depositedAt = nowKstIso();
     store.cashBalance += amount;
-    store.roundDepositedAmount += amount;
+    store.depositedAmount += amount;
     recordTransaction({
       type: 'DEPOSIT',
       occurredAt: depositedAt,

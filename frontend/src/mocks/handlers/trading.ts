@@ -43,7 +43,6 @@ import { evaluationAmount, profitRate, totalAsset } from '../lib/valuation';
  * | `900140`(엘브이엠씨홀딩스) | `503 ORDER_PRICE_UNAVAILABLE` |
  * | 예수금보다 큰 매수 | `409 ORDER_INSUFFICIENT_CASH` (`detail.required`·`detail.available`) |
  * | 보유 수량보다 큰 매도 | `409 ORDER_INSUFFICIENT_QUANTITY` |
- * | `GET /transactions?roundId=` 에 없는 회차 | `404 RESOURCE_NOT_FOUND` |
  *
  * `ORDER_PRICE_CHANGED` 는 내지 않는다. 판정 조건이 apiSpec 13장 7번 확정 전까지
  * 발행하지 않기로 돼 있어(§11.2) 목이 먼저 만들면 화면이 없는 갈래를 그린다.
@@ -54,7 +53,28 @@ import { evaluationAmount, profitRate, totalAsset } from '../lib/valuation';
 
 const ORDER_SIDES = ['BUY', 'SELL'];
 const PORTFOLIO_SORTS = ['EVALUATION', 'PROFIT_RATE'];
-const TRANSACTION_FILTERS = ['ALL', 'BUY', 'SELL', 'DEPOSIT'];
+/**
+ * `type` 필터 한 값이 어느 원장 유형을 걷어 오는가 (apiSpec §8.2).
+ * 필터 값 4종은 이 표의 키가 전부다.
+ *
+ * **`DEPOSIT` 이 `INITIAL_GRANT` 를 포함하는지가 미확정이다** (contracts P22 · MR !78 에 질의).
+ * 명세는 필터 값 4종(`ALL`·`BUY`·`SELL`·`DEPOSIT`)과 원장 유형 4종(`INITIAL_GRANT`·`DEPOSIT`·
+ * `BUY`·`SELL`)만 적고 둘의 대응을 적지 않았다. 목은 **포함하는 쪽**으로 답한다 — 사용자
+ * 입장에서 초기 지급 1,000,000원도 입금으로 읽히고, 빼면 `type=DEPOSIT` 합계가 예수금 유입과
+ * 어긋난다. **가정은 아래 `DEPOSIT` 한 줄에만 있다.** 답이 오면 그 줄만 고치면 된다.
+ */
+const TRANSACTION_FILTER_LEDGER_TYPES = {
+  ALL: ['INITIAL_GRANT', 'DEPOSIT', 'BUY', 'SELL'],
+  BUY: ['BUY'],
+  SELL: ['SELL'],
+  DEPOSIT: ['DEPOSIT', 'INITIAL_GRANT'],
+} as const satisfies Record<string, readonly string[]>;
+
+type TransactionFilterValue = keyof typeof TRANSACTION_FILTER_LEDGER_TYPES;
+
+function isTransactionFilter(value: string): value is TransactionFilterValue {
+  return Object.hasOwn(TRANSACTION_FILTER_LEDGER_TYPES, value);
+}
 
 /** 주문 거절 코드의 HTTP 상태 (apiSpec §7.2 에러 표). */
 const ORDER_REJECTION_STATUS: Record<string, number> = {
@@ -322,7 +342,6 @@ export const tradingHandlers = [
       );
 
     return HttpResponse.json({
-      roundId: store.activeRoundId,
       cashBalance: store.cashBalance,
       evaluationAmount: evaluationAmount(),
       totalAsset: totalAsset(),
@@ -337,19 +356,8 @@ export const tradingHandlers = [
       return unauthorized;
     }
 
-    const roundIdParam = searchParam(request, 'roundId');
-    const roundId =
-      roundIdParam === null ? store.activeRoundId : Number(roundIdParam);
-    if (!store.rounds.some((round) => round.roundId === roundId)) {
-      return errorResponse(
-        COMMON_ERROR_CODES.RESOURCE_NOT_FOUND,
-        '요청한 회차를 찾을 수 없습니다',
-        404,
-      );
-    }
-
     const type = searchParam(request, 'type') ?? 'ALL';
-    if (!TRANSACTION_FILTERS.includes(type)) {
+    if (!isTransactionFilter(type)) {
       return errorResponse(
         COMMON_ERROR_CODES.INVALID_REQUEST,
         '요청 값이 올바르지 않습니다',
@@ -381,16 +389,16 @@ export const tradingHandlers = [
       );
     }
 
-    const filtered = store.transactions.filter(
-      (entry) =>
-        entry.roundId === roundId && (type === 'ALL' || entry.type === type),
+    const ledgerTypes: readonly string[] =
+      TRANSACTION_FILTER_LEDGER_TYPES[type];
+    const filtered = store.transactions.filter((entry) =>
+      ledgerTypes.includes(entry.type),
     );
     const page = filtered.slice(offset, offset + size);
     const nextOffset = offset + page.length;
     const hasNext = nextOffset < filtered.length;
 
     return HttpResponse.json({
-      roundId,
       items: page.map((entry) => ({
         transactionId: entry.transactionId,
         type: entry.type,
