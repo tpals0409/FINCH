@@ -53,7 +53,8 @@ Figma 같은 도구의 원본 파일은 올리지 않는다. 링크로 공유하
 (`styleguide.dc.html` 머리말 참고). 통째로 인라인·번들된 `.dc.html` (폰트·에셋이
 data URI 나 자산 ID 로 박혀 수 MB 짜리가 된 것)을 커밋하면 그 사본이 곧 위 화석이 된다.
 
-`screen/finch-screens.dc.html` (다중 화면 프로토타입, 토큰 마이그레이션 전 캡처)이
+`screen/finch-screens.dc.html` 은 Sprint 3 에서 지웠다 — 토큰 마이그레이션 이전의 색이 박힌
+번들 사본이라 열면 지운 시스템을 되살리게 된다. 필요하면 `git show a62cc42:prototype/screen/finch-screens.dc.html`.
 정확히 이 상태였다 — 옛 파랑 프라이머리 · 버린 상승 적색 · 옛 잉크 값이 손으로 박혀 있고
 Gmarket Sans 이전의 Pretendard 를 실었다. `frontend/src/app/layouts/AiFloatingOverlay.tsx`
 가 이 파일을 "프로토타입의 실제 구현" 으로 인용하고 있었는데, 다시 만들려면 화면

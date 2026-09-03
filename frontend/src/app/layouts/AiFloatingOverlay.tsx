@@ -14,7 +14,7 @@ import { StockCodeSchema } from '@/shared/types/primitives';
  *
  * PRD v1.0 이 정한 배치는 **종목 상세 · 포트폴리오 · 브리핑 · 뉴스 상세**이고
  * 주문 화면은 제외한다(제출 버튼을 가린다). 그런데 프로토타입
- * (`finch-screens.dc.html`)의 실제 구현은 `showFab: ["home","detail","portfolio","briefing"]`
+ * (`finch-screens.dc.html`, Sprint 3 에서 삭제)의 구현은 `showFab: ["home","detail","portfolio","briefing"]`
  * 로 **홈이 들어가 있고 뉴스 상세가 없다.** 어느 쪽을 따를지 확정되지 않았고
  * ia.md §7 에 미확인 항목으로 올라가 있다 (AI 파트 · GitLab 이슈 #26 4번).
  *
