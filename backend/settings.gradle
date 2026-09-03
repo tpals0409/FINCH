@@ -1,1 +1,8 @@
+// 툴체인 자동 공급. build.gradle 이 JDK 21 을 요구하는데 개발 머신에 없으면 Gradle 이 직접 받아온다.
+// 없으면 "Cannot find a Java installation ... matching languageVersion=21" 로 기동조차 못 한다 —
+// 사람마다 JDK 를 손으로 맞추게 하는 대신 빌드가 스스로 해결하게 둔다.
+plugins {
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'finch'
