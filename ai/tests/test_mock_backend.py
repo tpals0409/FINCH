@@ -66,7 +66,7 @@ def test_두_라우트가_백엔드_계약_모양을_반환한다() -> None:
         portfolio = client.get("/internal/v1/portfolio", headers={"X-User-Id": "1"}).json()
         trades = client.get("/internal/v1/trades", headers={"X-User-Id": "1"}).json()
 
-    assert set(portfolio) == {"roundId", "cashBalance", "asOf", "holdings"}
+    assert set(portfolio) == {"cashBalance", "asOf", "holdings"}
     assert set(portfolio["holdings"][0]) == {
         "stockCode",
         "stockName",
@@ -74,7 +74,7 @@ def test_두_라우트가_백엔드_계약_모양을_반환한다() -> None:
         "avgBuyPrice",
         "currentPrice",
     }
-    assert set(trades) == {"roundId", "trades", "nextCursor", "hasNext"}
+    assert set(trades) == {"trades", "nextCursor", "hasNext"}
     assert set(trades["trades"][0]) == {
         "tradeId",
         "stockCode",

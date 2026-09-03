@@ -193,7 +193,7 @@ class BackendLedgerSource:
 
     | 데이터 | 출처 |
     | --- | --- |
-    | 보유·현금·회차 | 백엔드 `GET /internal/v1/portfolio` |
+    | 보유·현금 | 백엔드 `GET /internal/v1/portfolio` |
     | 거래 이력 | 백엔드 `GET /internal/v1/trades` (커서 페이징) |
     | 과거 일별 종가 | 우리 `price_daily` (ingest/prices.py 가 채운다) |
     | 섹터 | 우리 `instruments.sector` |
@@ -202,7 +202,11 @@ class BackendLedgerSource:
 
     **아직 §9 에 없는 것**: 입출금 이력과 수수료. 수수료는 지어내지 않고 0으로
     두며, 외부 현금흐름은 현재 현금에서 역산한 기초 입금 한 건으로 복원한다.
-    입금 시점은 첫 거래일로 가정하므로 회차 중간 충전은 정확히 반영하지 못한다.
+    입금 시점은 첫 거래일로 가정하므로 중간 충전은 정확히 반영하지 못한다.
+
+    **인스턴스는 사용자 상태를 갖지 않는다.** `ledger_source()` 가 `lru_cache` 라
+    프로세스당 하나뿐이고, 사용자를 필드에 담으면 동시 요청이 서로의 헤더를
+    덮어써 남의 포트폴리오를 받는다. `user_id` 는 인자로만 흐른다.
 
     `load` 가 async 인 점에 주의. `LedgerSource` 프로토콜은 동기지만 우리
     드라이버가 asyncpg 뿐이라(동기 드라이버는 새 의존성이다) DB 를 동기로
@@ -228,16 +232,22 @@ class BackendLedgerSource:
         # 묶인다. 테스트가 루프를 갈아 끼우므로 세션 팩토리를 갈아 끼울 수 있게 둔다.
         self._sessions = sessions
         self._timeout = timeout
-        #: load() 가 채운다. 사용자별 데이터라 모든 요청에 사용자 헤더가 실려야 한다.
-        self._user_id = ""
 
     # ── 백엔드 ───────────────────────────────────────────────────────
-    def _get(self, path: str, params: Mapping[str, object] | None = None) -> dict:
+    def _get(
+        self, user_id: str, path: str, params: Mapping[str, object] | None = None
+    ) -> dict:
+        """사용자 헤더를 붙여 읽는다. `user_id` 는 반드시 인자로 받는다.
+
+        인스턴스에 담으면 안 된다. `ledger_source()` 가 `lru_cache` 라 이 객체는
+        프로세스당 하나이고, `load()` 가 곧바로 await 하므로 두 사용자의 요청이
+        겹치면 나중 것이 앞 것의 헤더를 덮어쓴다 — A 가 B 의 포트폴리오를 받는다.
+        """
         import httpx
 
         headers = {
             settings.internal_token_header: self._token,
-            settings.trusted_user_header: self._user_id,
+            settings.trusted_user_header: user_id,
         }
         client = self._client or httpx.Client(timeout=self._timeout)
         try:
@@ -254,17 +264,19 @@ class BackendLedgerSource:
             if self._client is None:
                 client.close()
 
-    def _trades(self, round_id: object) -> Iterable[Trade]:
-        """커서 페이징을 끝까지 따라간다. 기본 100건. 백엔드 명세 §9.2."""
+    def _trades(self, user_id: str) -> Iterable[Trade]:
+        """커서 페이징을 끝까지 따라간다. 기본 100건. 백엔드 명세 §9.2.
+
+        회차 필터는 없다. `roundId` 는 apiSpec v0.7 에서 삭제됐고(투자 회차·계좌
+        리셋 제거) 계좌는 하나뿐이라, 커서 하나로 전체 이력을 끝까지 읽는다.
+        """
         cursor: str | None = None
         seen = 0
         while True:
             params: dict[str, object] = {"size": self._TRADE_PAGE}
-            if round_id is not None:
-                params["roundId"] = round_id
             if cursor:
                 params["cursor"] = cursor
-            page = self._get("/internal/v1/trades", params)
+            page = self._get(user_id, "/internal/v1/trades", params)
 
             for row in page.get("trades", ()):
                 yield Trade(
@@ -287,12 +299,10 @@ class BackendLedgerSource:
 
     # ── 조립 ─────────────────────────────────────────────────────────
     async def load(self, user_id: str) -> Ledger:
-        self._user_id = user_id
         # 동기 HTTP 라 이벤트 루프를 막는다. 스레드로 뺀다 — app.rag.search 와 같다.
-        portfolio = await asyncio.to_thread(self._get, "/internal/v1/portfolio")
+        portfolio = await asyncio.to_thread(self._get, user_id, "/internal/v1/portfolio")
         holdings = tuple(portfolio.get("holdings", ()))
-        round_id = portfolio.get("roundId")
-        trades = await asyncio.to_thread(lambda: tuple(self._trades(round_id)))
+        trades = await asyncio.to_thread(lambda: tuple(self._trades(user_id)))
 
         # 거래한 종목도 시세가 있어야 한다. 전량 매도해 지금은 안 들고 있어도
         # 그날의 평가액을 다시 계산해야 하기 때문이다.
