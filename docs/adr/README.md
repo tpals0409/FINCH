@@ -13,7 +13,7 @@ docs/adr/
 ├─ README.md                      ← 본 문서
 ├─ ADR-{NNN}-{slug}.md            ← 영구 ADR (0개)
 ├─ topics/{topic-slug}.md         ← 토픽 ADR (0개)
-└─ sprints/sprint-{N}.md          ← 회고형 sprint ADR (2개)
+└─ sprints/sprint-{N}.md          ← 회고형 sprint ADR (3개)
 ```
 
 > 위 "(N개)" 표기는 실제 파일 수와 일치해야 한다. ADR 을 추가하면 같이 고친다.
