@@ -16,7 +16,6 @@ from fastapi import FastAPI, Header
 
 app = FastAPI(title="Ledger backend mock")
 SEED_CASH = 20_000_000
-ROUND_ID = 3
 VALID_TRADING_DAYS = frozenset(
     {"2025-07-16", "2025-09-01", "2025-11-03", "2026-02-02", "2026-05-04"}
 )
@@ -108,7 +107,6 @@ def _net_invested(trades: list[dict[str, Any]]) -> float:
 def portfolio(x_user_id: Annotated[str | None, Header()] = None) -> dict:
     scenario = _scenario(x_user_id)
     return {
-        "roundId": ROUND_ID,
         "cashBalance": SEED_CASH - _net_invested(scenario["trades"]),
         "asOf": "2026-08-20T14:30:00+09:00",
         "holdings": scenario["holdings"],
@@ -119,12 +117,10 @@ def portfolio(x_user_id: Annotated[str | None, Header()] = None) -> dict:
 def trades(
     x_user_id: Annotated[str | None, Header()] = None,
     size: int = 100,
-    roundId: int | None = None,
     cursor: str | None = None,
 ) -> dict:
-    del size, roundId, cursor
+    del size, cursor
     return {
-        "roundId": ROUND_ID,
         "trades": _scenario(x_user_id)["trades"],
         "nextCursor": None,
         "hasNext": False,

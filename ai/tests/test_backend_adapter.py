@@ -7,6 +7,8 @@ HTTP 는 목으로 세우고, DB 쪽은 실제로 읽는다 — 여기서 고정
 
 from __future__ import annotations
 
+import asyncio
+import time
 from datetime import date
 from typing import Any
 
@@ -166,7 +168,8 @@ async def test_커서를_끝까지_따라간다(sessions):
     assert len(trade_calls) == 2
     assert trade_calls[1][1]["cursor"] == "c2"
     assert trade_calls[0][1]["size"] == 100
-    assert trade_calls[0][1]["roundId"] == 3
+    # roundId 는 보내지 않는다 — apiSpec v0.7 이 투자 회차를 제거했다 (이슈 #27).
+    assert "roundId" not in trade_calls[0][1]
 
 
 @pytest.mark.asyncio
@@ -190,6 +193,39 @@ async def test_모든_요청에_인증_헤더_두_개가_실린다(sessions):
 
 # ── 우리 DB 에서 오는 것 ──────────────────────────────────────────────────
 @pytest.mark.asyncio
+
+@pytest.mark.asyncio
+async def test_동시_요청이_서로의_헤더를_덮지_않는다(sessions):
+    """두 사용자가 겹쳐 들어와도 각자 자기 헤더로만 나간다.
+
+    `ledger_source()` 가 `lru_cache` 라 이 어댑터는 프로세스당 하나다. 예전에는
+    `load()` 가 `self._user_id` 에 사용자를 담고 곧바로 await 했는데, 그러면 나중
+    요청이 앞 요청의 헤더를 덮어써 **A 가 B 의 포트폴리오를 받았다.** 사용자 간
+    데이터 유출이고, 지금은 LEDGER_SOURCE=seed 라 잠들어 있을 뿐 백엔드가
+    /internal/v1 을 여는 순간 깨어난다.
+
+    그래서 이 테스트가 지키는 것은 "user_id 가 인스턴스 상태가 아니다" 다.
+    `_get`·`_trades` 가 다시 `self` 에서 사용자를 읽기 시작하면 여기서 걸린다.
+    """
+    await _skip_without_prices(sessions)
+
+    class _양보하는클라이언트(_FakeClient):
+        """헤더를 읽은 뒤 실제로 양보한다. 양보가 없으면 경합이 재현되지 않는다."""
+
+        def get(self, url: str, params: Any = None, headers: Any = None) -> _Response:
+            time.sleep(0)  # to_thread 안이라 GIL 을 놓아 다른 요청이 끼어들 틈을 준다
+            return super().get(url, params, headers)
+
+    client = _양보하는클라이언트()
+    source = _source(client, sessions)
+
+    await asyncio.gather(source.load("user-A"), source.load("user-B"))
+
+    보낸사용자 = [headers[settings.trusted_user_header] for _, _, headers in client.calls]
+    assert set(보낸사용자) == {"user-A", "user-B"}
+    # 한쪽이 다른 쪽을 덮었다면 두 값 중 하나만 남는다.
+    assert 보낸사용자.count("user-A") == 보낸사용자.count("user-B")
+
 async def test_시계열은_우리_price_daily에서_온다(sessions):
     """§9 의 currentPrice 한 점이 아니라 우리가 적재한 종가 시계열이다.
 
