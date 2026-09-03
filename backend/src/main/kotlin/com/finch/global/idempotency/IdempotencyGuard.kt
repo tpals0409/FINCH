@@ -116,6 +116,10 @@ class IdempotencyGuard(
 			.joinToString("") { "%02x".format(it) }
 
 	companion object {
+
+		/** apiSpec 1.4 의 헤더 이름. 컨트롤러가 `@RequestHeader` 에 쓴다. */
+		const val HEADER = "Idempotency-Key"
+
 		/** `ck_idempotency_key_len` 과 같은 범위여야 한다. */
 		private val KEY_LENGTH = 8..64
 	}

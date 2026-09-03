@@ -130,7 +130,7 @@ class AccountService(
 		val cashBalanceAfter = account.applyCashDelta(cashDelta)
 		val entry = ledgerService.record(account.id!!, type, cashDelta, cashBalanceAfter, occurredAt)
 
-		return CashPosting(entry.id!!, cashBalanceAfter, occurredAt)
+		return CashPosting(entry.id!!, account.id!!, cashBalanceAfter, occurredAt)
 	}
 
 	private fun lockedAccount(userId: Long): Account =

@@ -14,6 +14,13 @@ import java.time.Instant
  */
 data class CashPosting(
 	val ledgerEntryId: Long,
+	/**
+	 * `deposit.account_id`·`trade.account_id` 를 채우는 데 쓴다. 응답으로는 절대 나가지 않는다
+	 * (apiSpec 1.6 — 계좌 식별자를 내려주지 않는다).
+	 *
+	 * 이 값을 주지 않으면 `deposit` 이 계좌 식별자를 알 길이 없어 `Account` 엔티티를 import 하게 된다.
+	 */
+	val accountId: Long,
 	val cashBalanceAfter: Long,
 	val occurredAt: Instant,
 )
