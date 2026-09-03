@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+:root{
+--bg:#F7F8FA;--surface:#FFFFFF;--t1:#1F2328;--t2:#5B616B;--t3:#8B95A1;--border:#E9ECEF;--border2:#D9DEE5;
+--brand:#1F2328;--brand-soft:#F0F1F3;--ai:#F4F6F8;--ai-b:#E1E6EB;--rule:#DFE4EA;
+--up:#E25555;--down:#3B82F6;--neu:#6B7280;
+--ease:cubic-bezier(.2,0,0,1);
+}
+.dark{--bg:#0F1216;--surface:#171B21;--t1:#F2F4F7;--t2:#A5ADB8;--t3:#6F7886;--border:#242A32;--border2:#30373F;
+--brand:#F2F4F7;--brand-soft:#232932;--ai:#1C2128;--ai-b:#2A313A;--rule:#2A313A;--up:#F27373;--down:#6BA6FF;
+border-color:rgba(255,255,255,.08);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.dark .soft,.dark .seg,.dark .th,.dark .chip,.dark .sk,.dark .bar{background:#232932}
+.dark .chip{color:var(--t2)}
+.dark .seg button.on{background:#30373F;color:var(--t1);box-shadow:none}
+.dark .chip.sel{background:var(--t1);color:#0F1216}
+.dark .tag.g,.dark .tag.w{background:#232932;color:var(--t2)}
+.dark .tag.u{background:rgba(242,115,115,.16);color:#F27373}
+.dark .tag.d{background:rgba(107,166,255,.16);color:#6BA6FF}
+.dark .btn{background:var(--t1);color:#0F1216}
+.dark .btn.cb{background:var(--t1)}
+.dark .btn.rd{background:#F27373;color:#0F1216}
+.dark .btn2{background:var(--surface);border-color:var(--border2)}
+.dark .tabbar{background:rgba(23,27,33,.94);border-top-color:var(--border)}
+.dark .sheet{background:var(--surface)}
+.dark .toast{background:rgba(242,244,247,.96);color:#0F1216}
+.dark .fab{background:var(--t1);color:#0F1216;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.dark .sb::after{background:var(--t1)}
+.dark .handle{background:#30373F}
+.dark input{background:var(--surface)!important;border-color:var(--border2)!important;color:var(--t1)!important}
+.dark .ico{color:var(--t1)}
+.dark .info{border-color:var(--t3);color:var(--t3)}
+.dark .row:active{background:rgba(255,255,255,.05)}
+.dark .ico:active{background:rgba(255,255,255,.07)}
+.dark .scrim{background:rgba(0,0,0,.6)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#EDEFF3;font-family:"Pretendard Variable",Pretendard,system-ui,-apple-system,sans-serif;color:var(--t1);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:var(--brand);text-decoration:none;text-underline-offset:3px}a:hover{text-decoration:underline}
+button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes slot{
+0%,28%{transform:translateY(0)}
+36%,64%{transform:translateY(-56px)}
+72%,100%{transform:translateY(-112px)}
+}
+.slot{display:inline-block;height:56px;overflow:hidden;vertical-align:top}
+.slot>span{display:block;height:56px;animation:slot 7.5s cubic-bezier(.2,0,0,1) forwards}
+.slot i{display:block;height:56px;font-style:normal;white-space:nowrap}
+@keyframes down{from{transform:translateY(0)}to{transform:translateY(100%)}}
+@keyframes dropin{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@keyframes dropout{from{transform:translateY(0)}to{transform:translateY(-100%)}}
+.drop,.lift{flex:1;min-height:0;display:flex;flex-direction:column}
+.drop{animation:dropin 360ms cubic-bezier(.2,0,0,1)}
+.lift{animation:dropout 300ms cubic-bezier(.4,0,1,1) forwards}
+.rise,.fall{flex:1;min-height:0;display:flex;flex-direction:column}
+.rise{animation:up 360ms cubic-bezier(.2,0,0,1)}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pin{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes risein{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.ln{stroke-dasharray:620;stroke-dashoffset:620;animation:draw 1.6s cubic-bezier(.3,0,.2,1) .25s forwards}
+.lf{opacity:0;animation:fade 600ms ease-out 1.5s forwards}
+.pt{transform-origin:center;transform-box:fill-box;opacity:0;animation:pin 340ms cubic-bezier(.2,0,0,1) forwards}
+.lc{opacity:0;animation:risein 560ms cubic-bezier(.2,0,0,1) forwards}
+@keyframes wipeA{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 -2% 0 0)}}
+@keyframes wipeB{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 -2% 0 0)}}
+@keyframes wipeC{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 -2% 0 0)}}
+.p1>svg{animation:wipeA 520ms cubic-bezier(.25,0,.2,1)}
+.p3>svg{animation:wipeB 520ms cubic-bezier(.25,0,.2,1)}
+.p12>svg{animation:wipeC 520ms cubic-bezier(.25,0,.2,1)}
+@keyframes blink{0%,60%,100%{opacity:.2}30%{opacity:1}}
+.dots{display:inline-flex;gap:4px;align-items:center;margin-left:3px}
+.dots b{width:5px;height:5px;border-radius:999px;background:var(--t2);animation:blink 1.3s ease-in-out infinite}
+.dots b:nth-child(2){animation-delay:.18s}
+.dots b:nth-child(3){animation-delay:.36s}
+.fall{animation:down 300ms cubic-bezier(.4,0,1,1) forwards}
+.odo{display:inline-flex;align-items:flex-start}
+.ocell{display:inline-block;height:44px;overflow:hidden;vertical-align:top}
+.ocell>i{display:block;font-style:normal;transition:transform 420ms cubic-bezier(.2,0,0,1)}
+.ocell>i>b{display:block;height:44px;line-height:44px;font-weight:inherit}
+.ochar{display:inline-block;height:44px;line-height:44px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.stage{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.ph{width:390px;height:844px;color:var(--t1);background:var(--bg);border:1px solid rgba(31,35,40,.08);border-radius:32px;overflow:hidden;display:flex;flex-direction:column;position:relative;box-shadow:0 24px 60px rgba(31,35,40,.14)}
+.sb{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:14px;font-weight:600}
+.sb::after{content:"";width:54px;height:11px;background:var(--t1);-webkit-mask:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 11"><rect x="0" y="3" width="3" height="5" rx="1"/><rect x="5" y="1.5" width="3" height="8" rx="1"/><rect x="10" y="0" width="3" height="11" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/><path d="M24 2a7 7 0 0 1 10 0l-5 7z"/><rect x="38" y="1" width="16" height="9" rx="2.5"/></svg>') center/contain no-repeat;mask:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 11"><rect x="0" y="3" width="3" height="5" rx="1"/><rect x="5" y="1.5" width="3" height="8" rx="1"/><rect x="10" y="0" width="3" height="11" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/><path d="M24 2a7 7 0 0 1 10 0l-5 7z"/><rect x="38" y="1" width="16" height="9" rx="2.5"/></svg>') center/contain no-repeat}
+.nav{height:56px;flex:none;display:flex;align-items:center;gap:4px;padding:0 9px}
+.navt{font-size:18px;font-weight:700;letter-spacing:-.01em;flex:1;padding-left:11px}
+.nav>.ico:first-child+.navt{padding-left:0}
+.ico{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--t1);border-radius:12px;transition:background var(--motion,140ms) var(--ease)}
+.ico:active{background:rgba(31,35,40,.06)}
+.sc{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 20px 28px;scrollbar-width:none}
+.sc::-webkit-scrollbar{display:none}
+.sec{margin-top:32px}
+.sec:first-child{margin-top:8px}
+.sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.sh>.cp,.sh>.tb{white-space:nowrap;flex:none}
+.sh>.sht{min-width:0}
+.sht{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.tb{font-size:15px;font-weight:600;color:var(--t1);padding:6px 0}
+.tb:active{opacity:.6}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px}
+.card.d{padding:16px}
+.soft{background:#F1F3F6;border-radius:14px;padding:16px}
+.ai{background:var(--ai);border:1px solid var(--ai-b);border-radius:18px;padding:20px}
+.ailb{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--t2);text-transform:uppercase;display:block;margin-bottom:8px}
+.row{min-height:64px;display:flex;align-items:center;gap:12px;padding:12px 0;width:100%;text-align:left;transition:background 140ms var(--ease);border-radius:12px}
+.row:active{background:rgba(31,35,40,.04)}
+.dv{height:1px;background:var(--border)}
+.d36{font-size:36px;line-height:44px;font-weight:700;letter-spacing:-.03em}
+.t1{font-size:28px;line-height:36px;font-weight:700;letter-spacing:-.025em}
+.t2{font-size:22px;line-height:30px;font-weight:700;letter-spacing:-.02em}
+.t3{font-size:18px;line-height:26px;font-weight:600;letter-spacing:-.01em}
+.b1{font-size:16px;line-height:24px}
+.b2{font-size:15px;line-height:22px;color:var(--t2)}
+.lb{font-size:14px;line-height:20px;font-weight:500}
+.cp{font-size:13px;line-height:18px;color:var(--t3)}
+.mu{color:var(--t3)}.se{color:var(--t2)}
+.up{color:var(--up)}.dn{color:var(--down)}.ne{color:var(--neu)}
+.btn{height:54px;border-radius:14px;background:var(--t1);color:#fff;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform 140ms var(--ease),opacity 140ms var(--ease)}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.38;transform:none}
+.btn.cb{background:var(--brand)}
+.btn.rd{background:var(--up)}
+.btn2{height:54px;border-radius:14px;background:var(--surface);border:1px solid var(--border2);color:var(--t1);font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;transition:transform 140ms var(--ease)}
+.btn2:active{transform:scale(.98);background:#F7F8FA}
+.seg{display:flex;gap:4px;background:#F1F3F6;border-radius:12px;padding:4px;height:44px}
+.seg button{flex:1;border-radius:9px;font-size:15px;font-weight:600;color:var(--t3);transition:all 180ms var(--ease)}
+.seg button.on{background:var(--surface);color:var(--t1);box-shadow:0 1px 3px rgba(31,35,40,.06)}
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--border);padding:0 20px;flex:none}
+.tabs button{padding:14px 0 12px;font-size:16px;font-weight:600;color:var(--t3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 180ms var(--ease)}
+.tabs button.on{color:var(--t1);border-bottom-color:var(--t1)}
+.chip{height:34px;padding:0 14px;border-radius:11px;background:#F1F3F6;color:var(--t2);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:all 140ms var(--ease)}
+.chip.on{background:var(--brand-soft);color:var(--t1);font-weight:600;box-shadow:inset 0 0 0 1px var(--border2)}
+.chip.sel{background:var(--t1);color:#fff;font-weight:600}
+.chip:active{transform:scale(.97)}
+.th{width:44px;height:44px;flex:none;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;background:#F1F3F6;color:var(--t2)}
+.tag{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:8px;font-size:13px;font-weight:600}
+.tag.u{background:#FDECEC;color:#C13B3B}.tag.d{background:#EEF4FE;color:#2563EB}
+.tag.g{background:#F1F3F6;color:var(--t2)}
+.tag.w{background:#F0F1F3;color:var(--t1)}
+.info{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;border:1.4px solid var(--t3);color:var(--t3);font-size:11px;font-weight:700;margin-left:5px;vertical-align:1px}
+.tabbar{height:76px;flex:none;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border-top:1px solid var(--border);padding-bottom:10px}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:12px;font-weight:500;color:var(--t3);transition:color 140ms var(--ease)}
+.tabbar button.on{color:var(--t1);font-weight:700}
+.tabbar button::before{content:"";width:24px;height:24px;background:currentColor;-webkit-mask-size:24px;mask-size:24px;-webkit-mask-position:center;mask-position:center;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.n1::before{-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5.5v-6h-5v6H4z"/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5.5v-6h-5v6H4z"/></svg>')}
+.n2::before{-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4" fill="none" stroke="black" stroke-width="2"/><path d="M15.8 15.8 20 20" stroke="black" stroke-width="2.2" stroke-linecap="round"/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4" fill="none" stroke="black" stroke-width="2"/><path d="M15.8 15.8 20 20" stroke="black" stroke-width="2.2" stroke-linecap="round"/></svg>')}
+.n3::before{-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="4" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="16" y="9" width="4" height="11" rx="1"/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="4" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="16" y="9" width="4" height="11" rx="1"/></svg>')}
+.n4::before{-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.7"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>');mask-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.7"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0z"/></svg>')}
+.fab{position:absolute;right:18px;bottom:96px;height:52px;padding:0 18px 0 14px;border-radius:999px;background:var(--t1);color:#fff;display:flex;align-items:center;gap:9px;font-size:15px;font-weight:600;box-shadow:0 6px 20px rgba(31,35,40,.22);z-index:4;transition:transform 140ms var(--ease)}
+.fab:active{transform:scale(.96)}
+.scrim{position:absolute;inset:0;background:rgba(23,29,38,.4);display:flex;align-items:flex-end;z-index:6;animation:fade 200ms var(--ease);overflow:hidden}
+.sheet{width:100%;background:var(--surface);border-radius:24px 24px 0 0;padding:8px 20px 24px;animation:up 260ms var(--ease);max-height:80%;display:flex;flex-direction:column;box-sizing:border-box}
+.handle{width:40px;height:4px;border-radius:2px;background:#D9DEE5;margin:6px auto 14px;flex:none}
+.toast{position:absolute;left:20px;right:20px;bottom:100px;background:rgba(31,35,40,.94);color:#fff;border-radius:14px;padding:14px 16px;font-size:15px;font-weight:500;z-index:8;animation:pop 200ms var(--ease);box-shadow:0 6px 20px rgba(31,35,40,.2)}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--up);flex:none}
+.badge{position:absolute;top:6px;right:6px;min-width:18px;height:18px;border-radius:999px;background:var(--up);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.sk{background:linear-gradient(90deg,#EDEFF2,#F5F6F8,#EDEFF2);border-radius:6px}
+.fin{flex:none;object-fit:contain}
+.bar{height:8px;border-radius:4px;background:#EDEFF2;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px}
+.pre{white-space:pre-line}
+</style>
+</helmet>
+
+<template id="__bundler_thumbnail" data-bg-color="#EDEFF3">
+<svg viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+<rect width="600" height="400" fill="#EDEFF3"/>
+<rect x="228" y="70" width="144" height="260" rx="26" fill="#FFFFFF" stroke="#D9DEE5" stroke-width="2"/>
+<rect x="248" y="104" width="60" height="9" rx="4" fill="#C6CEDA"/>
+<rect x="248" y="124" width="96" height="18" rx="4" fill="#1F2328"/>
+<rect x="248" y="164" width="104" height="44" rx="10" fill="#F7F2EA" stroke="#EDE3D7" stroke-width="2"/>
+<circle cx="266" cy="186" r="9" fill="#E9DDCC"/>
+<rect x="284" y="180" width="56" height="6" rx="3" fill="#E0D2BA"/>
+<rect x="248" y="226" width="104" height="8" rx="4" fill="#E9ECEF"/>
+<rect x="248" y="244" width="76" height="8" rx="4" fill="#E9ECEF"/>
+<text x="300" y="372" font-family="system-ui, sans-serif" font-size="26" font-weight="700" fill="#1F2328" text-anchor="middle" letter-spacing="-0.5">Finch</text>
+</svg>
+</template>
+
+<div class="stage">
+<div class="{{ phCls }}">
+<div class="sb"><span>{{ clock }}</span></div>
+
+<sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden">
+
+<div style="position:absolute;top:-70px;right:-80px;width:300px;height:300px;border-radius:999px;border:1px solid var(--border)"></div>
+<div style="position:absolute;top:-10px;right:-140px;width:300px;height:300px;border-radius:999px;border:1px solid var(--border);opacity:.6"></div>
+
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 26px;position:relative;z-index:2">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:100px;height:auto;margin-bottom:18px;filter:{{ logoFilter }}">
+<div style="font-size:46px;line-height:56px;font-weight:800;letter-spacing:-.04em;color:var(--t1)">
+<div><span class="slot"><span><i>펀드</i><i>세금</i><i style="color:var(--t1)">주식</i></span></span><span style="color:#B6C0CC">에는</span></div>
+<div><span class="slot"><span><i>매니저</i><i>세무사</i><i style="color:var(--t1)">FINCH</i></span></span><span style="color:#B6C0CC">가 있다.</span></div>
+</div>
+<div class="b2" style="line-height:25px;max-width:296px;margin-top:22px">쏟아지는 공시와 뉴스에서<br>내 종목에 필요한 정보만 골라내고,<br>계좌 전체의 흐름까지 함께 정리합니다.</div>
+
+<div style="margin-top:40px;position:relative">
+<svg viewBox="0 0 338 118" preserveAspectRatio="none" style="width:100%;height:118px;display:block;overflow:visible" aria-hidden="true">
+<path class="lf" d="M0 104 L28 88 L56 94 L92 74 L124 82 L169 62 L204 48 L238 58 L282 36 L312 42 L338 28 L338 118 L0 118 Z" fill="var(--brand-soft)"></path>
+<path class="ln" d="M0 104 L28 88 L56 94 L92 74 L124 82 L169 62 L204 48 L238 58 L282 36 L312 42 L338 28" fill="none" stroke="var(--t1)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"></path>
+<g class="pt" style="animation-delay:.6s"><circle cx="56" cy="94" r="9" fill="var(--t1)" opacity=".12"></circle><circle cx="56" cy="94" r="3.8" fill="var(--t1)"></circle></g>
+<g class="pt" style="animation-delay:1.05s"><circle cx="169" cy="62" r="9" fill="var(--t1)" opacity=".12"></circle><circle cx="169" cy="62" r="3.8" fill="var(--t1)"></circle></g>
+<g class="pt" style="animation-delay:1.5s"><circle cx="282" cy="36" r="9" fill="var(--t1)" opacity=".12"></circle><circle cx="282" cy="36" r="3.8" fill="var(--t1)"></circle></g>
+</svg>
+<div style="display:flex;gap:14px;margin-top:16px">
+<div class="lc" style="flex:1;animation-delay:.6s">
+<div class="cp" style="color:var(--t2);margin-bottom:5px">종목 분석</div>
+<div class="b1" style="font-weight:700;line-height:22px">7개<br>핵심 항목</div>
+</div>
+<div class="lc" style="flex:1;animation-delay:1.05s">
+<div class="cp" style="color:var(--t2);margin-bottom:5px">계좌 진단</div>
+<div class="b1" style="font-weight:700;line-height:22px">3개<br>핵심 지표</div>
+</div>
+<div class="lc" style="flex:1;animation-delay:1.5s">
+<div class="cp" style="color:var(--t2);margin-bottom:5px">주문 점검</div>
+<div class="b1" style="font-weight:700;line-height:22px">매수 전·후<br>비교</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="flex:none;padding:0 26px 26px;position:relative;z-index:2">
+<button class="btn" style="width:100%;background:#FEE500;color:#1F2328;gap:10px" onClick="{{ enter }}">
+<svg viewBox="0 0 24 24" style="width:22px;height:22px;flex:none" aria-hidden="true"><path d="M12 3.6C7.03 3.6 3 6.79 3 10.72c0 2.5 1.63 4.7 4.09 5.96-.14.5-.5 1.83-.58 2.11-.1.35.13.35.28.25.11-.07 1.79-1.22 2.52-1.72.87.13 1.77.2 2.69.2 4.97 0 9-3.19 9-7.12S16.97 3.6 12 3.6Z" fill="#1F2328"/></svg>
+<span>카카오로 시작하기</span>
+</button>
+<div class="cp" style="text-align:center;margin-top:14px;line-height:19px">시작하면 <span style="color:var(--t2);text-decoration:underline;text-underline-offset:2px">이용약관</span>과 <span style="color:var(--t2);text-decoration:underline;text-underline-offset:2px">개인정보 처리방침</span>에 동의하게 됩니다.</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><span class="navt">{{ greeting }}</span>
+<button class="chip on" style="white-space:nowrap" onClick="{{ goDeposit }}">입금</button>
+<button class="ico" style="position:relative" onClick="{{ goMail }}">✉
+<sc-if value="{{ hasMail }}" hint-placeholder-val="{{ true }}"><span class="badge">{{ mailCount }}</span></sc-if>
+</button>
+</div>
+<div class="sc">
+
+<div class="sec">
+<div class="cp">{{ asOf }} 기준</div>
+<div class="d36" style="margin-top:4px">
+<span class="sr">{{ totalAssets }} 원</span>
+<span class="odo" aria-hidden="true"><sc-for list="{{ totalDigits }}" as="g" hint-placeholder-count="10">
+<sc-if value="{{ g.isDigit }}" hint-placeholder-val="{{ true }}">
+<span class="ocell"><i style="transform:translateY({{ g.y }})"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></i></span>
+</sc-if>
+<sc-if value="{{ g.isChar }}" hint-placeholder-val="{{ false }}">
+<span class="ochar">{{ g.c }}</span>
+</sc-if>
+</sc-for></span>
+<span style="font-size:22px;font-weight:600;color:var(--t2)"> 원</span>
+</div>
+<div style="display:flex;align-items:center;gap:9px;margin-top:8px">
+<span class="tag {{ pnlTag }}">{{ pnlPct }}</span>
+<span class="b1 {{ pnlTone }}" style="font-weight:600">{{ pnlAmt }}</span>
+</div>
+<sc-if value="{{ hasHold }}" hint-placeholder-val="{{ true }}">
+<button class="tb" style="margin-top:6px" onClick="{{ openCause }}">수익률 원인 분석 →</button>
+</sc-if>
+<div class="dv" style="margin:18px 0 14px"></div>
+<div style="display:flex;align-items:center;gap:12px">
+<span class="b2" style="white-space:nowrap">주문 가능 예수금</span>
+<span class="b1" style="font-weight:600;white-space:nowrap">{{ cashStr }} 원</span>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh"><span class="sht">오늘 확인할 내용</span><span class="cp">{{ briefCount }}건</span></div>
+<sc-if value="{{ briefEmpty }}" hint-placeholder-val="{{ false }}">
+<div class="ai">
+<span class="ailb">Finch AI</span>
+<div class="b1" style="font-weight:600">관심 종목을 담으면 소식을 모아드립니다.</div>
+<div class="b2" style="margin-top:6px">보유가 없어도 관심 종목만 있으면 매일 아침 브리핑이 옵니다.</div>
+<button class="chip sel" style="margin-top:14px" onClick="{{ goSearch }}">종목 찾아보기</button>
+</div>
+</sc-if>
+<sc-if value="{{ briefHas }}" hint-placeholder-val="{{ true }}">
+<div class="ai" style="margin-bottom:8px">
+<span class="ailb">Finch AI</span>
+<div class="b1" style="font-weight:600;line-height:24px">{{ briefHead }}</div>
+</div>
+<div>
+<sc-for list="{{ briefs }}" as="n" hint-placeholder-count="3">
+<button class="row" onClick="{{ n.open }}">
+<span class="th" style="background:{{ n.tintBg }};color:{{ n.tintFg }}">{{ n.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span style="display:flex;align-items:center;gap:7px"><span class="t3" style="font-size:16px">{{ n.name }}</span><span class="tag {{ n.tag }}">{{ n.kind }}</span></span>
+<span class="b2" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ n.summary }}</span>
+</span>
+<span class="b1 {{ n.tone }}" style="font-weight:600">{{ n.pct }}</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+<div style="display:flex;justify-content:flex-end;padding-top:10px"><button class="tb" onClick="{{ goBriefing }}">전체보기</button></div>
+</div>
+</sc-if>
+</div>
+
+<div class="sec">
+<div class="sh"><span class="sht">내 종목</span>
+<sc-if value="{{ hasHold }}" hint-placeholder-val="{{ true }}"><span class="cp">{{ holdCount }}종목</span></sc-if>
+</div>
+<sc-if value="{{ noHold }}" hint-placeholder-val="{{ false }}">
+<div class="soft" style="text-align:center;padding:28px 20px">
+<div class="b1" style="font-weight:600">아직 보유 종목이 없어요.</div>
+<div class="b2" style="margin-top:6px">한 종목만 담아도 진단과 주문 전 점검이 열립니다.</div>
+</div>
+</sc-if>
+<sc-for list="{{ holds }}" as="h" hint-placeholder-count="3">
+<button class="row" onClick="{{ h.open }}">
+<span class="th" style="background:{{ h.tintBg }};color:{{ h.tintFg }}">{{ h.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span class="t3" style="font-size:16px">{{ h.name }}</span>
+<span class="cp">{{ h.qty }}주 · {{ h.avg }}원</span>
+</span>
+<span style="text-align:right;display:flex;flex-direction:column;gap:3px">
+<span class="b1" style="font-weight:700">{{ h.value }}</span>
+<span class="lb {{ h.tone }}" style="font-weight:600">{{ h.pct }}</span>
+</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+<sc-if value="{{ hasHold }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;justify-content:flex-end;padding-top:10px"><button class="tb" onClick="{{ goPf }}">전체보기</button></div>
+</sc-if>
+</div>
+
+<div class="sec">
+<div class="sh"><span class="sht">관심 종목</span><span class="cp">{{ watchCount }}종목</span></div>
+<sc-if value="{{ watchEmpty }}" hint-placeholder-val="{{ false }}">
+<div class="soft" style="text-align:center;padding:24px 20px">
+<div class="b1" style="font-weight:600">아직 관심 종목이 없어요.</div>
+<div class="b2" style="margin-top:6px">담아두면 매일 아침 소식을 모아드립니다.</div>
+<button class="chip sel" style="margin-top:14px" onClick="{{ goSearch }}">종목 찾아보기</button>
+</div>
+</sc-if>
+<sc-for list="{{ watchList }}" as="w" hint-placeholder-count="2">
+<button class="row" onClick="{{ w.open }}">
+<span class="th" style="background:{{ w.tintBg }};color:{{ w.tintFg }}">{{ w.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span style="display:flex;align-items:center;gap:6px"><span class="t3" style="font-size:16px">{{ w.name }}</span>
+<sc-if value="{{ w.suspended }}" hint-placeholder-val="{{ false }}"><span class="tag u">거래정지</span></sc-if></span>
+<span class="cp">{{ w.sub }}</span>
+</span>
+<span style="text-align:right;display:flex;flex-direction:column;gap:3px">
+<span class="b1" style="font-weight:700">{{ w.price }}</span>
+<span class="lb {{ w.tone }}" style="font-weight:600">{{ w.pct }}</span>
+</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+</div>
+
+<sc-if value="{{ hasHold }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="sh"><span class="sht">계좌 진단</span></div>
+<button class="card d" style="width:100%;text-align:left;display:flex;align-items:center;gap:14px" onClick="{{ goDiag }}">
+<span style="flex:1">
+<span class="b1" style="font-weight:600;display:block">{{ diagHead }}</span>
+<span class="b2" style="display:block;margin-top:4px">집중도 · 분산 · 변동성 보기</span>
+</span>
+<span class="mu" style="font-size:20px">›</span>
+</button>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMail }}" hint-placeholder-val="{{ false }}">
+<div class="{{ mailCls }}">
+<div class="nav"><button class="ico" onClick="{{ closeMail }}">‹</button><span class="navt">우편함</span></div>
+<div class="sc">
+<sc-if value="{{ mailEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="text-align:center;padding:80px 20px">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:132px;height:auto;opacity:.16">
+<div class="t3" style="margin-top:16px">받은 소식이 없어요.</div>
+<div class="b2" style="margin-top:8px">종목을 담으면 Finch가 확인할 것들을 여기에 모아둡니다.</div>
+</div>
+</sc-if>
+<sc-if value="{{ mailHas }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="ai" style="margin-bottom:8px">
+<span class="ailb">우편함</span>
+<div class="b1" style="font-weight:600">확인이 필요한 항목 {{ mailCount }}건이 있습니다.</div>
+</div>
+<sc-for list="{{ mails }}" as="m" hint-placeholder-count="3">
+<button class="row" style="align-items:flex-start;padding:16px 0" onClick="{{ m.act }}">
+<span style="width:8px;display:flex;justify-content:center;padding-top:8px">
+<sc-if value="{{ m.unread }}" hint-placeholder-val="{{ true }}"><span class="dot"></span></sc-if>
+</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;padding-left:6px">
+<span style="display:flex;align-items:center;gap:7px"><span class="tag {{ m.tag }}">{{ m.kind }}</span><span class="cp">{{ m.when }}</span></span>
+<span class="b1" style="font-weight:600;line-height:23px">{{ m.title }}</span>
+<span class="b2">{{ m.sub }}</span>
+</span>
+<span class="mu" style="font-size:20px;padding-top:4px">›</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+<div class="cp" style="margin-top:16px;line-height:20px">알림으로 재촉하지 않습니다. 시간 될 때 열어보시면 됩니다.</div>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><span class="navt">탐색</span></div>
+<div style="flex:none;padding:0 20px 12px">
+<input value="{{ query }}" onChange="{{ onQuery }}" placeholder="종목명 또는 종목코드" style="width:100%;height:48px;border-radius:14px;border:1px solid var(--border);background:var(--surface);padding:0 16px;font-size:16px;font-family:inherit;color:var(--t1);outline:none">
+</div>
+
+<div class="sc">
+<sc-if value="{{ showResults }}" hint-placeholder-val="{{ false }}">
+<div class="sec">
+<div class="cp">{{ resultCount }}건</div>
+<sc-for list="{{ results }}" as="s" hint-placeholder-count="3">
+<button class="row" onClick="{{ s.open }}">
+<span class="th" style="background:{{ s.tintBg }};color:{{ s.tintFg }}">{{ s.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span style="display:flex;align-items:center;gap:6px"><span class="t3" style="font-size:16px">{{ s.name }}</span>
+<sc-if value="{{ s.suspended }}" hint-placeholder-val="{{ false }}"><span class="tag u">거래정지</span></sc-if></span>
+<span class="cp">{{ s.sub }}</span>
+</span>
+<span style="text-align:right;display:flex;flex-direction:column;gap:3px">
+<span class="b1" style="font-weight:700">{{ s.price }}</span>
+<span class="lb {{ s.tone }}" style="font-weight:600">{{ s.pct }}</span>
+</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ showBrowse }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="sh"><span class="sht">최근 검색어</span>
+<sc-if value="{{ hasRecents }}" hint-placeholder-val="{{ true }}"><button class="tb" onClick="{{ clearRecents }}">전체 삭제</button></sc-if>
+</div>
+<sc-if value="{{ hasRecents }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<sc-for list="{{ recents }}" as="r" hint-placeholder-count="4">
+<button class="chip" onClick="{{ r.pick }}">{{ r.word }}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ noRecents }}" hint-placeholder-val="{{ false }}"><div class="b2">최근 검색어가 없습니다.</div></sc-if>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">거래량 상위</span></div>
+<sc-for list="{{ topList }}" as="s" hint-placeholder-count="5">
+<button class="row" onClick="{{ s.open }}">
+<span class="th" style="background:{{ s.tintBg }};color:{{ s.tintFg }}">{{ s.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span style="display:flex;align-items:center;gap:6px"><span class="t3" style="font-size:16px">{{ s.name }}</span>
+<sc-if value="{{ s.suspended }}" hint-placeholder-val="{{ false }}"><span class="tag u">거래정지</span></sc-if></span>
+<span class="cp">{{ s.sub }}</span>
+</span>
+<span style="text-align:right;display:flex;flex-direction:column;gap:3px">
+<span class="b1" style="font-weight:700">{{ s.price }}</span>
+<span class="lb {{ s.tone }}" style="font-weight:600">{{ s.pct }}</span>
+</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ showWatch }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ watchEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="text-align:center;padding:70px 20px">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:132px;height:auto;opacity:.16">
+<div class="t3" style="margin-top:16px">아직 관심 종목이 없어요.</div>
+<div class="b2" style="margin-top:8px">관심 종목을 추가하면 내 종목 중심으로 소식을 모아볼 수 있어요.</div>
+</div>
+</sc-if>
+<div class="sec">
+<sc-for list="{{ watchList }}" as="w" hint-placeholder-count="3">
+<button class="row" onClick="{{ w.open }}">
+<span class="th" style="background:{{ w.tintBg }};color:{{ w.tintFg }}">{{ w.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span style="display:flex;align-items:center;gap:6px"><span class="t3" style="font-size:16px">{{ w.name }}</span>
+<sc-if value="{{ w.suspended }}" hint-placeholder-val="{{ false }}"><span class="tag u">거래정지</span></sc-if></span>
+<span class="cp">{{ w.sub }}</span>
+</span>
+<span style="text-align:right;display:flex;flex-direction:column;gap:3px">
+<span class="b1" style="font-weight:700">{{ w.price }}</span>
+<span class="lb {{ w.tone }}" style="font-weight:600">{{ w.pct }}</span>
+</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDetail }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button><span class="navt" style="font-size:17px">{{ d.name }}</span>
+<button class="ico" onClick="{{ toggleWatch }}" style="color:{{ d.starColor }}">{{ d.star }}</button></div>
+<div style="flex:none;padding:0 20px 14px">
+<div class="cp">{{ d.code }} · {{ d.market }}</div>
+<div class="d36" style="margin-top:2px">{{ d.price }}<span style="font-size:20px;font-weight:600;color:var(--t2)"> 원</span></div>
+<div style="display:flex;align-items:center;gap:9px;margin-top:6px">
+<span class="b1 {{ d.tone }}" style="font-weight:600;white-space:nowrap">{{ d.diff }} ({{ d.pct }})</span>
+<span class="cp">{{ clock }} 기준</span>
+</div>
+</div>
+<div class="tabs">
+<button class="{{ tabChart }}" onClick="{{ toChart }}">차트</button>
+<button class="{{ tabInfo }}" onClick="{{ toInfo }}">기업</button>
+<button class="{{ tabAi }}" onClick="{{ toAi }}">AI 분석</button>
+</div>
+<div class="sc" style="padding-bottom:96px">
+
+<sc-if value="{{ isDtChart }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="seg" style="margin-bottom:16px">
+<button class="{{ p1 }}" onClick="{{ setP1 }}">1개월</button>
+<button class="{{ p3 }}" onClick="{{ setP3 }}">3개월</button>
+<button class="{{ p12 }}" onClick="{{ setP12 }}">1년</button>
+</div>
+<div class="{{ periodCls }}">
+<svg viewBox="0 0 350 190" style="width:100%;height:180px;display:block" aria-label="주가 차트">
+<line x1="0" y1="74" x2="350" y2="74" stroke="#C6CEDA" stroke-width="1" stroke-dasharray="4 4"></line>
+<text x="2" y="68" font-size="11" fill="#8B95A1" font-family="Pretendard">평균 매수가</text>
+<g stroke="#E25555" stroke-width="1.3">
+<line x1="12" y1="112" x2="12" y2="146"></line><line x1="50" y1="96" x2="50" y2="130"></line><line x1="69" y1="88" x2="69" y2="118"></line><line x1="107" y1="78" x2="107" y2="116"></line><line x1="126" y1="68" x2="126" y2="96"></line><line x1="164" y1="58" x2="164" y2="92"></line><line x1="202" y1="48" x2="202" y2="76"></line><line x1="221" y1="40" x2="221" y2="70"></line><line x1="259" y1="32" x2="259" y2="60"></line><line x1="278" y1="24" x2="278" y2="50"></line><line x1="316" y1="16" x2="316" y2="44"></line><line x1="335" y1="10" x2="335" y2="36"></line>
+</g>
+<g fill="#E25555">
+<rect x="8" y="120" width="9" height="18"></rect><rect x="46" y="104" width="9" height="20"></rect><rect x="65" y="96" width="9" height="16"></rect><rect x="103" y="88" width="9" height="22"></rect><rect x="122" y="76" width="9" height="14"></rect><rect x="160" y="68" width="9" height="18"></rect><rect x="198" y="56" width="9" height="14"></rect><rect x="217" y="48" width="9" height="18"></rect><rect x="255" y="40" width="9" height="16"></rect><rect x="274" y="32" width="9" height="14"></rect><rect x="312" y="24" width="9" height="16"></rect><rect x="331" y="18" width="9" height="14"></rect>
+</g>
+<g stroke="#3B82F6" stroke-width="1.3">
+<line x1="31" y1="104" x2="31" y2="132"></line><line x1="88" y1="84" x2="88" y2="110"></line><line x1="145" y1="64" x2="145" y2="88"></line><line x1="183" y1="54" x2="183" y2="84"></line><line x1="240" y1="36" x2="240" y2="62"></line><line x1="297" y1="22" x2="297" y2="44"></line>
+</g>
+<g fill="#3B82F6">
+<rect x="27" y="112" width="9" height="14"></rect><rect x="84" y="92" width="9" height="12"></rect><rect x="141" y="72" width="9" height="10"></rect><rect x="179" y="62" width="9" height="16"></rect><rect x="236" y="44" width="9" height="12"></rect><rect x="293" y="30" width="9" height="10"></rect>
+</g>
+<g fill="#E9ECEF">
+<rect x="8" y="172" width="9" height="14"></rect><rect x="27" y="178" width="9" height="8"></rect><rect x="46" y="174" width="9" height="12"></rect><rect x="65" y="180" width="9" height="6"></rect><rect x="84" y="176" width="9" height="10"></rect><rect x="103" y="168" width="9" height="18"></rect><rect x="122" y="178" width="9" height="8"></rect><rect x="141" y="181" width="9" height="5"></rect><rect x="160" y="172" width="9" height="14"></rect><rect x="179" y="177" width="9" height="9"></rect><rect x="198" y="180" width="9" height="6"></rect><rect x="217" y="170" width="9" height="16"></rect><rect x="236" y="179" width="9" height="7"></rect><rect x="255" y="175" width="9" height="11"></rect><rect x="274" y="173" width="9" height="13"></rect><rect x="293" y="180" width="9" height="6"></rect><rect x="312" y="166" width="9" height="20"></rect><rect x="331" y="162" width="9" height="24"></rect>
+</g>
+</svg>
+</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">오늘</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;row-gap:14px;column-gap:20px">
+<div><div class="cp">시가</div><div class="b1" style="font-weight:600;margin-top:2px">{{ d.open }}</div></div>
+<div><div class="cp">고가</div><div class="b1 up" style="font-weight:600;margin-top:2px">{{ d.high }}</div></div>
+<div><div class="cp">저가</div><div class="b1 dn" style="font-weight:600;margin-top:2px">{{ d.low }}</div></div>
+<div><div class="cp">거래량</div><div class="b1" style="font-weight:600;margin-top:2px">{{ d.vol }}</div></div>
+</div>
+</div>
+<sc-if value="{{ d.owned }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="sh"><span class="sht">내 보유</span></div>
+<div class="soft">
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="b2">보유 수량</span><span class="b1" style="font-weight:600">{{ d.myQty }}주</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"><span class="b2">평가금액</span><span class="b1" style="font-weight:600">{{ d.myValue }} 원</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"><span class="b2">평가손익</span><span class="b1 {{ d.myTone }}" style="font-weight:700">{{ d.myPnl }}</span></div>
+</div>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ isDtInfo }}" hint-placeholder-val="{{ false }}">
+<div class="sec">
+<div class="b1 se" style="line-height:25px">{{ d.about }}</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">기업 핵심 지표</span><span class="cp">{{ d.fyLabel }}</span></div>
+<div style="display:flex;flex-direction:column;gap:18px">
+<div>
+<button style="display:flex;align-items:center" onClick="{{ openPer }}"><span class="cp">PER</span><span class="info">i</span></button>
+<div class="t2" style="margin-top:2px">{{ d.per }}배</div>
+<div class="b2" style="margin-top:2px">업종 평균 {{ d.perAvg }}배</div>
+</div>
+<div class="dv"></div>
+<div>
+<button style="display:flex;align-items:center" onClick="{{ openPbr }}"><span class="cp">PBR</span><span class="info">i</span></button>
+<div class="t2" style="margin-top:2px">{{ d.pbr }}배</div>
+<div class="b2" style="margin-top:2px">업종 평균 {{ d.pbrAvg }}배</div>
+</div>
+<sc-if value="{{ metricsOpen }}" hint-placeholder-val="{{ false }}">
+<div class="dv"></div>
+<div><div class="cp">ROE</div><div class="t2" style="margin-top:2px">{{ d.roe }}%</div><div class="b2" style="margin-top:2px">업종 평균 {{ d.roeAvg }}%</div></div>
+<div class="dv"></div>
+<div><div class="cp">시가총액</div><div class="t2" style="margin-top:2px">{{ d.cap }}</div></div>
+<div class="dv"></div>
+<div><div class="cp">배당수익률</div><div class="t2" style="margin-top:2px">{{ d.div }}%</div></div>
+</sc-if>
+</div>
+<sc-if value="{{ metricsClosed }}" hint-placeholder-val="{{ true }}">
+<button class="btn2" style="width:100%;height:48px;font-size:16px;margin-top:20px" onClick="{{ moreMetrics }}">지표 더보기</button>
+</sc-if>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">매출과 영업이익</span></div>
+<div style="display:flex;align-items:flex-end;gap:16px;height:130px">
+<sc-for list="{{ d.fin }}" as="y" hint-placeholder-count="3">
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px">
+<div style="width:100%;display:flex;gap:5px;align-items:flex-end;height:96px;justify-content:center">
+<div style="width:22px;background:#C6CEDA;border-radius:4px 4px 0 0;height:{{ y.revH }}"></div>
+<div style="width:22px;background:{{ y.opColor }};border-radius:4px 4px 0 0;height:{{ y.opH }}"></div>
+</div>
+<div class="cp">{{ y.year }}</div>
+</div>
+</sc-for>
+</div>
+<div style="display:flex;gap:16px;margin-top:14px">
+<span class="cp" style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#C6CEDA"></span>매출</span>
+<span class="cp" style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#E25555"></span>영업이익 증가</span>
+<span class="cp" style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#3B82F6"></span>감소</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDtAi }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ aiLoading }}" hint-placeholder-val="{{ false }}">
+<div class="sec">
+<div class="ai">
+<span class="ailb">Finch AI</span>
+<div class="b1" style="font-weight:600;margin-bottom:16px">공시와 뉴스를 확인하고 있습니다.</div>
+<div class="sk" style="height:14px;width:92%;margin-bottom:10px"></div>
+<div class="sk" style="height:14px;width:76%;margin-bottom:10px"></div>
+<div class="sk" style="height:14px;width:86%"></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ aiReady }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="ai">
+<span class="ailb">Finch AI · 종목 분석</span>
+<div class="b1" style="font-weight:700;line-height:24px">{{ d.aiHead }}</div>
+<div style="height:1px;background:var(--rule);margin:16px 0"></div>
+<div class="b1 pre" style="line-height:25px">{{ d.aiWhy }}</div>
+<button class="btn2" style="width:100%;height:48px;font-size:16px;margin-top:18px" onClick="{{ openInsight }}">자세히 보기</button>
+</div>
+</div>
+
+<div class="sec">
+<div class="sh"><span class="sht">확인된 위험 요인</span></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ d.risks }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;gap:11px;align-items:flex-start">
+<span class="up" style="font-weight:700;flex:none">!</span>
+<span class="b1" style="flex:1;line-height:24px">{{ r.t }}</span>
+</div>
+</sc-for>
+</div>
+<div class="cp" style="margin-top:14px">공시·실적에서 확인된 내용입니다.</div>
+</div>
+
+<sc-if value="{{ d.owned }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="sh"><span class="sht">내 계좌 영향</span></div>
+<div class="soft">
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="b2">포트폴리오 비중</span><span class="b1" style="font-weight:700">{{ d.share }}</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"><span class="b2">평가손익</span><span class="b1 {{ d.myTone }}" style="font-weight:700">{{ d.myPnl }}</span></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ d.hasThesis }}" hint-placeholder-val="{{ false }}">
+<div class="sec">
+<div class="sh"><span class="sht">내 투자 기록</span></div>
+<div class="card d">
+<div class="cp">{{ d.thesisDate }} 기록</div>
+<div class="b1" style="margin-top:7px;line-height:24px">{{ d.thesis }}</div>
+<div style="height:1px;background:var(--border);margin:14px 0"></div>
+<div class="b2">{{ d.thesisCheck }}</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ d.needThesis }}" hint-placeholder-val="{{ false }}">
+<div class="sec">
+<div class="sh"><span class="sht">내 투자 기록</span></div>
+<div class="soft">
+<div class="b1" style="font-weight:600">아직 매수 이유를 안 적으셨어요.</div>
+<div class="b2" style="margin-top:6px">적어두면 다음에 판단할 때 꺼내 씁니다.</div>
+<button class="chip sel" style="margin-top:14px" onClick="{{ goMail }}">우편함에서 기록하기</button>
+</div>
+</div>
+</sc-if>
+
+<div class="sec">
+<div class="sh"><span class="sht">다가오는 일정</span></div>
+<sc-for list="{{ d.events }}" as="e" hint-placeholder-count="2">
+<div style="display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+<span class="lb mu" style="width:46px;flex:none;font-weight:600">{{ e.d }}</span>
+<span class="b1" style="flex:1">{{ e.t }}</span>
+</div>
+</sc-for>
+</div>
+
+<div class="sec">
+<div class="cp" style="line-height:20px">{{ asOf }} 기준 · 출처 공시 · 뉴스 · 자체계산<br>AI 분석은 투자 권유가 아닙니다.</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px">
+<span class="b2">이 분석이 도움이 됐나요?</span>
+<sc-if value="{{ fbIdle }}" hint-placeholder-val="{{ true }}">
+<span style="display:flex;gap:8px"><button class="chip" style="background:#E8F5EE;color:#1B7F5A;font-weight:600" onClick="{{ fbUp }}">좋아요</button><button class="chip" style="background:#FDECEC;color:#C13B3B;font-weight:600" onClick="{{ fbDown }}">아쉬워요</button></span>
+</sc-if>
+<sc-if value="{{ fbSent }}" hint-placeholder-val="{{ false }}"><span class="lb mu">보냈습니다</span></sc-if>
+</div>
+</div>
+</sc-if>
+</sc-if>
+</div>
+<div style="flex:none;padding:12px 20px 22px;display:flex;gap:10px;border-top:1px solid var(--border);background:rgba(255,255,255,.94);backdrop-filter:blur(16px)">
+<sc-if value="{{ d.tradable }}" hint-placeholder-val="{{ true }}">
+<button class="btn2" style="flex:1" onClick="{{ toSell }}">매도</button>
+<button class="btn" style="flex:1.25" onClick="{{ toBuy }}">매수</button>
+</sc-if>
+<sc-if value="{{ d.suspended }}" hint-placeholder-val="{{ false }}">
+<button class="btn" style="flex:1" disabled>거래정지 · 주문 불가</button>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isOrder }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button><span class="navt">{{ sideLabel }}</span></div>
+<div class="sc">
+<div class="sec">
+<div style="display:flex;align-items:center;gap:12px">
+<span class="th" style="background:{{ d.tintBg }};color:{{ d.tintFg }}">{{ d.initial }}</span>
+<span style="flex:1"><span class="t3" style="display:block">{{ d.name }}</span><span class="cp">시장가 · {{ d.price }}원</span></span>
+<span class="tag {{ d.tagCls }}">{{ d.pct }}</span>
+</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">수량</span><span class="cp">{{ maxNote }}</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid var(--t1);padding-bottom:12px">
+<span class="t1">{{ qty }}</span><span class="t3">주</span>
+</div>
+<div class="seg" style="margin-top:14px">
+<button onClick="{{ q10 }}">10%</button><button onClick="{{ q25 }}">25%</button><button onClick="{{ q50 }}">50%</button><button onClick="{{ qMax }}">최대</button>
+</div>
+</div>
+<div class="sec">
+<div class="soft">
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="b2">주문 금액</span><span class="b1" style="font-weight:700">{{ amount }} 원</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"><span class="b2">주문 후 예수금</span><span class="b1" style="font-weight:600">{{ afterCash }} 원</span></div>
+</div>
+</div>
+
+<sc-if value="{{ showCheck }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="ai">
+<span class="ailb">Finch AI · 주문 전 점검</span>
+<div class="b1" style="font-weight:700;line-height:24px">{{ checkHead }}</div>
+<div style="height:1px;background:var(--rule);margin:16px 0"></div>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px 12px;align-items:center">
+<span class="cp">지금</span><span></span><span class="cp">주문 후</span>
+<span class="b1" style="font-weight:600">비중 {{ beforeShare }}</span><span class="mu">→</span><span class="b1" style="font-weight:700">{{ afterShare }}</span>
+<span class="b1" style="font-weight:600">예수금 {{ cashShort }}</span><span class="mu">→</span><span class="b1" style="font-weight:700">{{ afterCashShort }}</span>
+</div>
+<div style="height:1px;background:var(--rule);margin:16px 0"></div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ warnings }}" as="w" hint-placeholder-count="2">
+<div style="display:flex;gap:11px;align-items:flex-start">
+<span style="color:#C2691C;font-weight:700;flex:none">!</span>
+<span class="b1" style="flex:1;line-height:23px">{{ w.t }}</span>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ hasThesisConflict }}" hint-placeholder-val="{{ false }}">
+<div style="background:var(--surface);border:1px solid var(--ai-b);border-radius:14px;padding:16px;margin-top:16px">
+<div class="cp" style="font-weight:600">{{ thesisDate }} 기록</div>
+<div class="b1" style="margin-top:8px;line-height:24px;padding-left:12px;border-left:3px solid var(--border2)">{{ thesisText }}</div>
+</div>
+</sc-if>
+<div class="cp" style="margin-top:16px">이 점검은 주문을 막지 않습니다.</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ short }}" hint-placeholder-val="{{ false }}">
+<div class="sec">
+<div class="card d" style="border-color:#F6D6D6;background:#FDF2F2">
+<div class="b1 up" style="font-weight:600">예수금이 부족합니다.</div>
+<div class="b2" style="margin-top:6px">{{ shortAmt }} 원이 더 필요합니다.</div>
+<button class="btn cb" style="width:100%;height:48px;font-size:16px;margin-top:14px" onClick="{{ goDeposit }}">입금하기</button>
+</div>
+</div>
+</sc-if>
+</div>
+<div style="flex:none;padding:12px 20px 22px;border-top:1px solid var(--border);background:var(--surface)">
+<sc-if value="{{ canSubmit }}" hint-placeholder-val="{{ true }}">
+<button class="btn" style="width:100%" onClick="{{ submit }}">{{ submitLabel }}</button>
+</sc-if>
+<sc-if value="{{ cantSubmit }}" hint-placeholder-val="{{ false }}">
+<button class="btn" style="width:100%" disabled>{{ submitLabel }}</button>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPf }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><span class="navt">포트폴리오</span></div>
+<div class="tabs"><button class="{{ tabHold }}" onClick="{{ toHold }}">보유</button><button class="{{ tabDiag }}" onClick="{{ toDiag }}">진단</button></div>
+<div class="sc">
+<sc-if value="{{ isPfHold }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="cp">평가 자산</div>
+<div class="d36" style="margin-top:4px">
+<span class="sr">{{ evalTotal }} 원</span>
+<span class="odo" aria-hidden="true"><sc-for list="{{ evalDigits }}" as="g" hint-placeholder-count="10">
+<sc-if value="{{ g.isDigit }}" hint-placeholder-val="{{ true }}">
+<span class="ocell"><i style="transform:translateY({{ g.y }})"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></i></span>
+</sc-if>
+<sc-if value="{{ g.isChar }}" hint-placeholder-val="{{ false }}">
+<span class="ochar">{{ g.c }}</span>
+</sc-if>
+</sc-for></span>
+<span style="font-size:22px;font-weight:600;color:var(--t2)"> 원</span>
+</div>
+<div class="dv" style="margin:18px 0 14px"></div>
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="b2">평가손익</span><span class="b1 {{ pnlTone }}" style="font-weight:700">{{ pnlAmt }} ({{ pnlPct }})</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px"><span class="b2">수익률 원인</span><button class="tb" onClick="{{ openCause }}">AI 분석 보기 →</button></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px"><span class="b2">예수금</span><span class="b1" style="font-weight:600">{{ cashStr }} 원</span></div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">보유 종목</span><span class="cp">{{ holdCount }}종목</span></div>
+<sc-for list="{{ holdsFull }}" as="h" hint-placeholder-count="4">
+<button class="row" style="align-items:flex-start;padding:14px 0" onClick="{{ h.open }}">
+<span class="th" style="background:{{ h.tintBg }};color:{{ h.tintFg }}">{{ h.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">
+<span style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<span class="t3" style="font-size:16px">{{ h.name }}</span>
+<span class="b1" style="font-weight:700">{{ h.value }}</span>
+</span>
+<span style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+<span class="cp">{{ h.qty }}주 · {{ h.avg }}원</span>
+<span class="lb {{ h.tone }}" style="font-weight:600">{{ h.pnl }} ({{ h.pct }})</span>
+</span>
+<span class="bar"><i style="width:{{ h.weight }};background:{{ h.barColor }}"></i></span>
+</span>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ isPfDiag }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ diagCold }}" hint-placeholder-val="{{ false }}">
+<div style="text-align:center;padding:70px 20px">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:132px;height:auto;opacity:.16">
+<div class="t3" style="margin-top:18px">아직 진단할 기록이 모이지 않았습니다.</div>
+<div class="b2" style="margin-top:8px">한 종목만 담아도 집중도와 분산을 계산해드릴 수 있어요.</div>
+</div>
+</sc-if>
+<sc-if value="{{ diagReady }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="ai">
+<span class="ailb">Finch AI · 포트폴리오 진단</span>
+<div class="b1" style="font-weight:700;line-height:24px">{{ diagHead }}</div>
+<div style="height:1px;background:var(--rule);margin:16px 0"></div>
+<div class="b1 pre" style="line-height:25px">{{ diagBody }}</div>
+</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">계좌 체력</span></div>
+<div style="display:flex;flex-direction:column;gap:20px">
+<sc-for list="{{ metrics }}" as="m" hint-placeholder-count="3">
+<div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+<span class="t3" style="font-size:16px">{{ m.label }}</span>
+<span class="lb" style="font-weight:700;color:{{ m.color }}">{{ m.grade }}</span>
+</div>
+<div class="bar"><i style="width:{{ m.pct }};background:{{ m.color }}"></i></div>
+<div class="b2" style="margin-top:7px">{{ m.note }}</div>
+</div>
+</sc-for>
+</div>
+<div class="cp" style="margin-top:16px">등급은 정해진 계산 규칙이 정합니다. AI는 이유만 설명합니다.</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">종목 집중도</span></div>
+<div style="display:flex;height:14px;border-radius:7px;overflow:hidden;margin-bottom:16px">
+<sc-for list="{{ concentration }}" as="c" hint-placeholder-count="4">
+<div style="width:{{ c.pct }};background:{{ c.color }}"></div>
+</sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<sc-for list="{{ concentration }}" as="c" hint-placeholder-count="4">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span class="b1" style="display:flex;align-items:center;gap:9px;min-width:0"><span style="width:10px;height:10px;border-radius:3px;background:{{ c.color }};flex:none"></span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span></span>
+<span style="display:flex;align-items:baseline;gap:8px;flex:none"><span class="cp" style="color:{{ c.color }};font-weight:600">{{ c.level }}</span><span class="b1" style="font-weight:700">{{ c.pct }}</span></span>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+<div class="{{ riseCls }}">
+<div class="nav"><button class="ico" onClick="{{ closeChat }}">‹</button><span class="navt">Finch AI</span>
+<sc-if value="{{ hasMsgs }}" hint-placeholder-val="{{ false }}"><button class="ico" style="font-size:15px;font-weight:600;color:var(--t3);width:auto;padding:0 10px" onClick="{{ resetChat }}">초기화</button></sc-if>
+</div>
+<div class="sc">
+<sc-if value="{{ chatEmpty }}" hint-placeholder-val="{{ true }}">
+<div style="text-align:center;padding:56px 4px 0">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:140px;height:auto;opacity:.18">
+<div class="t2" style="margin-top:20px">내 투자를 알고 있는<br>AI에게 물어보세요</div>
+<div class="b2" style="margin-top:10px">{{ chatContext }}</div>
+</div>
+<div class="sec" style="margin-top:32px">
+<sc-for list="{{ suggestions }}" as="s" hint-placeholder-count="4">
+<button class="row" style="min-height:56px" onClick="{{ s.ask }}">
+<span class="b1" style="flex:1">{{ s.t }}</span><span class="mu" style="font-size:18px">›</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ hasMsgs }}" hint-placeholder-val="{{ false }}">
+<div class="sec" style="display:flex;flex-direction:column;gap:18px">
+<sc-for list="{{ msgs }}" as="m" hint-placeholder-count="2">
+<sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}">
+<div style="align-self:flex-end;max-width:80%;background:var(--t1);color:#fff;border-radius:18px 18px 6px 18px;padding:13px 16px">
+<span class="b1">{{ m.body }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ m.isAi }}" hint-placeholder-val="{{ true }}">
+<div class="ai" style="border-radius:6px 18px 18px 18px">
+<div class="b1" style="font-weight:700;line-height:24px">{{ m.head }}</div>
+<div class="b1 pre" style="line-height:25px;margin-top:12px">{{ m.body }}</div>
+<div style="height:1px;background:var(--rule);margin:16px 0 12px"></div>
+<div class="cp">{{ asOf }} 기준 · 출처 시세 · 뉴스 · 내 기록</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+<span class="cp">답변이 도움이 됐나요?</span>
+<sc-if value="{{ m.fbIdle }}" hint-placeholder-val="{{ true }}">
+<span style="display:flex;gap:7px"><button class="chip" style="height:30px;background:#E8F5EE;color:#1B7F5A;font-weight:600" onClick="{{ m.up }}">좋아요</button><button class="chip" style="height:30px;background:#FDECEC;color:#C13B3B;font-weight:600" onClick="{{ m.down }}">아쉬워요</button></span>
+</sc-if>
+<sc-if value="{{ m.fbSent }}" hint-placeholder-val="{{ false }}"><span class="cp">보냈습니다</span></sc-if>
+</div>
+</div>
+</sc-if>
+</sc-for>
+<sc-if value="{{ chatLoading }}" hint-placeholder-val="{{ false }}">
+<div class="ai" style="border-radius:6px 18px 18px 18px">
+<span class="ailb">Finch AI</span>
+<span class="b1" style="font-weight:600">확인하고 있습니다<span class="dots"><b></b><b></b><b></b></span></span>
+</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+<div style="flex:none;padding:10px 20px 20px;display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.9);backdrop-filter:blur(16px);border-top:1px solid var(--border)">
+<input value="{{ draft }}" onChange="{{ onDraft }}" placeholder="무엇이든 물어보세요" style="flex:1;height:48px;border-radius:999px;border:1px solid var(--border2);background:var(--surface);padding:0 18px;font-size:16px;font-family:inherit;color:var(--t1);outline:none">
+<button class="btn" style="width:48px;height:48px;border-radius:999px;font-size:19px;flex:none" onClick="{{ send }}">↑</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isWiki }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button><span class="navt">AI가 이해한 나</span></div>
+<div class="sc">
+<sc-if value="{{ wikiEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="text-align:center;padding:76px 20px">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:132px;height:auto;opacity:.16">
+<div class="t3" style="margin-top:16px">아직 기록된 게 없어요.</div>
+<div class="b2" style="margin-top:8px">투자 성향과 매수 이유는 대화하면서 하나씩 쌓입니다.</div>
+<button class="btn" style="margin-top:24px;padding:0 26px;display:inline-flex" onClick="{{ goChat }}">AI와 대화 시작하기</button>
+</div>
+</sc-if>
+<sc-if value="{{ wikiHas }}" hint-placeholder-val="{{ true }}">
+<div class="sec">
+<div class="ai" style="padding:16px 18px">
+<span class="b2">여기 있는 내용을 참고해 답변합니다. 틀린 건 지워주세요.</span>
+</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">나에 대해 알고 있는 것</span><span class="cp">{{ factCount }}건</span></div>
+<sc-for list="{{ facts }}" as="fx" hint-placeholder-count="3">
+<div style="padding:14px 0">
+<div class="b1" style="line-height:24px">{{ fx.text }}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px">
+<span class="cp">{{ fx.source }} · {{ fx.date }}</span>
+<sc-if value="{{ fx.guess }}" hint-placeholder-val="{{ false }}">
+<span style="display:flex;gap:7px"><button class="chip" style="height:30px;background:#E8F5EE;color:#1B7F5A;font-weight:600" onClick="{{ fx.confirm }}">맞아요</button><button class="chip" style="height:30px;background:#FDECEC;color:#C13B3B;font-weight:600" onClick="{{ fx.deny }}">아니에요</button></span>
+</sc-if>
+<sc-if value="{{ fx.deletable }}" hint-placeholder-val="{{ true }}">
+<button class="tb" style="color:#C13B3B" onClick="{{ fx.del }}">삭제</button>
+</sc-if>
+</div>
+</div>
+<div class="dv"></div>
+</sc-for>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">종목별 매수 이유</span><span class="cp">{{ thesisCount }}건</span></div>
+<sc-if value="{{ noThesisAll }}" hint-placeholder-val="{{ false }}">
+<div class="soft">
+<div class="b1" style="font-weight:600">아직 기록한 이유가 없어요.</div>
+<div class="b2" style="margin-top:6px">매수하면 우편함에 기록할 것이 도착합니다.</div>
+</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ theses }}" as="t" hint-placeholder-count="2">
+<div class="card d">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<span class="t3" style="font-size:16px">{{ t.name }}</span><span class="chip" style="height:28px;pointer-events:none">{{ t.horizon }}</span>
+</div>
+<div class="b1" style="margin-top:9px;line-height:24px">{{ t.text }}</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+<span class="cp">{{ t.date }} 기록</span><span class="tb">수정</span>
+</div>
+</div>
+</sc-for>
+</div>
+<div class="cp" style="margin-top:14px;line-height:20px">매수 이유는 우편함에서 기록합니다. 여기서 직접 입력할 수는 없습니다.</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isMy }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><span class="navt">내 정보</span></div>
+<div class="sc">
+<div class="sec">
+<div style="display:flex;align-items:center;gap:14px;padding:8px 0 20px">
+<span class="th" style="width:56px;height:56px;border-radius:999px;font-size:20px;background:var(--t1);color:#fff">김</span>
+<span><span class="t3" style="display:block;font-size:19px">김싸피</span><span class="cp">카카오 계정 연결</span></span>
+</div>
+<div class="soft">
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="b2">투자 계좌</span><span class="b1" style="font-weight:600">연결됨</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"><span class="b2">누적 입금</span><span class="b1" style="font-weight:600">{{ deposited }} 원</span></div>
+</div>
+</div>
+<div class="sec">
+<div class="row" style="cursor:default"><span class="b1" style="flex:1;font-weight:500">다크 모드</span>
+<button onClick="{{ toggleDark }}" style="width:52px;height:32px;border-radius:999px;background:{{ swBg }};position:relative;transition:background 180ms var(--ease)">
+<span style="position:absolute;top:3px;left:{{ swLeft }};width:26px;height:26px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left 180ms var(--ease)"></span>
+</button></div>
+<div class="dv"></div>
+<button class="row" onClick="{{ goMail }}"><span class="b1" style="flex:1;font-weight:500">우편함</span>
+<sc-if value="{{ hasMail }}" hint-placeholder-val="{{ true }}"><span class="tag u">{{ mailCount }}</span></sc-if>
+<span class="mu" style="font-size:20px">›</span></button>
+<div class="dv"></div>
+<button class="row" onClick="{{ goWiki }}"><span class="b1" style="flex:1;font-weight:500">AI가 이해한 나</span><span class="mu" style="font-size:20px">›</span></button>
+<div class="dv"></div>
+<button class="row" onClick="{{ goTx }}"><span class="b1" style="flex:1;font-weight:500">거래 내역</span><span class="mu" style="font-size:20px">›</span></button>
+<div class="dv"></div>
+<button class="row" onClick="{{ goDeposit }}"><span class="b1" style="flex:1;font-weight:500">입금 · 결제</span><span class="mu" style="font-size:20px">›</span></button>
+<div class="dv"></div>
+<button class="row" onClick="{{ askReset }}"><span class="b1" style="flex:1;font-weight:500">계좌 초기화</span><span class="mu" style="font-size:20px">›</span></button>
+<div class="dv"></div>
+<button class="row" onClick="{{ logout }}"><span class="b1 mu" style="flex:1;font-weight:500">로그아웃</span></button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isTx }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button><span class="navt">거래 내역</span></div>
+<div class="sc">
+<div class="sec">
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="chip {{ fAll }}" onClick="{{ setAll }}">전체</button>
+<button class="chip {{ fBuy }}" onClick="{{ setBuy }}">매수</button>
+<button class="chip {{ fSell }}" onClick="{{ setSell }}">매도</button>
+<button class="chip {{ fDep }}" onClick="{{ setDep }}">입금</button>
+</div>
+</div>
+<div class="sec">
+<sc-if value="{{ txEmpty }}" hint-placeholder-val="{{ false }}">
+<div class="soft" style="text-align:center;padding:32px 20px">
+<div class="b1" style="font-weight:600">거래 내역이 없습니다.</div>
+</div>
+</sc-if>
+<sc-for list="{{ txList }}" as="t" hint-placeholder-count="4">
+<div class="row" style="cursor:default">
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<span style="display:flex;align-items:center;gap:7px"><span class="t3" style="font-size:16px">{{ t.name }}</span><span class="tag {{ t.tag }}">{{ t.kind }}</span></span>
+<span class="cp">{{ t.detail }}</span>
+</span>
+<span class="b1" style="font-weight:700">{{ t.amt }}</span>
+</div>
+<div class="dv"></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDeposit }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button><span class="navt">입금</span></div>
+<div class="sc">
+<div class="sec">
+<div class="cp">입금 금액</div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--t1);padding-bottom:12px;margin-top:6px">
+<span class="t1">{{ depAmt }}</span><span class="t3">원</span>
+</div>
+<div class="seg" style="margin-top:14px">
+<button onClick="{{ d10 }}">+10만</button><button onClick="{{ d50 }}">+50만</button><button onClick="{{ d100 }}">+100만</button>
+</div>
+</div>
+<div class="sec">
+<div class="soft">
+<div style="display:flex;align-items:center;justify-content:space-between"><span class="b2">1회 한도</span><span class="b1" style="font-weight:600">5,000,000 원</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px"><span class="b2">남은 한도</span><span class="b1" style="font-weight:600">{{ depLeft }} 원</span></div>
+</div>
+</div>
+<div class="sec">
+<div class="sh"><span class="sht">결제 수단</span></div>
+<button class="card d" style="width:100%;text-align:left;display:flex;align-items:center;gap:12px;border-color:var(--t1)">
+<span style="width:20px;height:20px;border-radius:999px;border:6px solid var(--t1);flex:none"></span>
+<span class="b1" style="flex:1;font-weight:600">카드 결제</span>
+</button>
+<button class="card d" style="width:100%;text-align:left;display:flex;align-items:center;gap:12px;margin-top:10px">
+<span style="width:20px;height:20px;border-radius:999px;border:2px solid var(--border2);flex:none"></span>
+<span class="b1" style="flex:1">계좌 이체</span>
+</button>
+</div>
+<div class="sec">
+<div class="card d" style="background:#F4F6F8;border-color:var(--ai-b)">
+<div class="b2" style="line-height:22px">프로토타입에서는 실제 결제가 이뤄지지 않습니다. 금액만 계좌에 반영됩니다.</div>
+</div>
+</div>
+</div>
+<div style="flex:none;padding:12px 20px 22px;border-top:1px solid var(--border);background:var(--surface)">
+<button class="btn cb" style="width:100%" onClick="{{ doDeposit }}">{{ depAmt }}원 입금</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isBriefing }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button><span class="navt">오늘의 브리핑</span></div>
+<div class="sc">
+<div class="sec">
+<div class="ai">
+<span class="ailb">Finch AI · 데일리 브리핑</span>
+<div class="b1" style="font-weight:700;line-height:24px">{{ briefHead }}</div>
+<div class="cp" style="margin-top:10px">{{ asOf }} 기준 · 정해진 규칙으로 점수를 내어 골랐습니다</div>
+</div>
+</div>
+<div class="sec">
+<sc-for list="{{ briefsAll }}" as="n" hint-placeholder-count="4">
+<button class="row" style="align-items:flex-start;padding:16px 0" onClick="{{ n.open }}">
+<span class="th" style="background:{{ n.tintBg }};color:{{ n.tintFg }}">{{ n.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+<span style="display:flex;align-items:center;gap:7px"><span class="t3" style="font-size:16px">{{ n.name }}</span><span class="tag {{ n.tag }}">{{ n.kind }}</span><span class="lb {{ n.tone }}" style="font-weight:600">{{ n.pct }}</span></span>
+<span class="b1" style="line-height:23px">{{ n.summary }}</span>
+<span class="cp">{{ n.src }}</span>
+</span>
+</button>
+<div class="dv"></div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ is404 }}" hint-placeholder-val="{{ false }}">
+<div class="nav"><button class="ico" onClick="{{ back }}">‹</button></div>
+<div class="sc" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding-bottom:60px">
+<img src="assets/finch-logo/mark.png" alt="Finch" style="width:132px;height:auto;opacity:.16">
+<div class="t3" style="margin-top:18px">찾을 수 없는 페이지입니다.</div>
+<div class="b2" style="margin-top:8px">주소가 바뀌었거나 삭제된 화면일 수 있어요.</div>
+<div style="display:flex;gap:10px;width:100%;margin-top:26px">
+<button class="btn2" style="flex:1" onClick="{{ back }}">뒤로</button>
+<button class="btn" style="flex:1" onClick="{{ goHome }}">홈으로</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showFab }}" hint-placeholder-val="{{ false }}">
+<button class="fab" style="padding:0 20px;bottom:{{ fabBottom }}" onClick="{{ openChatCtx }}">
+<span>{{ fabLabel }}</span>
+</button>
+</sc-if>
+
+<sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+<div class="tabbar">
+<button class="n1 {{ navHome }}" onClick="{{ goHome }}">홈</button>
+<button class="n2 {{ navSearch }}" onClick="{{ goSearch }}">탐색</button>
+<button class="n3 {{ navPf }}" onClick="{{ goPf }}">포트폴리오</button>
+<button class="n4 {{ navMy }}" onClick="{{ goMy }}">내 정보</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetCause }}" hint-placeholder-val="{{ false }}">
+<div class="scrim" onClick="{{ closeSheet }}">
+<div class="sheet" style="padding:8px 24px 26px">
+<div class="handle"></div>
+
+<div style="flex:none;display:flex;gap:14px;align-items:flex-start;padding-bottom:20px">
+<div style="flex:1">
+<span class="ailb">Finch AI · 수익률 원인 분석</span>
+<div class="t3" style="line-height:25px">{{ causeHead }}</div>
+</div>
+<button class="ico" style="width:32px;height:32px;font-size:17px;color:var(--t3);margin:-4px -6px 0 0" onClick="{{ closeSheet }}">✕</button>
+</div>
+
+<div style="flex:1;overflow-y:auto;scrollbar-width:none;margin:0 -4px;padding:0 4px">
+
+<div class="ai" style="padding:20px 22px;margin-bottom:26px">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+<div>
+<div class="cp" style="font-weight:600">기간 수익률</div>
+<div class="{{ pnlTone }}" style="font-size:32px;line-height:38px;font-weight:800;letter-spacing:-.03em;margin-top:2px">{{ pnlPct }}</div>
+</div>
+<div style="text-align:right">
+<div class="cp" style="font-weight:600">평가손익</div>
+<div class="b1 {{ pnlTone }}" style="font-weight:700;margin-top:4px">{{ pnlAmt }} 원</div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px">
+<span class="sht" style="font-size:17px">무엇 덕분인가</span>
+<span class="cp">자체계산</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:18px;margin-bottom:28px">
+<sc-for list="{{ attribution }}" as="a" hint-placeholder-count="3">
+<div>
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px">
+<span class="b1" style="font-weight:500">{{ a.label }}</span>
+<span class="b1 {{ a.tone }}" style="font-weight:800;font-size:17px">{{ a.pct }}</span>
+</div>
+<div class="bar" style="height:10px"><i style="width:{{ a.w }};background:{{ a.color }}"></i></div>
+<div class="cp" style="margin-top:7px">{{ a.note }}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+<span class="sht" style="font-size:17px">종목별 기여</span>
+<span class="cp">{{ holdCount }}종목</span>
+</div>
+<div style="margin-bottom:28px">
+<sc-for list="{{ causeRows }}" as="r" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">
+<span class="th" style="width:36px;height:36px;border-radius:11px;font-size:14px;background:{{ r.chipBg }};color:{{ r.chipFg }}">{{ r.initial }}</span>
+<span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+<span class="b1" style="font-weight:600">{{ r.name }}</span>
+<span class="cp" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.news }}</span>
+</span>
+<span style="text-align:right">
+<span class="b1 {{ r.tone }}" style="font-weight:700;display:block">{{ r.amt }}</span>
+<span class="cp {{ r.tone }}">{{ r.pct }}</span>
+</span>
+</div>
+</sc-for>
+</div>
+
+<div style="border-top:1px solid var(--border);padding-top:20px;margin-bottom:20px">
+<div class="sht" style="font-size:17px;margin-bottom:10px">확인해볼 점</div>
+<div class="b1" style="line-height:25px">{{ causeNote }}</div>
+</div>
+
+<div class="cp" style="line-height:20px;padding-bottom:10px">{{ asOf }} 기준 · 출처 자체계산 · 시세 · 뉴스<br>같은 날 나온 뉴스라고 곧장 원인으로 묶지 않습니다.</div>
+</div>
+
+<div style="flex:none;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px">
+<span class="cp">이 분석이 도움이 됐나요?</span>
+<span style="display:flex;gap:8px"><button class="chip" style="background:#E8F5EE;color:#1B7F5A;font-weight:600" onClick="{{ fbUp }}">좋아요</button><button class="chip" style="background:#FDECEC;color:#C13B3B;font-weight:600" onClick="{{ fbDown }}">아쉬워요</button></span>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetTerm }}" hint-placeholder-val="{{ false }}">
+<div class="scrim" onClick="{{ closeSheet }}">
+<div class="sheet">
+<div class="handle"></div>
+<div class="t2" style="margin-bottom:12px">{{ termTitle }}</div>
+<div class="b1" style="line-height:26px">{{ termBody }}</div>
+<div class="soft" style="margin-top:18px">
+<div class="cp">이 종목</div>
+<div class="t3" style="margin-top:4px">{{ termValue }}</div>
+<div class="b2" style="margin-top:4px">{{ termCompare }}</div>
+</div>
+<button class="btn" style="width:100%;margin-top:22px" onClick="{{ closeSheet }}">확인</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetRecord }}" hint-placeholder-val="{{ false }}">
+<div class="scrim" onClick="{{ closeSheet }}">
+<div class="sheet">
+<div class="handle"></div>
+<div style="margin-bottom:18px">
+<span class="ailb">투자 기록</span>
+<div class="t3">{{ recordName }}를 왜 담으셨나요?</div>
+<div class="b2" style="margin-top:6px">지금 적어두면 다음 주문에서 그대로 꺼내 드립니다.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<sc-for list="{{ recordOptions }}" as="o" hint-placeholder-count="4">
+<button class="card d" style="width:100%;text-align:left" onClick="{{ o.pick }}">
+<span class="b1">{{ o.t }}</span>
+</button>
+</sc-for>
+</div>
+<div class="cp" style="margin-top:16px">직접 쓰고 싶으시면 AI 채팅에서 이어서 말씀해주세요.</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetReset }}" hint-placeholder-val="{{ false }}">
+<div class="scrim" onClick="{{ closeSheet }}">
+<div class="sheet">
+<div class="handle"></div>
+<div class="t2" style="margin-bottom:12px">계좌를 초기화할까요?</div>
+<div class="b1" style="line-height:26px">현재 보유 종목과 예수금이 초기화됩니다. 기존 기록은 열람만 가능합니다.</div>
+<div style="display:flex;gap:10px;margin-top:24px">
+<button class="btn2" style="flex:1" onClick="{{ closeSheet }}">취소</button>
+<button class="btn rd" style="flex:1" onClick="{{ doReset }}">초기화</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetInsight }}" hint-placeholder-val="{{ false }}">
+<div class="scrim" onClick="{{ closeSheet }}">
+<div class="sheet">
+<div class="handle"></div>
+<div style="flex:none;display:flex;align-items:center;justify-content:space-between;padding-bottom:14px">
+<div class="t2">{{ d.name }} 분석</div>
+<button class="ico" style="width:32px;height:32px;font-size:17px;color:var(--t3)" onClick="{{ closeSheet }}">✕</button>
+</div>
+<div style="flex:1;overflow-y:auto;scrollbar-width:none">
+<div class="sh" style="margin-bottom:8px"><span class="sht" style="font-size:16px">현재 상황</span></div>
+<div class="b1" style="line-height:25px">{{ d.current }}</div>
+<div class="sh" style="margin:24px 0 8px"><span class="sht" style="font-size:16px">최근 변화</span></div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ d.changes }}" as="c" hint-placeholder-count="3">
+<div class="b1" style="line-height:24px">· {{ c.t }}</div>
+</sc-for>
+</div>
+<div class="sh" style="margin:24px 0 8px"><span class="sht" style="font-size:16px">시장이 주목하는 요인</span></div>
+<div style="display:flex;flex-direction:column;gap:9px">
+<sc-for list="{{ d.attention }}" as="a" hint-placeholder-count="3">
+<div class="b1" style="line-height:24px">· {{ a.t }}</div>
+</sc-for>
+</div>
+<div class="cp" style="margin:24px 0 8px">{{ asOf }} 기준 · 출처 공시 · 뉴스</div>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+<div class="toast">{{ toast }}</div>
+</sc-if>
+
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:940},&quot;darkMode&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;테마&quot;}}">
+const S = {
+  "412350":{tint:["#EDF2FB","#3B6FB0"],name:"한빛반도체",code:"412350",market:"코스피",price:451000,base:441700,sector:"반도체",
+    per:13.2,perAvg:15.1,pbr:1.4,pbrAvg:1.7,roe:14.8,roeAvg:11.2,cap:"32.4조",div:1.2,
+    about:"메모리 반도체와 HBM을 만드는 회사입니다. 매출의 68%가 해외에서 나오고, 고부가 제품 비중을 늘리는 중입니다.",
+    aiHead:"HBM 증설이 실적에 반영되는 시점이 관건입니다.",
+    aiWhy:"· 3분기 영업이익률이 15%에서 19%로 올랐습니다\n· HBM 생산능력 2배 확대 계획을 발표했습니다\n· 다만 증설 규모가 아직 공시되지 않았습니다",
+    current:"현재 PER 13.2배로 업종 평균 15.1배보다 낮게 거래되고 있습니다. 이익이 네 분기 연속 늘어난 것이 아직 주가에 다 반영되지 않은 상태입니다.",
+    changes:["3분기 영업이익률 15% → 19%","HBM 생산능력 2배 확대 계획 발표","메모리 현물가 3주 연속 상승"],
+    attention:["AI 서버용 HBM 수요 증가 속도","다음 분기 계약가 인상 폭","경쟁사 증설 일정"],
+    risks:["증설 투자비가 2027년부터 감가상각비로 반영됩니다","고객사 재고가 다시 쌓이면 주문이 빠르게 줄어듭니다","환율이 내려가면 수익성도 함께 내려갑니다"],
+    events:[{d:"08.29",t:"3분기 실적 발표"},{d:"09.18",t:"HBM 공급 계약 공시 예정"}],
+    fin:[{year:"2023",rev:62,op:38},{year:"2024",rev:78,op:56},{year:"2025",rev:96,op:82}],
+    news:{kind:"공시",tag:"g",summary:"HBM 생산능력 2027년까지 2배 확대",src:"DART 전자공시 · 08.28"}},
+  "418740":{tint:["#FFF3E4","#B0722E"],name:"새벽전자",code:"418740",market:"코스피",price:78200,base:76500,sector:"반도체",
+    per:9.8,perAvg:15.1,pbr:0.9,pbrAvg:1.7,roe:9.4,roeAvg:11.2,cap:"4.1조",div:2.8,
+    about:"반도체 장비 부품을 납품하는 회사입니다. 국내 대형 고객사 두 곳에 매출이 집중돼 있습니다.",
+    aiHead:"납품 단가 인상이 확정됐지만 고객사 편중이 남아 있습니다.",
+    aiWhy:"· 주요 고객사와 단가 인상에 합의했습니다\n· 배당수익률 2.8%로 업종에서 높은 편입니다\n· 매출의 71%가 고객사 두 곳에서 나옵니다",
+    current:"PER 9.8배로 업종 평균보다 크게 낮습니다. 고객사 편중이 할인 요인으로 작용하고 있습니다.",
+    changes:["주요 고객사 납품 단가 4% 인상 합의","4분기 수주잔고 전년 대비 22% 증가"],
+    attention:["고객사 다변화 진행 상황","증설 투자 계획"],
+    risks:["매출의 71%가 고객사 두 곳에 집중돼 있습니다","고객사 투자 축소 시 실적이 직접 영향을 받습니다"],
+    events:[{d:"09.02",t:"3분기 실적 발표"}],
+    fin:[{year:"2023",rev:44,op:20},{year:"2024",rev:52,op:26},{year:"2025",rev:61,op:34}],
+    news:{kind:"실적",tag:"g",summary:"납품 단가 4% 인상 합의",src:"전자신문 · 08.28"}},
+  "307220":{tint:["#E8F5EE","#2E8B62"],name:"그린모빌리티",code:"307220",market:"코스피",price:68012,base:69540,sector:"자동차",
+    per:22.4,perAvg:14.2,pbr:2.1,pbrAvg:1.1,roe:7.2,roeAvg:8.9,cap:"8.9조",div:0.4,
+    about:"전기차와 배터리 팩을 만드는 회사입니다. 국내 판매 비중이 높고 수출을 늘리는 중입니다.",
+    aiHead:"보조금 개편 논의가 국내 판매에 영향을 줄 수 있습니다.",
+    aiWhy:"· 국내 보조금 개편안이 국회 논의에 들어갔습니다\n· 수출 비중이 31%에서 43%로 올랐습니다\n· 3분기 영업이익률은 5.3%에서 4.6%로 내려왔습니다",
+    current:"PER 22.4배로 업종 평균 14.2배보다 높습니다. 판매량이 더 늘어날 것이라는 기대가 이미 가격에 들어가 있습니다.",
+    changes:["국내 보조금 개편안 국회 논의 시작","수출 비중 31% → 43%","3분기 영업이익률 5.3% → 4.6%"],
+    attention:["보조금 개편 확정 시점","9월 국내 판매량","해외 판매 비중 추이"],
+    risks:["주력 모델이 보조금 상한 구간에 걸쳐 있습니다","배터리 셀을 외부에서 구매해 가격 협상력이 낮습니다","국내 경쟁사 가격 인하 가능성이 있습니다"],
+    events:[{d:"09.05",t:"보조금 개편안 발표"},{d:"09.10",t:"8월 판매량 공개"}],
+    fin:[{year:"2023",rev:70,op:22},{year:"2024",rev:84,op:24},{year:"2025",rev:92,op:20}],
+    news:{kind:"정책",tag:"w",summary:"전기차 보조금 개편 논의 착수",src:"기획재정부 · 08.27"}},
+  "215880":{tint:["#F2EFFC","#6B54C2"],name:"미래바이오",code:"215880",market:"코스닥",price:99400,base:94000,sector:"바이오",
+    per:0,perAvg:0,pbr:5.2,pbrAvg:3.1,roe:0,roeAvg:0,cap:"2.2조",div:0,
+    about:"항암 신약을 개발하는 회사입니다. 아직 매출이 크지 않아 임상 결과에 따라 주가가 크게 움직입니다.",
+    aiHead:"임상 2상 결과 발표가 가장 큰 변수입니다.",
+    aiWhy:"· 임상 2상 중간 결과 발표가 예정돼 있습니다\n· 아직 이익을 내지 못해 PER을 계산할 수 없습니다\n· 현금 보유액으로 약 6분기를 버틸 수 있습니다",
+    current:"이익이 없어 PER을 계산할 수 없습니다. PBR 5.2배로 업종 평균 3.1배보다 높습니다.",
+    changes:["임상 2상 중간 결과 발표 예정","연구개발비 전년 대비 34% 증가"],
+    attention:["임상 2상 결과","추가 자금 조달 여부"],
+    risks:["아직 이익을 내지 못하고 있습니다","임상 결과에 따라 주가가 크게 흔들릴 수 있습니다","자금 조달 시 주식 수가 늘어날 수 있습니다"],
+    events:[{d:"09.12",t:"임상 2상 중간 결과"}],
+    fin:[{year:"2023",rev:8,op:2},{year:"2024",rev:11,op:3},{year:"2025",rev:14,op:4}],
+    news:{kind:"임상",tag:"g",summary:"임상 2상 중간 결과 발표 예정",src:"바이오스펙테이터 · 08.26"}},
+  "356140":{tint:["#E9F4F7","#2C7E96"],name:"코어소프트",code:"356140",market:"코스닥",price:112400,base:113300,sector:"소프트웨어",
+    per:28.6,perAvg:24.0,pbr:4.4,pbrAvg:3.6,roe:16.2,roeAvg:12.4,cap:"1.8조",div:0,
+    about:"기업용 클라우드 소프트웨어를 만드는 회사입니다. 구독 매출 비중이 82%입니다.",
+    aiHead:"구독 매출이 꾸준히 늘고 있습니다.",
+    aiWhy:"· 구독 매출 비중이 82%로 안정적입니다\n· 신규 고객 순증이 6분기 연속 이어졌습니다",
+    current:"PER 28.6배로 업종 평균 24배보다 약간 높습니다. 구독 매출의 안정성이 반영된 수준입니다.",
+    changes:["신규 고객 순증 6분기 연속","해외 매출 비중 18%로 확대"],
+    attention:["해외 확장 속도","이탈률 추이"],
+    risks:["대형 클라우드 사업자와 경쟁이 직접적입니다","인건비 상승이 이익률을 누릅니다"],
+    events:[{d:"09.20",t:"연간 사용자 콘퍼런스"}],
+    fin:[{year:"2023",rev:30,op:12},{year:"2024",rev:38,op:17},{year:"2025",rev:46,op:23}],
+    news:{kind:"실적",tag:"g",summary:"신규 고객 순증 6분기 연속",src:"머니투데이 · 08.25"}},
+  "094310":{tint:["#F3F4F6","#8B95A1"],name:"정우물산",code:"094310",market:"코스피",price:18250,base:18250,sector:"건설",suspended:true,
+    per:0,perAvg:0,pbr:0.4,pbrAvg:0.8,roe:0,roeAvg:0,cap:"1,240억",div:0,
+    about:"토목 건설과 자재 유통을 하는 회사입니다. 감사의견 거절로 거래가 정지돼 있습니다.",
+    aiHead:"감사의견 거절로 거래가 정지된 상태입니다.",
+    aiWhy:"· 감사의견 거절 사유로 매매가 정지됐습니다\n· 시세가 갱신되지 않습니다",
+    current:"거래정지 상태로 시세가 갱신되지 않습니다.",
+    changes:["감사의견 거절"],attention:[],
+    risks:["감사의견 거절로 상장폐지 심사 대상입니다","거래 재개 시점을 알 수 없습니다"],
+    events:[],
+    fin:[{year:"2023",rev:20,op:4},{year:"2024",rev:16,op:1},{year:"2025",rev:12,op:0}],
+    news:{kind:"공시",tag:"u",summary:"감사의견 거절 · 거래정지",src:"DART 전자공시 · 08.20"}}
+};
+const TERMS = {
+  per:{title:"PER (주가수익비율)", body:"주가를 주당순이익으로 나눈 값입니다. 이익 대비 주가가 몇 배에 거래되는지 보여줍니다.\n\n같은 업종끼리 비교할 때 의미가 있고, 이익이 없는 회사는 계산할 수 없습니다. 낮다고 무조건 싸다는 뜻은 아닙니다."},
+  pbr:{title:"PBR (주가순자산비율)", body:"주가를 주당순자산으로 나눈 값입니다. 회사가 가진 자산 대비 주가 수준을 봅니다.\n\n1배보다 낮으면 장부상 자산보다 싸게 거래된다는 뜻이지만, 자산의 질이 낮으면 낮은 게 정상일 수 있습니다."}
+};
+const KRW = n => Math.round(n).toLocaleString("ko-KR");
+const sgn = n => (n>=0?"+":"-") + KRW(Math.abs(n));
+const pctStr = p => (p>=0?"+":"") + p.toFixed(1) + "%";
+const tone = n => n>0?"up":(n<0?"dn":"ne");
+
+class Component extends DCLogic {
+  state = {
+    screen:"landing", stack:[], code:"412350", dtab:"chart", period:"1M",
+    extab:"browse", query:"", recents:["한빛반도체","그린모빌리티","2차전지"],
+    pftab:"holdings", side:"buy", qty:0, txFilter:"all",
+    cash:1240000, deposited:3000000, depAmt:500000,
+    holdings:{"412350":{q:12,avg:421833},"418740":{q:40,avg:75792},"307220":{q:25,avg:69532}},
+    watch:["356140","215880"],
+    theses:{"412350":{t:"HBM 증설로 고부가 제품 비중이 늘어날 것으로 보고 담았다.",d:"08.20",horizon:"중기"}},
+    facts:[
+      {id:1,text:"장기 보유를 선호하고, 배당보다 성장주를 본다.",source:"직접 말한 내용",date:"08.14"},
+      {id:2,text:"반도체 업종에 관심이 집중돼 있다.",source:"거래 내역에서 도출",date:"08.26"},
+      {id:3,text:"손실이 10%를 넘으면 정리하시는 편으로 보이는데, 맞나요?",source:"AI 추측",date:"08.27",guess:true}
+    ],
+    mail:[
+      {id:"m1",kind:"기록",tag:"u",when:"오늘",title:"새벽전자를 왜 담으셨어요?",sub:"08.27 매수 · 40주",unread:true,type:"record",code:"418740"},
+      {id:"m2",kind:"확인",tag:"w",when:"오늘",title:"성향 하나를 확인해주세요",sub:"손실이 10%를 넘으면 정리하시는 편인가요?",unread:true,type:"wiki"},
+      {id:"m3",kind:"소식",tag:"g",when:"어제",title:"그린모빌리티 보조금 개편 논의",sub:"보유 비중 15% · 확인이 필요합니다",unread:false,type:"news",code:"307220"}
+    ],
+    tx:[
+      {id:1,name:"한빛반도체",kind:"매수",tag:"u",detail:"4주 · 451,000원 · 08.28 09:12",amt:-1804000,k:"buy"},
+      {id:2,name:"입금",kind:"입금",tag:"g",detail:"카드 결제 · 08.28 09:08",amt:1000000,k:"dep"},
+      {id:3,name:"그린모빌리티",kind:"매도",tag:"d",detail:"10주 · 68,900원 · 08.27 14:41",amt:689000,k:"sell"},
+      {id:4,name:"새벽전자",kind:"매수",tag:"u",detail:"40주 · 75,792원 · 08.27 10:02",amt:-3031680,k:"buy"}
+    ],
+    msgs:[], draft:"", chatClosing:false, mailClosing:false, dark:null, metricsOpen:false, aiSeen:{}, fb:{}, sheet:null, sheetArg:null, toast:null, chatCtx:null, chatLoading:false
+  };
+
+  componentDidMount(){ this.t = setInterval(()=>this.forceUpdate(), 4000); }
+  componentWillUnmount(){ clearInterval(this.t); }
+
+  price(c){ const st=S[c]; if(st.suspended) return st.price;
+    const drift = Math.sin(Date.now()/90000 + c.charCodeAt(0)) * st.base * 0.004;
+    return Math.round((st.price + drift)/10)*10; }
+  evalOf(c){ const h=this.state.holdings[c]; return h ? this.price(c)*h.q : 0; }
+  costOf(c){ const h=this.state.holdings[c]; return h ? h.avg*h.q : 0; }
+
+  nav(s){ this.setState(st=>({ screen:s, stack:[...st.stack, st.screen], sheet:null })); }
+  tabTo(s){ this.setState({ screen:s, stack:[], sheet:null }); }
+  back(){ this.setState(st=>{ const k=[...st.stack]; const p=k.pop()||"home"; return { screen:p, stack:k, sheet:null }; }); }
+  toast(m){ this.setState({toast:m}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:null}),2200); }
+  openSheet(s,arg){ this.setState({sheet:s, sheetArg:arg||null}); }
+
+  renderVals(){
+    const s = this.state, code = s.code, st = S[code];
+    const hk = Object.keys(s.holdings);
+    const evalT = hk.reduce((a,c)=>a+this.evalOf(c),0);
+    const costT = hk.reduce((a,c)=>a+this.costOf(c),0);
+    const pnl = evalT - costT;
+    const total = evalT + s.cash;
+    const now = new Date();
+    const clock = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+    const owned = !!s.holdings[code];
+    const dh = s.holdings[code];
+    const dPrice = this.price(code), dDiff = dPrice - st.base, dPct = dDiff/st.base*100;
+    const amt = dPrice * s.qty;
+    const short = s.side==="buy" && amt > s.cash;
+    const maxQty = s.side==="buy" ? Math.floor(s.cash/dPrice) : (dh?dh.q:0);
+    const unread = s.mail.filter(m=>m.unread).length;
+    const dark = s.dark ?? (this.props.darkMode ?? false);
+
+    const tintOf = c => (S[c].tint || ["#F1F3F6","#5B616B"]);
+    const stockRow = c => ({ key:c, name:S[c].name, initial:S[c].name[0],
+      tintBg:tintOf(c)[0], tintFg:tintOf(c)[1],
+      sub:`${c} · ${S[c].market}`, price:KRW(this.price(c)),
+      pct: S[c].suspended ? "—" : pctStr((this.price(c)-S[c].base)/S[c].base*100),
+      tone: S[c].suspended ? "mu" : tone(this.price(c)-S[c].base),
+      suspended: !!S[c].suspended,
+      open: ()=>{ const w=s.query.trim();
+        this.setState(x=>({ code:c, dtab:"chart", query:"",
+          recents: w ? [w, ...x.recents.filter(r=>r!==w)].slice(0,8) : x.recents }));
+        this.nav("detail"); } });
+
+    const q = s.query.trim();
+    const results = q ? Object.keys(S).filter(c=>S[c].name.includes(q)||c.includes(q)) : [];
+    const briefKeys = [...hk, ...s.watch].slice(0,4);
+    const setQty = n => this.setState({ qty: Math.max(0, Math.min(maxQty, n)) });
+
+    const fbOf = key => {
+      const cur = s.fb[key] || "idle";
+      const set = v => this.setState(x=>({ fb:{...x.fb, [key]:v} }));
+      return { idle: cur==="idle", sent: cur==="sent",
+        up: ()=>{ set("sent"); this.toast("의견을 보냈습니다."); },
+        down: ()=>{ set("sent"); this.toast("의견을 보냈습니다. 감사합니다."); } };
+    };
+    const aiFb = fbOf("ai:"+code);
+
+    const diagShare = evalT ? Math.round(Math.max(...hk.map(c=>this.evalOf(c)/evalT*100))) : 0;
+    const secs = {}; hk.forEach(c=>{ secs[S[c].sector]=(secs[S[c].sector]||0)+this.evalOf(c); });
+    const topSec = Object.keys(secs).sort((a,b)=>secs[b]-secs[a])[0];
+    const secPct = evalT && topSec ? Math.round(secs[topSec]/evalT*100) : 0;
+    const grade = p => p>=45 ? {g:"다소 높음",c:"#E25555"} : (p>=30 ? {g:"보통",c:"#C2691C"} : {g:"양호",c:"#1B7F5A"});
+    const COLORS = ["#1F2328","#5B616B","#8B95A1","#C6CEDA"];
+
+    const answer = text => {
+      const t = text.toLowerCase();
+      if (text.includes("수익률")||text.includes("떨어")) return {
+        head:"지난주 하락분은 대부분 그린모빌리티에서 나왔어요.",
+        body:"· 그린모빌리티 -2.2%, 평가손실 38,000원\n· 나머지 종목은 모두 올랐습니다\n· 보조금 개편 논의가 업종 전반에 영향을 줬습니다\n\n비중이 15%라 계좌 전체 영향은 제한적입니다." };
+      if (text.includes("위험")||text.includes("리스크")) return {
+        head:`${topSec} 업종에 ${secPct}% 몰려 있는 게 가장 큰 위험입니다.`,
+        body:"· 업종 이슈 하나에 계좌 전체가 함께 움직입니다\n· 추가 매수 시 비중이 더 올라갑니다\n\n목표 비중을 정해두셨는지 확인해보세요." };
+      if (text.includes("무슨 일")||text.includes("소식")) return {
+        head:"보유 종목 중 두 곳에 확인할 이슈가 있어요.",
+        body:"· 한빛반도체 — HBM 증설 계획 발표\n· 그린모빌리티 — 보조금 개편 논의 착수\n\n둘 다 규모가 확정되지 않았습니다." };
+      return { head:"판단에 쓰실 근거를 정리해드릴게요.",
+        body:"· 현재 계좌 평가액 " + KRW(evalT) + "원\n· 보유 " + hk.length + "종목, " + topSec + " 비중 " + secPct + "%\n\n어느 종목부터 볼까요?" };
+    };
+    const ask = text => {
+      const a = answer(text);
+      const id = Date.now();
+      this.setState(x=>({ msgs:[...x.msgs, {id, role:"user", body:text}], draft:"", chatLoading:true }));
+      setTimeout(()=>this.setState(x=>({ msgs:[...x.msgs, {id:id+1, role:"ai", head:a.head, body:a.body}], chatLoading:false })), 900);
+    };
+
+    return {
+      clock, asOf: "08.28 09:00",
+      phCls: dark ? "ph dark" : "ph",
+      toggleDark: ()=>this.setState({dark:!dark}),
+      swBg: dark ? "#F2F4F7" : "#D9DEE5", swLeft: dark ? "23px" : "3px",
+      logoFilter: dark ? "invert(1)" : "none",
+      greeting: hk.length ? "내 자산" : "Finch",
+      totalAssets: KRW(total), cashStr: KRW(s.cash), deposited: KRW(s.deposited),
+      totalDigits: KRW(total).split("").map((c,i)=>{
+        const dg = /\d/.test(c);
+        return { key:i, c, isDigit:dg, isChar:!dg, y: dg ? (-44*Number(c))+"px" : "0px" };
+      }),
+      pnlAmt: sgn(pnl), pnlPct: pctStr(costT ? pnl/costT*100 : 0),
+      pnlTone: tone(pnl), pnlTag: pnl>=0 ? "u" : "d",
+      evalTotal: KRW(evalT), holdCount: hk.length,
+      evalDigits: KRW(evalT).split("").map((c,i)=>{
+        const dg = /\d/.test(c);
+        return { key:i, c, isDigit:dg, isChar:!dg, y: dg ? (-44*Number(c))+"px" : "0px" };
+      }),
+      hasHold: hk.length>0, noHold: hk.length===0,
+
+      isLanding: s.screen==="landing", isHome: s.screen==="home", isSearch: s.screen==="search",
+      isDetail: s.screen==="detail", isOrder: s.screen==="order", isPf: s.screen==="portfolio",
+      isChat: s.screen==="chat", isWiki: s.screen==="wiki", isMy: s.screen==="mypage",
+      isTx: s.screen==="tx", isDeposit: s.screen==="deposit", isMail: s.screen==="mail",
+      isBriefing: s.screen==="briefing", is404: s.screen==="notfound",
+      showTabs: ["home","search","portfolio","mypage"].includes(s.screen),
+      showFab: ["home","detail","portfolio","briefing"].includes(s.screen),
+      fabLabel: s.screen==="detail" ? "이 종목 물어보기" : "AI에게 묻기",
+      fabBottom: s.screen==="detail" ? "94px" : (s.screen==="briefing" ? "24px" : "92px"),
+      navHome: s.screen==="home"?"on":"", navSearch: s.screen==="search"?"on":"",
+      navPf: s.screen==="portfolio"?"on":"", navMy: s.screen==="mypage"?"on":"",
+
+      enter: ()=>this.tabTo("home"),
+      back: ()=>this.back(),
+      goHome: ()=>this.tabTo("home"), goSearch: ()=>this.tabTo("search"),
+      goPf: ()=>this.tabTo("portfolio"), goMy: ()=>this.tabTo("mypage"),
+      goChat: ()=>{ this.setState({chatClosing:false}); this.nav("chat"); },
+      goWiki: ()=>this.nav("wiki"),
+      riseCls: s.chatClosing ? "fall" : "rise",
+      closeChat: ()=>{ this.setState({chatClosing:true});
+        setTimeout(()=>this.setState(x=>{ const k=[...x.stack]; const p=k.pop()||"home";
+          return { screen:p, stack:k, sheet:null, chatClosing:false }; }), 280); },
+      goTx: ()=>this.nav("tx"), goDeposit: ()=>this.nav("deposit"),
+      goMail: ()=>{ this.setState({mailClosing:false}); this.nav("mail"); },
+      mailCls: s.mailClosing ? "lift" : "drop",
+      closeMail: ()=>{ this.setState({mailClosing:true});
+        setTimeout(()=>this.setState(x=>{ const k=[...x.stack]; const p=k.pop()||"home";
+          return { screen:p, stack:k, sheet:null, mailClosing:false }; }), 280); },
+      goBriefing: ()=>this.nav("briefing"),
+      goDiag: ()=>{ this.setState({pftab:"diagnosis"}); this.tabTo("portfolio"); },
+      openChatCtx: ()=>{ this.setState({ chatCtx: s.screen==="detail" ? st.name : null, chatClosing:false }); this.nav("chat"); },
+      logout: ()=>this.setState({ screen:"landing", stack:[] }),
+
+      hasMail: unread>0, mailCount: unread,
+      mailEmpty: s.mail.length===0, mailHas: s.mail.length>0,
+      mails: s.mail.map(m=>({ key:m.id, kind:m.kind, tag:m.tag, when:m.when, title:m.title, sub:m.sub, unread:m.unread,
+        act: ()=>{
+          this.setState(x=>({ mail: x.mail.map(y=>y.id===m.id?{...y,unread:false}:y) }));
+          if(m.type==="record") this.openSheet("record", m.code);
+          else if(m.type==="wiki") this.nav("wiki");
+          else { this.setState({code:m.code, dtab:"ai"}); this.nav("detail"); }
+        } })),
+
+      briefCount: briefKeys.length, briefEmpty: briefKeys.length===0, briefHas: briefKeys.length>0,
+      briefHead: hk.length
+        ? `보유·관심 종목 소식 ${briefKeys.length}건을 골랐어요. 그중 1건은 확인이 필요합니다.`
+        : "관심 종목 소식을 모아뒀어요.",
+      briefs: briefKeys.slice(0,3).map(c=>({ key:c, name:S[c].name, initial:S[c].name[0], tintBg:tintOf(c)[0], tintFg:tintOf(c)[1],
+        kind:S[c].news.kind, tag:S[c].news.tag, summary:S[c].news.summary,
+        pct: S[c].suspended?"—":pctStr((this.price(c)-S[c].base)/S[c].base*100),
+        tone: S[c].suspended?"mu":tone(this.price(c)-S[c].base),
+        open: ()=>{ this.setState({code:c, dtab:"ai"}); this.nav("detail"); } })),
+      briefsAll: briefKeys.map(c=>({ key:c, name:S[c].name, initial:S[c].name[0], tintBg:tintOf(c)[0], tintFg:tintOf(c)[1],
+        kind:S[c].news.kind, tag:S[c].news.tag, summary:S[c].news.summary, src:S[c].news.src,
+        pct: S[c].suspended?"—":pctStr((this.price(c)-S[c].base)/S[c].base*100),
+        tone: S[c].suspended?"mu":tone(this.price(c)-S[c].base),
+        open: ()=>{ this.setState({code:c, dtab:"ai"}); this.nav("detail"); } })),
+
+      holds: hk.slice(0,3).map(c=>({ key:c, name:S[c].name, initial:S[c].name[0], tintBg:tintOf(c)[0], tintFg:tintOf(c)[1],
+        qty:s.holdings[c].q, avg:KRW(s.holdings[c].avg), value:KRW(this.evalOf(c)),
+        pct: pctStr((this.evalOf(c)-this.costOf(c))/this.costOf(c)*100),
+        tone: tone(this.evalOf(c)-this.costOf(c)),
+        open: ()=>{ this.setState({code:c, dtab:"chart"}); this.nav("detail"); } })),
+      holdsFull: hk.map((c,i)=>({ key:c, name:S[c].name, initial:S[c].name[0], tintBg:tintOf(c)[0], tintFg:tintOf(c)[1],
+        qty:s.holdings[c].q, avg:KRW(s.holdings[c].avg), value:KRW(this.evalOf(c)),
+        pnl: sgn(this.evalOf(c)-this.costOf(c)),
+        pct: pctStr((this.evalOf(c)-this.costOf(c))/this.costOf(c)*100),
+        tone: tone(this.evalOf(c)-this.costOf(c)),
+        weight: (evalT ? this.evalOf(c)/evalT*100 : 0).toFixed(0)+"%",
+        barColor: COLORS[i%4],
+        open: ()=>{ this.setState({code:c, dtab:"chart"}); this.nav("detail"); } })),
+
+      query: s.query, onQuery: e=>this.setState({query:e.target.value}),
+      showResults: !!q, showBrowse: !q, showWatch: false,
+      tabBrowse: s.extab==="browse"?"on":"", tabWatch: s.extab==="watch"?"on":"",
+      toBrowse: ()=>this.setState({extab:"browse"}), toWatch: ()=>this.setState({extab:"watch"}),
+      resultCount: results.length, results: results.map(stockRow),
+      topList: Object.keys(S).map(stockRow),
+      watchCount: s.watch.length, watchEmpty: s.watch.length===0,
+      watchList: s.watch.map(stockRow),
+      recents: s.recents.map(w=>({ key:w, word:w, pick:()=>this.setState({query:w}) })),
+      hasRecents: s.recents.length>0, noRecents: s.recents.length===0,
+      clearRecents: ()=>{ this.setState({recents:[]}); this.toast("최근 검색어를 지웠어요."); },
+
+      d: { name:st.name, code:st.code, market:st.market, initial:st.name[0],
+        tintBg:tintOf(code)[0], tintFg:tintOf(code)[1],
+        price:KRW(dPrice), diff: st.suspended?"—":(dDiff>=0?"▲ ":"▼ ")+KRW(Math.abs(dDiff)),
+        pct: st.suspended?"—":pctStr(dPct), tone: st.suspended?"mu":tone(dDiff),
+        tagCls: dDiff>=0?"u":"d",
+        open:KRW(st.base*1.004), high:KRW(st.base*1.028), low:KRW(st.base*0.996), vol:KRW(1284910),
+        owned, myQty: owned?dh.q:0, myValue:KRW(this.evalOf(code)),
+        myPnl: owned?sgn(this.evalOf(code)-this.costOf(code)):"—",
+        myTone: owned?tone(this.evalOf(code)-this.costOf(code)):"ne",
+        share: evalT?Math.round(this.evalOf(code)/evalT*100)+"%":"0%",
+        about:st.about, fyLabel:"2025년 기준",
+        per: st.per?st.per.toFixed(1):"—", perAvg: st.perAvg?st.perAvg.toFixed(1):"—",
+        pbr: st.pbr.toFixed(1), pbrAvg: st.pbrAvg.toFixed(1),
+        roe: st.roe?st.roe.toFixed(1):"—", roeAvg: st.roeAvg?st.roeAvg.toFixed(1):"—",
+        cap:st.cap, div:st.div?st.div.toFixed(1):"—",
+        fin: st.fin.map((y,i)=>{
+          const prev = i>0 ? st.fin[i-1].op : null;
+          const up = prev===null ? null : y.op > prev;
+          return { key:y.year, year:y.year, revH:(y.rev/100*96)+"px", opH:(y.op/100*96)+"px",
+            opColor: up===null ? "#A3ACB9" : (up ? "#E25555" : "#3B82F6") };
+        }),
+        aiHead:st.aiHead, aiWhy:st.aiWhy, current:st.current,
+        changes: st.changes.map((t,i)=>({key:i,t})),
+        attention: st.attention.map((t,i)=>({key:i,t})),
+        risks: st.risks.map((t,i)=>({key:i,t})),
+        events: st.events.map((e,i)=>({key:i,d:e.d,t:e.t})),
+        hasThesis: !!s.theses[code], needThesis: owned && !s.theses[code],
+        thesis: s.theses[code]?s.theses[code].t:"", thesisDate: s.theses[code]?s.theses[code].d:"",
+        thesisCheck: s.theses[code] ? "이 근거는 지금도 유효합니다. 다만 처음 적으실 때보다 비중이 커졌습니다." : "",
+        star: s.watch.includes(code)?"★":"☆",
+        starColor: s.watch.includes(code)?"#1F2328":"#C6CEDA",
+        tradable: !st.suspended, suspended: !!st.suspended },
+
+      dtab: s.dtab, isDtChart: s.dtab==="chart", isDtInfo: s.dtab==="info", isDtAi: s.dtab==="ai",
+      tabChart: s.dtab==="chart"?"on":"", tabInfo: s.dtab==="info"?"on":"", tabAi: s.dtab==="ai"?"on":"",
+      toChart: ()=>this.setState({dtab:"chart"}), toInfo: ()=>this.setState({dtab:"info"}),
+      toAi: ()=>{ this.setState({dtab:"ai"}); if(!s.aiSeen[code]){ setTimeout(()=>this.setState(x=>({aiSeen:{...x.aiSeen,[code]:true}})),1100); } },
+      aiLoading: s.dtab==="ai" && !s.aiSeen[code], aiReady: s.dtab==="ai" && !!s.aiSeen[code],
+      p1: s.period==="1M"?"on":"", p3: s.period==="3M"?"on":"", p12: s.period==="1Y"?"on":"",
+      periodCls: s.period==="1M" ? "p1" : (s.period==="3M" ? "p3" : "p12"),
+      setP1: ()=>this.setState({period:"1M"}), setP3: ()=>this.setState({period:"3M"}), setP12: ()=>this.setState({period:"1Y"}),
+      metricsOpen: s.metricsOpen, metricsClosed: !s.metricsOpen,
+      moreMetrics: ()=>this.setState({metricsOpen:true}),
+      toggleWatch: ()=>{ const has=s.watch.includes(code);
+        this.setState(x=>({ watch: has ? x.watch.filter(c=>c!==code) : [...x.watch, code] }));
+        this.toast(has?"관심 종목에서 뺐어요.":"관심 종목에 담았어요."); },
+      openPer: ()=>this.openSheet("term","per"), openPbr: ()=>this.openSheet("term","pbr"),
+      openInsight: ()=>this.openSheet("insight"),
+      fbIdle: aiFb.idle, fbSent: aiFb.sent, fbUp: aiFb.up, fbDown: aiFb.down,
+
+      toBuy: ()=>{ this.setState({side:"buy", qty:0}); this.nav("order"); },
+      toSell: ()=>{ this.setState({side:"sell", qty:0}); this.nav("order"); },
+      sideLabel: s.side==="buy"?"매수":"매도",
+      submitLabel: s.qty>0 ? `${s.qty}주 ${s.side==="buy"?"매수":"매도"}하기` : "수량을 입력해주세요",
+      canSubmit: s.qty>0 && !short, cantSubmit: !(s.qty>0 && !short),
+      qty:s.qty, amount:KRW(amt), afterCash:KRW(s.cash-amt),
+      maxNote: s.side==="buy" ? `최대 ${maxQty}주` : `보유 ${dh?dh.q:0}주`,
+      q10: ()=>setQty(Math.floor(maxQty*0.1)), q25: ()=>setQty(Math.floor(maxQty*0.25)),
+      q50: ()=>setQty(Math.floor(maxQty*0.5)), qMax: ()=>setQty(maxQty),
+      short, shortAmt: KRW(Math.max(0, amt-s.cash)),
+      showCheck: s.side==="buy" && s.qty>0 && !short,
+      checkHead: "이 주문이 계좌를 어떻게 바꾸는지 먼저 보세요.",
+      beforeShare: (evalT?Math.round(this.evalOf(code)/evalT*100):0)+"%",
+      afterShare: Math.round((this.evalOf(code)+amt)/(evalT+amt)*100)+"%",
+      cashShort: KRW(Math.round(s.cash/10000))+"만", afterCashShort: KRW(Math.round((s.cash-amt)/10000))+"만",
+      warnings: (()=>{
+        const w=[]; const after=Math.round((this.evalOf(code)+amt)/(evalT+amt)*100);
+        if(after>=40) w.push(`이 주문 후 ${st.name} 한 종목이 평가액의 ${after}%가 됩니다.`);
+        const sa=Math.round((secs[st.sector]||0)+amt)/(evalT+amt)*100;
+        if(sa>=50) w.push(`${st.sector} 업종 비중이 ${Math.round(sa)}%로 올라갑니다.`);
+        if(s.cash-amt<200000) w.push(`주문 후 예수금이 ${KRW(s.cash-amt)}원만 남습니다.`);
+        w.push(st.news.summary+" — 아직 규모가 확정되지 않았습니다.");
+        return w.slice(0,3).map((t,i)=>({key:i,t}));
+      })(),
+      hasThesisConflict: !!s.theses[code],
+      thesisDate: s.theses[code]?s.theses[code].d:"", thesisText: s.theses[code]?s.theses[code].t:"",
+      submit: ()=>{
+        const n=s.qty, buy=s.side==="buy", c=code, p=dPrice;
+        this.setState(x=>{
+          const h={...x.holdings}; const cur=h[c]||{q:0,avg:p};
+          if(buy){ const nq=cur.q+n; h[c]={q:nq, avg:Math.round((cur.avg*cur.q+p*n)/nq)}; }
+          else { const nq=cur.q-n; if(nq<=0) delete h[c]; else h[c]={q:nq, avg:cur.avg}; }
+          const mail=[...x.mail];
+          if(buy && !x.theses[c] && !mail.some(m=>m.type==="record"&&m.code===c))
+            mail.unshift({id:"r"+Date.now(),kind:"기록",tag:"u",when:"방금",title:`${S[c].name}를 왜 담으셨어요?`,sub:`오늘 매수 · ${n}주`,unread:true,type:"record",code:c});
+          return { holdings:h, cash: buy ? x.cash-p*n : x.cash+p*n, qty:0, mail,
+            tx:[{id:Date.now(),name:S[c].name,kind:buy?"매수":"매도",tag:buy?"u":"d",
+              detail:`${n}주 · ${KRW(p)}원 · 방금`,amt:buy?-p*n:p*n,k:buy?"buy":"sell"}, ...x.tx] };
+        });
+        this.back();
+        this.toast(buy ? `${n}주 매수 완료 · 우편함에 기록할 것이 도착했어요` : `${n}주 매도 완료`);
+      },
+
+      pftab:s.pftab, isPfHold: s.pftab==="holdings", isPfDiag: s.pftab==="diagnosis",
+      tabHold: s.pftab==="holdings"?"on":"", tabDiag: s.pftab==="diagnosis"?"on":"",
+      toHold: ()=>this.setState({pftab:"holdings"}), toDiag: ()=>this.setState({pftab:"diagnosis"}),
+      diagCold: hk.length===0, diagReady: hk.length>0,
+      diagHead: hk.length ? `${topSec} 업종에 ${secPct}% 몰려 있어요.` : "종목을 담으면 진단해드려요.",
+      diagBody: `· ${st.name===S[hk[0]]?.name?"":""}가장 큰 종목이 평가액의 ${diagShare}%\n· ${topSec} 업종을 합치면 ${secPct}%\n\n업종 이슈 하나에 계좌 전체가 함께 움직입니다.`,
+      metrics: [
+        { key:"c", label:"집중도", grade:grade(diagShare).g, color:grade(diagShare).c, pct:Math.min(100,diagShare*1.6)+"%", note:`가장 큰 종목이 ${diagShare}%를 차지합니다.` },
+        { key:"d", label:"분산", grade:hk.length>=4?"양호":"보통", color:hk.length>=4?"#1B7F5A":"#C2691C", pct:Math.min(100,hk.length*22)+"%", note:`${hk.length}종목 · ${Object.keys(secs).length}업종에 나눠 담았습니다.` },
+        { key:"v", label:"변동성", grade:"보통", color:"#C2691C", pct:"52%", note:"계좌 전체 출렁임의 크기가 시장 평균 수준입니다." }
+      ],
+      concentration: hk.map(c=>{
+        const p = evalT ? this.evalOf(c)/evalT*100 : 0;
+        const col = p>=40 ? "#E25555" : (p>=25 ? "#E0912F" : (p>=12 ? "#3B82F6" : "#A3ACB9"));
+        const lv = p>=40 ? "쏠림" : (p>=25 ? "다소 높음" : "적정");
+        return { key:c, name:S[c].name, color:col, level:lv, pct: p.toFixed(0)+"%", _p:p };
+      }).sort((a,b)=>b._p-a._p),
+
+      openCause: ()=>this.openSheet("cause"), closeSheet: ()=>this.setState({sheet:null}),
+      sheetCause: s.sheet==="cause", sheetTerm: s.sheet==="term", sheetRecord: s.sheet==="record",
+      sheetReset: s.sheet==="reset", sheetInsight: s.sheet==="insight",
+      causeHead: (()=>{ const best=hk.map(c=>({c,v:this.evalOf(c)-this.costOf(c)})).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v))[0];
+        if(!best) return "아직 분석할 기록이 모이지 않았어요.";
+        return best.v>=0 ? `이번 상승분의 대부분은 ${S[best.c].name}에서 나왔어요.` : `이번 하락분의 대부분은 ${S[best.c].name}에서 나왔어요.`; })(),
+      causeBody: hk.map(c=>`· ${S[c].name} ${sgn(this.evalOf(c)-this.costOf(c))}원 (${S[c].news.summary})`).join("\n"),
+      causeNote: `${topSec} 업종 비중이 ${secPct}%입니다. 한 업종이 흔들리면 계좌 전체가 함께 흔들릴 수 있어요.`,
+      attribution: [
+        { key:"m", label:"시장 효과", pct:"+4.2%", tone:"up", w:"52%", color:"#EFCFCF",
+          note:"코스피 전체가 오른 만큼입니다. 내 선택과 무관합니다." },
+        { key:"s", label:"업종 효과", pct:"+1.1%", tone:"up", w:"18%", color:"#E9B8B8",
+          note:"담고 있는 업종이 시장보다 더 올랐습니다." },
+        { key:"p", label:"종목 선택", pct:"+2.4%", tone:"up", w:"32%", color:"#E25555",
+          note:"같은 업종 안에서 고른 종목이 잘 됐습니다." }
+      ],
+      causeRows: hk.map((c,i)=>{
+        const v = this.evalOf(c)-this.costOf(c);
+        const P = tintOf(c);
+        return { key:c, name:S[c].name, initial:S[c].name[0], news:S[c].news.summary,
+          amt:sgn(v)+"원", pct:pctStr(v/this.costOf(c)*100), tone:tone(v),
+          chipBg:P[0], chipFg:P[1] };
+      }).sort((a,b)=>0),
+      termTitle: TERMS[s.sheetArg||"per"].title, termBody: TERMS[s.sheetArg||"per"].body,
+      termValue: (s.sheetArg==="pbr" ? st.pbr.toFixed(1) : (st.per?st.per.toFixed(1):"—")) + "배",
+      termCompare: "업종 평균 " + (s.sheetArg==="pbr" ? st.pbrAvg.toFixed(1) : (st.perAvg?st.perAvg.toFixed(1):"—")) + "배",
+      recordName: s.sheetArg ? S[s.sheetArg].name : "",
+      recordOptions: ["실적이 좋아질 것 같아서","업종 전망이 좋아서","배당을 보고","가격이 싸 보여서"].map((t,i)=>({
+        key:i, t, pick: ()=>{ const c=s.sheetArg;
+          this.setState(x=>({ theses:{...x.theses, [c]:{t:t+" 담았다.", d:"방금", horizon:"중기"}},
+            mail: x.mail.filter(m=>!(m.type==="record"&&m.code===c)), sheet:null }));
+          this.toast("기록했습니다. 다음 주문에서 꺼내 드려요."); } })),
+      askReset: ()=>this.openSheet("reset"),
+      doReset: ()=>{ this.setState({ sheet:null, holdings:{}, cash:0, watch:[], theses:{}, tx:[], mail:[] });
+        this.tabTo("home"); this.toast("계좌를 초기화했어요."); },
+
+      chatEmpty: s.msgs.length===0, hasMsgs: s.msgs.length>0, chatLoading: s.chatLoading,
+      chatContext: s.chatCtx ? `${s.chatCtx} 화면에서 들어왔어요. 이 종목부터 물어보셔도 됩니다.` : "보유 종목과 거래 내역을 참고해 답합니다.",
+      suggestions: (s.chatCtx
+        ? [`${s.chatCtx} 지금 사도 괜찮을까요?`, `${s.chatCtx} 위험 요인이 뭐야?`, "내 포트폴리오 좀 봐주세요", "확인해야 할 위험이 있어?"]
+        : ["오늘 내 종목에 무슨 일이 있었어?","최근 수익률이 왜 떨어졌어?","내 포트폴리오에서 확인할 위험이 있어?","이 뉴스가 무슨 뜻이에요?"]
+      ).map((t,i)=>({ key:i, t, ask: ()=>ask(t) })),
+      msgs: s.msgs.map(m=>{
+        if(m.role==="user") return { key:m.id, isUser:true, isAi:false, body:m.body };
+        const f=fbOf("msg"+m.id);
+        return { key:m.id, isUser:false, isAi:true, head:m.head, body:m.body,
+          fbIdle:f.idle, fbSent:f.sent, up:f.up, down:f.down };
+      }),
+      draft: s.draft, onDraft: e=>this.setState({draft:e.target.value}),
+      send: ()=>{ const t=s.draft.trim(); if(t) ask(t); },
+      resetChat: ()=>{ this.setState({msgs:[], chatCtx:null}); this.toast("대화를 초기화했어요."); },
+
+      wikiEmpty: s.facts.length===0 && Object.keys(s.theses).length===0,
+      wikiHas: s.facts.length>0 || Object.keys(s.theses).length>0,
+      factCount: s.facts.length,
+      facts: s.facts.map(f=>({ key:f.id, text:f.text, source:f.source, date:f.date,
+        guess: !!f.guess, deletable: !f.guess,
+        confirm: ()=>{ this.setState(x=>({ facts: x.facts.map(y=>y.id===f.id?{...y,guess:false,source:"직접 확인",text:"손실이 10%를 넘으면 정리하는 편이다."}:y),
+          mail: x.mail.filter(m=>m.type!=="wiki") })); this.toast("확인했습니다."); },
+        deny: ()=>{ this.setState(x=>({ facts: x.facts.filter(y=>y.id!==f.id), mail: x.mail.filter(m=>m.type!=="wiki") })); this.toast("지웠습니다."); },
+        del: ()=>{ this.setState(x=>({ facts: x.facts.filter(y=>y.id!==f.id) })); this.toast("이후 모든 답변에서 제외됩니다."); } })),
+      thesisCount: Object.keys(s.theses).length, noThesisAll: Object.keys(s.theses).length===0,
+      theses: Object.keys(s.theses).map(c=>({ key:c, name:S[c].name, text:s.theses[c].t,
+        date:s.theses[c].d, horizon:s.theses[c].horizon })),
+
+      txFilter:s.txFilter, txEmpty: s.tx.length===0,
+      fAll: s.txFilter==="all"?"on":"", fBuy: s.txFilter==="buy"?"on":"",
+      fSell: s.txFilter==="sell"?"on":"", fDep: s.txFilter==="dep"?"on":"",
+      setAll: ()=>this.setState({txFilter:"all"}), setBuy: ()=>this.setState({txFilter:"buy"}),
+      setSell: ()=>this.setState({txFilter:"sell"}), setDep: ()=>this.setState({txFilter:"dep"}),
+      txList: s.tx.filter(t=>s.txFilter==="all"||t.k===s.txFilter).map(t=>({
+        key:t.id, name:t.name, kind:t.kind, tag:t.tag, detail:t.detail, amt:sgn(t.amt) })),
+
+      depAmt: KRW(s.depAmt), depLeft: KRW(5000000 - s.depAmt),
+      d10: ()=>this.setState(x=>({depAmt:x.depAmt+100000})),
+      d50: ()=>this.setState(x=>({depAmt:x.depAmt+500000})),
+      d100: ()=>this.setState(x=>({depAmt:x.depAmt+1000000})),
+      doDeposit: ()=>{ this.setState(x=>({ cash:x.cash+x.depAmt, deposited:x.deposited+x.depAmt,
+        tx:[{id:Date.now(),name:"입금",kind:"입금",tag:"g",detail:"카드 결제 · 방금",amt:x.depAmt,k:"dep"}, ...x.tx] }));
+        this.back(); this.toast("입금됐어요."); },
+
+      toast: s.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
