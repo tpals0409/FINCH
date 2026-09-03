@@ -27,8 +27,17 @@ import org.springframework.stereotype.Service
  *
  * ⚠️ **최초 로그인의 계좌·예수금 생성은 아직 없다.** erd.md 3.1 은 `users` INSERT 와 함께
  * `account`·`ledger_entry` 를 한 트랜잭션에서 만들라고 하지만 그 테이블의 소유 도메인
- * (`account`·`ledger`)이 아직 없다. 소유 도메인이 생기면 이 자리에서 그 서비스를 부르고,
- * 그때는 세 INSERT 를 한 트랜잭션으로 묶어야 한다.
+ * (`account`·`ledger`)이 아직 없다.
+ *
+ * 붙일 때 **이 메서드를 `@Transactional` 로 감싸면 안 된다.** 위의 두 이유를 그대로 밟는다.
+ * 트랜잭션 경계는 **카카오 호출 밖의 별도 메서드**여야 한다 — `AccountService.openAccount` 를
+ * `Propagation.MANDATORY` 로 두고, 이 클래스에서 카카오 호출이 끝난 뒤 `@Transactional` 을 건
+ * 얇은 메서드로 감싸 부른다. 그 안에서 계좌 생성 · 원장 기록 · 잔액 반영이 한 트랜잭션이 된다.
+ *
+ * 그리고 **중복 지급을 막는 방어선은 아래 `created` 플래그가 아니다.** 그 플래그는 "이 요청이
+ * 계정을 만들었는지" 일 뿐이라 동시 가입에서 둘 다 참이 될 수 있다. 진짜 방어선은 스키마의
+ * `uq_account_user` UNIQUE 이고, `INITIAL_GRANT` 가 계정당 정확히 1건이라는 apiSpec 8.2 의
+ * 전제는 그 제약이 지킨다.
  */
 @Service
 class AuthService(
