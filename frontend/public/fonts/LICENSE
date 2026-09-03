@@ -1,0 +1,20 @@
+이 디렉터리의 woff2 파일은 아래 폰트를 서브셋한 것이다 (fonts-src/build.sh).
+서브셋은 OFL 상 "수정본" 이므로 원본 고지를 여기 옮겨 둔다. 폰트 내부 name 테이블에도
+저작권(0)·상표(7)·라이선스(13/14) 필드가 보존돼 있다.
+
+────────────────────────────────────────────────────────────────
+
+Gmarket Sans (gmarket-sans-light.woff2 · gmarket-sans-medium.woff2 · gmarket-sans-bold.woff2)
+
+Copyright © 2019 eBay Korea Co., Ltd. (www.gmarket.co.kr),
+with Reserved Font Name "Gmarket Sans Font".
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is available with a FAQ at: https://openfontlicense.org
+
+제작: Sandoll Inc.
+원본 배포: https://www.gmarket.co.kr/corp/gmarketsans
+
+OFL 1.1 요지 — 자유롭게 사용·복제·수정·재배포할 수 있다. 폰트 자체를 판매할 수 없다.
+수정본(이 서브셋 포함)은 Reserved Font Name 을 폰트 이름으로 쓸 수 없으나, CSS font-family
+로 참조하는 것과 웹 임베딩은 OFL FAQ 가 허용한다. 원본 name 테이블은 그대로 보존했다.
