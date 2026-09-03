@@ -15,7 +15,7 @@
 - Java 21 + Spring Boot 4.1.x (착수 시점 최신 4.1.1)
   - 3.x 기각 — 3.5가 2026-06-30 오픈소스 EOL(최종 패치 3.5.16)이라 신규 프로젝트가 고를 수 있는 지원 라인은 4.0(2026-12-31 EOL)과 4.1뿐이다
   - Boot 4는 Spring Framework 7 기반이므로 3.x용 라이브러리를 그대로 가져오면 기동에 실패할 수 있다. 의존성 추가 시 Boot 4 호환 여부를 확인한다
-  - Java 21 유지 — Boot 4 최소 요구는 17이고 21은 LTS다
+  - Kotlin (JVM 21 툴체인) — Boot 4 최소 요구는 17이고 21은 LTS다
 - 영속성 Spring Data JPA
 - DB PostgreSQL 17 / 마이그레이션 Flyway
   - MySQL 8 기각 — AI 파트가 같은 인스턴스에서 pgvector를 필수로 쓴다(초기 마이그레이션이 `CREATE EXTENSION vector`를 실행하고, 벡터 검색은 종목 분석·채팅의 런타임 기능이다). MySQL을 따로 두면 2vCPU 노드에 DB 엔진이 둘 올라가고 EC2 이관 절차(`pg_dump` 일괄 덤프·복원)도 갈라진다
@@ -169,6 +169,10 @@ domain/order/
 
 ### 4. 계층 경계
 
+> **아래는 규약이 아니라 "이런 걸 적어라" 는 목차다.** §2(패키지 구조)와 §5.3·§5.4(멱등성)만
+> 실제 규약이고 나머지는 정해지는 대로 채운다. 목차를 규약으로 읽으면 "규칙이 없다" 로 오해한다.
+
+
 - Controller / Service / Repository 의 책임과 금지 사항
   (Controller에 비즈니스 로직 금지, Repository 직접 호출 계층 제한 등)
 - Entity ↔ DTO 변환 위치 (Entity를 Controller 밖으로 내보내지 않는다)
@@ -181,7 +185,39 @@ domain/order/
 - 응답: 성공 시 봉투 없음, 실패 시 `{ code, message, detail }`
 - 예외 처리: `@RestControllerAdvice` 단일 진입점, 에러 코드 Enum 관리 위치
   (개별 컨트롤러 try-catch 금지 — `message` 는 서버가 완성해서 내려준다)
-- 멱등성 키(apiSpec.md 1.4): 처리 위치(인터셉터 vs 서비스), 저장소(Redis), 24시간 TTL, `IDEMPOTENCY_CONFLICT` 판정 기준(요청 본문 해시)
+- 멱등성 키(apiSpec.md 1.4): **확정. 아래 §5.3·§5.4 참고**
+
+#### 5.3 멱등성 처리 절차 — 확정
+
+저장소는 **Postgres `idempotency_record`** 다 (`V3__add_idempotency.sql`). Redis 를 기각한 이유는
+그 마이그레이션 머리말에 있다 — 요약하면 **원장 INSERT 와 키 표시가 한 트랜잭션이어야** 하고,
+두 저장소로 갈라지면 그 사이에서 죽었을 때 중복 주문이 난다.
+
+**판정의 출발점은 조회가 아니라 예약 INSERT 의 성패다.** 조회 후 INSERT 는 두 요청이 동시에
+"없음" 을 볼 수 있지만 PK `(user_id, idempotency_key)` 는 정확히 하나만 통과시킨다.
+
+| 상황 | 판정 | 응답 |
+|---|---|---|
+| 헤더 누락 | DB 에 닿기 전 | `400 IDEMPOTENCY_KEY_REQUIRED` |
+| 처음 보는 키 | 예약 INSERT 성공 | 본 처리 → 같은 트랜잭션에서 `COMPLETED` |
+| 처리 진행 중 | PK 충돌 · 행이 `IN_PROGRESS` | `409 IDEMPOTENCY_IN_PROGRESS` |
+| 완료 · 동일 본문 | PK 충돌 · `COMPLETED` · `request_hash` 일치 | 저장된 응답을 **그대로 재생** (같은 상태 코드) |
+| 완료 · 다른 본문 | PK 충돌 · `COMPLETED` · `request_hash` 불일치 | `409 IDEMPOTENCY_CONFLICT` |
+
+- 처리 위치는 **서비스**다. 인터셉터에 두면 예약과 본 처리가 다른 트랜잭션이 되어 위 성질이 깨진다
+- `request_hash` 는 정규화한 요청 본문의 SHA-256 소문자 hex. 경로는 해시에 섞지 않고 `endpoint` 컬럼으로 분리한다 — 막힌 `IN_PROGRESS` 행을 사람이 볼 때 어느 엔드포인트인지 알 유일한 단서다
+- **처리가 실패하면 `COMPLETED` 로 남기지 않고 예약 행을 지운다.** 남기면 실패한 요청이 24시간 동안 재시도 불가가 된다
+- `ck_idempotency_completed` 가 "완료 = 응답과 원장 행이 있다" 를 DB 사실로 만든다
+
+#### 5.4 멱등성 레코드 만료 — 확정
+
+보관 기간은 24시간이다 (apiSpec 1.4). **만료는 배치 하나로만 치운다.** 조회 시점에 지우지 않는다 —
+읽기 경로에 쓰기를 섞으면 조회가 잠금을 잡고, 그 잠금이 본 처리와 경합한다.
+
+`expires_at` 컬럼을 두지 않고 `created_at` 으로 계산한다. 보관 기간이 행마다가 아니라
+**배치의 interval 한 곳에만** 있어야 나중에 바꿀 때 옛 행과 새 행이 갈리지 않는다.
+인덱스는 `ix_idempotency_created` 다.
+
 - 커서 페이징(apiSpec.md 1.5): 공통 응답 타입, 커서 인코딩 방식 (12장 미확정 항목 — 여기서 제안하고 Sprint 0에서 확정)
 - 검증: Bean Validation 사용 기준, `INVALID_REQUEST` 매핑
 - 실시간 시세 STOMP(apiSpec.md 5.6): CONNECT 프레임의 `Authorization` 검증 위치(핸드셰이크가 아니다 — 브라우저 `WebSocket` 생성자가 커스텀 헤더를 못 붙인다), `/topic/prices/{stockCode}` 발행 주체, 하트비트 10초/10초와 30초 미수신 시 슬롯 회수 로직의 위치
@@ -213,7 +249,7 @@ domain/order/
 
 - [ ] 각 기술 선택에 기각한 대안과 이유가 적혀 있다
 - [ ] BE 인원이 문서만 읽고 패키지 위치와 클래스명을 정할 수 있다
-- [ ] MR 생성 후 BE 팀원 리뷰 요청
+- [ ] PR 을 열고 CI 가 녹색이면 squash 머지
 
 ## 참고
 

@@ -51,7 +51,7 @@ frontend/docs/contracts.md            프론트가 백엔드 회신을 기다리
 버전은 `backend/build.gradle` 이 단일 진실 원천이다. 이 문서에 버전을 적지 않는다.
 
 ```
-Java + Spring Boot (4 계열)
+Kotlin + Spring Boot (4 계열)
 Spring Data JPA / PostgreSQL / Flyway
 Redis (멱등성 키, 시세 캐시)
 Spring Security + 자체 발급 JWT, 카카오 OAuth
@@ -70,8 +70,17 @@ JUnit 5 + Testcontainers
 ./gradlew build
 ```
 
-- **Testcontainers 가 Docker 를 요구한다.** Docker 가 떠 있지 않으면 `test` 태스크가 실패한다.
-  컴파일만 확인하려면 `./gradlew compileJava` 를 쓴다
+- **Testcontainers 는 Docker 가 아니라 Podman 을 쓴다.** 이 머신에 Docker 데몬이 없다.
+
+```bash
+export DOCKER_HOST="unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}' | head -1)"
+export TESTCONTAINERS_RYUK_DISABLED=true
+```
+
+**JDK 를 손으로 깔지 않는다.** `settings.gradle` 의 툴체인 자동 공급이 21 을 받아온다.
+  컴파일만 확인하려면 `./gradlew compileKotlin` 을 쓴다.
+  **다만 EXIT 0 을 검증으로 쓰지 않는다** — up-to-date 로 건너뛴 태스크도 0 을 낸다.
+  무엇이 실제로 실행됐는지 본다
 - **IntelliJ 에서 import 가 전부 빨갛다면** Gradle 프로젝트가 연결되지 않은 것이다.
   `backend/build.gradle` 우클릭 → Link Gradle Project. 코드 문제가 아니므로 코드를 고치지 않는다
 
