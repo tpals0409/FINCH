@@ -21,7 +21,7 @@ import { RoutePlaceholder } from './RoutePlaceholder';
  * | 갈래              | 화면                                                   |
  * | ----------------- | ------------------------------------------------------ |
  * | 비보호            | 로그인 · 카카오 콜백 · 404                             |
- * | 보호 + 하단 탭    | 홈 · 탐색 · 포트폴리오 · AI 채팅 (ia.md §3 의 탭 4개)  |
+ * | 보호 + 하단 탭    | 홈 · 탐색 · 포트폴리오 · 내 정보 (ia.md §3 의 탭 4개)  |
  * | 보호 + 탭 없음    | 나머지 — 흐름 안으로 들어가는 화면                     |
  *
  * ia.md §1 이 "로그인 이후 화면은 전부 인증이 필요하다"로 못박았으므로 인증 2종과
@@ -29,9 +29,11 @@ import { RoutePlaceholder } from './RoutePlaceholder';
  * `—` 인데, 그 열은 구현 선후 관계이지 인증 요구가 아니다.
  * (목 서버도 인증 경로 밖 전부에 Bearer 토큰을 요구한다.)
  *
- * **탭 바를 다는 화면은 ia.md §3 이 지목한 넷뿐이다.** §3 이 관심 종목·최근 본 종목·
- * 매매 내역·충전·마이페이지를 "탭에 두지 않고 홈·포트폴리오·탐색 안에서 들어간다"로
- * 적었다. 그 화면들이 탭 바를 **달고 있어야 하는지**는 ia.md 에 없다.
+ * **탭 바를 다는 화면은 ia.md §3 이 지목한 넷뿐이다.** 2026-09-03 개정으로 4번째
+ * 자리가 `AI`(`/chat`) 에서 `내 정보`(`/my`) 로 바뀌었다 — AI 는 화면 맥락을 물고
+ * 들어가는 플로팅 버튼으로 옮겨졌다(ia.md §3). `/chat` 은 라우트만 남아 탭 밖이다.
+ * §3 이 관심 종목·최근 본 종목·매매 내역·충전·알림함·브리핑 전체를 "탭에 두지 않고
+ * 홈·포트폴리오·탐색·내 정보 안에서 들어간다"로 적었다. 그 화면들이 탭 바를 **달고 있어야 하는지**는 ia.md 에 없다.
  * 여기서는 달지 않는 쪽을 기본값으로 골랐다 — 흐름 안으로 들어간 화면에서 탭을
  * 누르면 하던 일이 사라진다. 뒤집으려면 라우트를 `TabBarLayout` 아래로 옮기면 된다.
  *
@@ -89,10 +91,7 @@ export const router = createBrowserRouter([
                 path: ROUTES.portfolio,
                 element: <RoutePlaceholder screen="포트폴리오" />,
               },
-              {
-                path: ROUTES.chat,
-                element: <RoutePlaceholder screen="AI 채팅" />,
-              },
+              { path: ROUTES.my, element: <MyPage /> },
             ],
           },
 
@@ -106,18 +105,24 @@ export const router = createBrowserRouter([
             element: <RoutePlaceholder screen="매매 내역" />,
           },
           {
-            path: ROUTES.rounds,
-            element: <RoutePlaceholder screen="회차 조회" />,
+            // 경로 미확정. `ROUTES.briefing` 주석과 ia.md §7 을 본다.
+            path: ROUTES.briefing,
+            element: <RoutePlaceholder screen="브리핑 전체" />,
           },
           {
             path: ROUTES.deposit,
             element: <RoutePlaceholder screen="충전" />,
           },
           {
-            path: ROUTES.watchlist,
-            element: <RoutePlaceholder screen="관심 종목" />,
+            // 경로 미확정. `ROUTES.inbox` 주석과 ia.md §7 을 본다.
+            // 라우트는 `/inbox` 지만 프로토타입 내부 식별자는 `isMail`·`goMail` 이다.
+            path: ROUTES.inbox,
+            element: <RoutePlaceholder screen="알림함" />,
           },
-          { path: ROUTES.my, element: <MyPage /> },
+          {
+            path: ROUTES.chat,
+            element: <RoutePlaceholder screen="AI 채팅" />,
+          },
           {
             path: ROUTES.myWiki,
             element: <RoutePlaceholder screen="AI가 이해한 나" />,
