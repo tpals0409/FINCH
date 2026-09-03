@@ -1,9 +1,13 @@
 # 백엔드 DB 스키마(ERD) 설계
 
-- 문서 버전: v1.0
-- 작성일: 2026-08-24
-- 기준 문서: [기능 명세서 v2.1](../spec/featureSpec.md) · [백엔드 API 명세 v0.2](../api/apiSpec.md) · [백엔드 컨벤션](../convention/backConvention.md)
-- 범위: 백엔드 DB의 MVP 스키마 전체. Flyway `V1__init.sql` 작성의 입력 문서다.
+- 문서 버전: v1.1
+- 작성일: 2026-08-24 / 최종 수정: 2026-09-03
+- 기준 문서: [기능 명세서 v2.2](../spec/featureSpec.md) · [백엔드 API 명세 v0.7](../api/apiSpec.md) · [백엔드 컨벤션](../convention/backConvention.md)
+- 변경 이력:
+  - v1.0 — MVP 스키마 11개 테이블 확정. Flyway `V1__init.sql` 의 입력
+  - v1.1 — **투자 회차·계좌 리셋 제거**(이슈 #27). `investment_round` → `account` 교체,
+    자식 4개 테이블의 `round_id` → `account_id`, 원장 유형 6종 → 4종. Flyway `V2__replace_round_with_account.sql`
+- 범위: 백엔드 DB의 MVP 스키마 전체. Flyway 마이그레이션 작성의 입력 문서다.
 - 범위 밖: AI 파트 DB(`ai_invest`), Redis 저장 데이터, 확장 기능 스키마.
 
 ---
@@ -15,13 +19,13 @@
 
 ```mermaid
 erDiagram
-    users ||--o{ investment_round : "1:N (활성 1개)"
+    users ||--|| account : "1:1"
     users ||--o{ watchlist_item : ""
     users ||--o{ recent_viewed_stock : ""
     users ||--o{ recent_search_keyword : ""
 
-    investment_round ||--o{ ledger_entry : "원장(불변)"
-    investment_round ||--o{ holding : "회차별 잔고"
+    account ||--o{ ledger_entry : "원장(불변)"
+    account ||--o{ holding : "잔고"
 
     ledger_entry ||--o| deposit : "type=DEPOSIT"
     ledger_entry ||--o| trade : "type=BUY|SELL"
@@ -50,7 +54,7 @@ erDiagram
 
 ### 1.2 원장 1개 + 도메인 테이블 분리
 
-`ledger_entry`가 6종 유형을 전부 담는 불변 시계열이고, `deposit`·`trade`가 유형별 상세를 1:1로 든다.
+`ledger_entry`가 4종 유형을 전부 담는 불변 시계열이고, `deposit`·`trade`가 유형별 상세를 1:1로 든다.
 
 - **단일 wide 테이블 기각** — 유형별로 유효한 컬럼이 달라 DB 제약으로 무결성을 거의 못 건다.
 - **도메인 테이블만 두고 UNION 기각** — 커서 페이징(apiSpec 1.5)과 예수금 재계산이 여러 테이블을
@@ -60,7 +64,7 @@ erDiagram
 
 ### 1.3 예수금·보유 종목은 물질화한다
 
-`investment_round.cash_balance`와 `holding` 테이블을 유지한다. 원장이 진실이고 둘은 파생이며,
+`account.cash_balance`와 `holding` 테이블을 유지한다. 원장이 진실이고 둘은 파생이며,
 같은 트랜잭션에서만 갱신된다.
 
 - **전량 원장 집계 기각** — 평균 매수가가 단순 합계로 나오지 않아 매도마다 전체 재생이 필요하고,
@@ -76,10 +80,20 @@ Refresh Token, 멱등성 키, 현재가 캐시는 Redis에 둔다(backConvention
 - 대가: Redis 재기동 시 전원 재로그인이고 멱등성 보장이 날아간다. 가상 자산이라 감수한다.
 - **DB 테이블 기각** — 만료 행 청소 배치가 둘 늘고 로그인마다 DB 쓰기가 생긴다.
 
-### 1.5 `account` 테이블을 두지 않는다
+### 1.5 계좌는 users와 1:1인 `account` 한 행이다
 
-users와 1:1이고 예수금은 회차에 귀속되므로 `investment_round`가 계좌 역할을 겸한다.
-명세의 "가상 계좌"는 개념어로만 남는다. `GET /api/v1/account`는 활성 회차를 읽는다.
+계좌 리셋과 투자 회차를 제거했다(이슈 #27). 실제 투자 서비스에는 계좌를 초기화하고 다시 시작하는
+기능이 없고, 회차는 리셋 시점을 경계로 원장을 나누던 부산물이라 리셋과 함께 사라진다.
+
+v1.0에서는 `investment_round`가 계좌 역할을 겸했다. 그 테이블이 곧 계좌였으므로 회차 제거는
+**테이블 삭제가 아니라 `account`로의 교체**다. 예수금·누적 충전액이 그대로 넘어오고,
+`ledger_entry`·`deposit`·`trade`·`holding`의 `round_id`는 `account_id`가 된다.
+
+- 사용자당 계좌 1개다. `ux_round_active`(활성 회차 1개)가 하던 일을 `user_id` UNIQUE가 대신한다.
+- 원장은 여전히 삭제하지 않는다. 다만 회차 경계가 없으므로 전체가 하나의 연속된 시계열이다.
+- **users와 1:1인데 왜 users에 합치지 않는가** — 계좌 컬럼(예수금·누적 충전액)은 주문·충전 트랜잭션이
+  `FOR UPDATE`로 잠그는 대상이고, 로그인·프로필 갱신이 건드리는 `users`와 락 경합을 만들 이유가 없다.
+  결제 서버 분리 시 넘어갈 경계도 이 테이블이다.
 
 ---
 
@@ -101,40 +115,41 @@ PK는 `BIGINT GENERATED ALWAYS AS IDENTITY`, 이름은 snake_case다(backConvent
 
 탈퇴는 MVP 범위 밖이므로 소프트 삭제 컬럼을 두지 않는다(featureSpec 2.1).
 
-### 2.2 investment_round — 투자 회차 (계좌)
+### 2.2 account — 계좌
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |---|---|---|---|
-| `id` | BIGINT | PK | `roundId` |
-| `user_id` | BIGINT | NOT NULL, FK → users | |
-| `round_no` | INT | NOT NULL, CHECK > 0 | 사용자별 1부터 증가 |
-| `status` | VARCHAR(10) | NOT NULL, CHECK IN ('ACTIVE','CLOSED') | |
+| `id` | BIGINT | PK | |
+| `user_id` | BIGINT | NOT NULL, **UNIQUE**, FK → users | 1:1 |
 | `cash_balance` | BIGINT | NOT NULL, **CHECK >= 0** | 예수금 스냅샷 |
-| `total_deposited_amount` | BIGINT | NOT NULL DEFAULT 0, CHECK 0 ~ 100000000 | 회차 누적 충전액 |
-| `started_at` | TIMESTAMPTZ | NOT NULL | |
-| `closed_at` | TIMESTAMPTZ | NULL | |
-| `final_total_asset` | BIGINT | NULL | 종료 시점 총자산 |
+| `total_deposited_amount` | BIGINT | NOT NULL DEFAULT 0, CHECK 0 ~ 100000000 | 계정 전체 누적 충전액 |
 | `created_at` / `updated_at` | TIMESTAMPTZ | NOT NULL | |
 
-제약·인덱스:
+제약:
 
 ```sql
-UNIQUE (user_id, round_no)
-CREATE UNIQUE INDEX ux_round_active ON investment_round (user_id) WHERE status = 'ACTIVE';
-CHECK ( (status = 'ACTIVE' AND closed_at IS NULL     AND final_total_asset IS NULL)
-     OR (status = 'CLOSED' AND closed_at IS NOT NULL AND final_total_asset IS NOT NULL) )
+UNIQUE (user_id)
+CHECK (cash_balance >= 0)
+CHECK (total_deposited_amount BETWEEN 0 AND 100000000)
 ```
 
-부분 유니크 인덱스가 "활성 회차는 항상 1개"(featureSpec 2.1)를 DB에서 보장한다.
-`total_deposited_amount`가 회차 행에 있으므로 리셋 시 충전 한도가 자연히 초기화된다(featureSpec 1.1).
+`user_id` UNIQUE가 "사용자당 계좌 1개"를 DB에서 보장한다. 리셋이 없으므로 한 사용자가 계좌를
+둘 가질 경로 자체가 없다.
+
+`total_deposited_amount`는 **계좌 평생 누적**이다. 회차가 없어지면서 충전 한도의 기준 기간도
+회차가 아니라 계정 전체가 되었다(featureSpec 1.1). 컬럼 위치가 곧 그 결정의 표현이다 —
+기간(월 등) 기준으로 뒤집으면 이 컬럼을 버리고 `deposit`을 기간으로 집계해야 한다.
+
+`id`는 API 응답에 나가지 않는다. 계좌는 사용자당 하나라 클라이언트가 지목할 대상이 아니고,
+모든 요청은 토큰의 사용자로 계좌를 찾는다(apiSpec 1.6).
 
 ### 2.3 ledger_entry — 원장 (불변)
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |---|---|---|---|
 | `id` | BIGINT | PK | `transactionId` |
-| `round_id` | BIGINT | NOT NULL, FK → investment_round | |
-| `type` | VARCHAR(16) | NOT NULL, CHECK IN (6종) | |
+| `account_id` | BIGINT | NOT NULL, FK → account | |
+| `type` | VARCHAR(16) | NOT NULL, CHECK IN (4종) | |
 | `cash_delta` | BIGINT | NOT NULL | 예수금 증감 |
 | `cash_balance_after` | BIGINT | NOT NULL, CHECK >= 0 | 기록 직후 예수금 |
 | `occurred_at` | TIMESTAMPTZ | NOT NULL | 응답의 `occurredAt` |
@@ -148,14 +163,15 @@ CHECK ( (status = 'ACTIVE' AND closed_at IS NULL     AND final_total_asset IS NU
 | `DEPOSIT` | + 충전액 | `deposit` |
 | `BUY` | − 체결금액 | `trade` |
 | `SELL` | + 체결금액 | `trade` |
-| `ROUND_OPEN` | 0 | 없음 |
-| `ROUND_CLOSE` | 0 | 없음 |
+
+`ROUND_OPEN`·`ROUND_CLOSE`는 회차 전환을 기록하던 `cash_delta = 0` 행이라 회차와 함께 사라졌다.
+기록할 사건 자체가 없다.
 
 인덱스:
 
 ```sql
-CREATE INDEX ix_ledger_round_id_desc ON ledger_entry (round_id, id DESC);
-CREATE INDEX ix_ledger_round_type_id ON ledger_entry (round_id, type, id DESC);
+CREATE INDEX ix_ledger_account_id_desc ON ledger_entry (account_id, id DESC);
+CREATE INDEX ix_ledger_account_type_id ON ledger_entry (account_id, type, id DESC);
 ```
 
 `GET /transactions`는 이 테이블 하나만 커서 페이징한다. 커서는 `id` 기준이고 정렬은 최신순 고정이다.
@@ -170,13 +186,13 @@ DB 차원에서도 막는다.
 |---|---|---|---|
 | `id` | BIGINT | PK | `depositId` |
 | `ledger_entry_id` | BIGINT | NOT NULL, **UNIQUE**, FK → ledger_entry | 1:1 |
-| `round_id` | BIGINT | NOT NULL, FK → investment_round | 한도 재계산·감사용 |
+| `account_id` | BIGINT | NOT NULL, FK → account | 한도 재계산·감사용 |
 | `amount` | BIGINT | NOT NULL, CHECK 0 < amount <= 10000000 | 1회 한도를 DB가 보장 |
 | `payment_method` | VARCHAR(20) | NOT NULL, CHECK IN ('VIRTUAL_CARD','VIRTUAL_TRANSFER') | |
 | `created_at` | TIMESTAMPTZ | NOT NULL | |
 
 ```sql
-CREATE INDEX ix_deposit_round ON deposit (round_id);
+CREATE INDEX ix_deposit_account ON deposit (account_id);
 ```
 
 충전 취소가 없으므로(featureSpec 1.1) 취소 상태 컬럼을 두지 않는다.
@@ -190,7 +206,7 @@ MVP는 시장가 즉시 체결이라 접수와 체결이 분리되지 않는다.
 |---|---|---|---|
 | `id` | BIGINT | PK | `orderId` = `tradeId` |
 | `ledger_entry_id` | BIGINT | NOT NULL, **UNIQUE**, FK → ledger_entry | 1:1 |
-| `round_id` | BIGINT | NOT NULL, FK → investment_round | |
+| `account_id` | BIGINT | NOT NULL, FK → account | |
 | `stock_code` | CHAR(6) | NOT NULL, FK → stock | |
 | `side` | VARCHAR(4) | NOT NULL, CHECK IN ('BUY','SELL') | |
 | `quantity` | BIGINT | NOT NULL, CHECK > 0 | |
@@ -203,37 +219,37 @@ MVP는 시장가 즉시 체결이라 접수와 체결이 분리되지 않는다.
 ```sql
 CHECK ( (side = 'SELL' AND avg_buy_price IS NOT NULL AND realized_profit IS NOT NULL)
      OR (side = 'BUY'  AND avg_buy_price IS NULL     AND realized_profit IS NULL) )
-CREATE INDEX ix_trade_round_id_desc ON trade (round_id, id DESC);
-CREATE INDEX ix_trade_round_stock   ON trade (round_id, stock_code, id DESC);
+CREATE INDEX ix_trade_account_id_desc ON trade (account_id, id DESC);
+CREATE INDEX ix_trade_account_stock   ON trade (account_id, stock_code, id DESC);
 ```
 
 `realizedProfitRate`(apiSpec 8.2)는 저장하지 않고 `realized_profit / (avg_buy_price * quantity) * 100`으로
 계산한다. 평단은 매도 후 바뀌므로 스냅샷 컬럼이 없으면 과거 수익률을 재현할 수 없다 — 그래서
 `avg_buy_price`만 저장하고 비율은 파생으로 둔다.
 
-### 2.6 holding — 보유 종목 (회차별)
+### 2.6 holding — 보유 종목
 
 | 컬럼 | 타입 | 제약 | 설명 |
 |---|---|---|---|
 | `id` | BIGINT | PK | |
-| `round_id` | BIGINT | NOT NULL, FK → investment_round | |
+| `account_id` | BIGINT | NOT NULL, FK → account | |
 | `stock_code` | CHAR(6) | NOT NULL, FK → stock | |
 | `quantity` | BIGINT | NOT NULL, CHECK >= 0 | |
 | `avg_buy_price` | BIGINT | NOT NULL, CHECK >= 0 | 가중평균 매입 단가 |
 | `updated_at` | TIMESTAMPTZ | NOT NULL | |
 
 ```sql
-UNIQUE (round_id, stock_code)
+UNIQUE (account_id, stock_code)
 CHECK (quantity > 0 OR avg_buy_price = 0)
-CREATE INDEX ix_holding_round_held ON holding (round_id) WHERE quantity > 0;
+CREATE INDEX ix_holding_account_held ON holding (account_id) WHERE quantity > 0;
 ```
 
 **전량 매도 시 행을 지우지 않고 `quantity = 0`, `avg_buy_price = 0`으로 남긴다.** 조회는
 `quantity > 0`으로 거르고, 재매수 시 INSERT 경합 없이 같은 행을 갱신한다. featureSpec 7.3의
 "잔고에서 제거"는 화면 기준으로 해석했다.
 
-`round_id`에 묶여 있으므로 과거 회차의 보유 종목이 그대로 남아 읽기 전용 스냅샷이 된다
-(featureSpec 2.3). 별도 스냅샷 테이블이 필요 없다.
+계좌당 종목 1행이고 그 행이 현재 잔고 그 자체다. 회차별 읽기 전용 스냅샷이라는 성격은 사라졌고,
+과거의 보유 이력은 `trade`로만 남는다.
 
 ### 2.7 stock — 종목 마스터
 
@@ -332,9 +348,9 @@ CREATE INDEX ix_recent_keyword_user ON recent_search_keyword (user_id, searched_
 
 ### 3.1 최초 로그인 (`POST /auth/kakao`, 신규)
 
-한 트랜잭션에서: `users` INSERT → `investment_round` INSERT(`round_no=1`, `status='ACTIVE'`,
-`cash_balance=1000000`) → `ledger_entry` INSERT(`ROUND_OPEN`, delta 0) → `ledger_entry`
-INSERT(`INITIAL_GRANT`, delta +1,000,000, `cash_balance_after=1000000`).
+한 트랜잭션에서: `users` INSERT → `account` INSERT(`cash_balance=1000000`,
+`total_deposited_amount=0`) → `ledger_entry` INSERT(`INITIAL_GRANT`, delta +1,000,000,
+`cash_balance_after=1000000`).
 
 ### 3.2 주문 체결 (`POST /orders`)
 
@@ -342,35 +358,27 @@ apiSpec 7.2의 5단계를 이 스키마에 매핑한다.
 
 ```
 1~3. 거래시간 · 거래정지(stock.suspended) · 최신가(Redis) 확인
-4.   SELECT ... FROM investment_round WHERE id = ? FOR UPDATE     ← 직렬화 지점
-     SELECT ... FROM holding WHERE round_id = ? AND stock_code = ?
+4.   SELECT ... FROM account WHERE id = ? FOR UPDATE               ← 직렬화 지점
+     SELECT ... FROM holding WHERE account_id = ? AND stock_code = ?
      매수: cash_balance >= quantity * price 인지 재검증
      매도: holding.quantity >= quantity 인지 재검증
 5.   INSERT ledger_entry (BUY|SELL, cash_delta, cash_balance_after)
      INSERT trade        (ledger_entry_id, ...)
      UPSERT holding      (매수: 가중평균 재계산 / 매도: 수량 차감)
-     UPDATE investment_round SET cash_balance = ?
+     UPDATE account SET cash_balance = ?
 ```
 
-락 대상이 회차 한 행뿐이라 같은 사용자의 동시 주문이 직렬화된다.
+락 대상이 계좌 한 행뿐이라 같은 사용자의 동시 주문이 직렬화된다.
 `cash_balance >= 0` CHECK가 애플리케이션 검증을 통과한 버그를 DB 바닥에서 한 번 더 막는다.
 4번에서 부족하면 수량을 줄이지 않고 거부한다(`ORDER_PRICE_CHANGED` / `ORDER_INSUFFICIENT_QUANTITY`).
 
 ### 3.3 충전 (`POST /deposits`)
 
-`investment_round` FOR UPDATE → `total_deposited_amount + amount <= 100,000,000` 검증 →
-`ledger_entry`(`DEPOSIT`) INSERT → `deposit` INSERT → `investment_round`의 `cash_balance`와
+`account` FOR UPDATE → `total_deposited_amount + amount <= 100,000,000` 검증 →
+`ledger_entry`(`DEPOSIT`) INSERT → `deposit` INSERT → `account`의 `cash_balance`와
 `total_deposited_amount` UPDATE.
 
-### 3.4 계좌 리셋 (`POST /account/reset`)
-
-현재 회차 FOR UPDATE → `final_total_asset` 계산(예수금 + 평가금액) → `ledger_entry`(`ROUND_CLOSE`)
-INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`로 UPDATE →
-새 회차 INSERT(`round_no+1`, `cash_balance=1000000`, `total_deposited_amount=0`) →
-`ROUND_OPEN`·`INITIAL_GRANT` INSERT.
-
-기존 `ledger_entry`·`trade`·`holding`은 손대지 않는다. `round_id`로 묶여 있으므로 그대로
-읽기 전용 과거 기록이 된다.
+한도는 계정 전체 누적이다. 리셋이 없으므로 한도를 되돌릴 경로도 없다.
 
 ---
 
@@ -380,10 +388,10 @@ INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`�
 
 | # | 불변식 |
 |---|---|
-| 1 | `investment_round.cash_balance` = `SUM(ledger_entry.cash_delta WHERE round_id = ?)` |
-| 2 | `investment_round.total_deposited_amount` = `SUM(deposit.amount WHERE round_id = ?)` |
-| 3 | `holding.quantity` = 회차·종목별 `SUM(trade.quantity * CASE side WHEN 'BUY' THEN 1 ELSE -1 END)` |
-| 4 | 사용자별 `status = 'ACTIVE'`인 회차는 정확히 1개 |
+| 1 | `account.cash_balance` = `SUM(ledger_entry.cash_delta WHERE account_id = ?)` |
+| 2 | `account.total_deposited_amount` = `SUM(deposit.amount WHERE account_id = ?)` |
+| 3 | `holding.quantity` = 계좌·종목별 `SUM(trade.quantity * CASE side WHEN 'BUY' THEN 1 ELSE -1 END)` |
+| 4 | 사용자별 `account`는 정확히 1개 |
 | 5 | `ledger_entry`의 행은 생성 후 변경되지 않는다 |
 | 6 | `type='DEPOSIT'`인 `ledger_entry`는 `deposit` 1행과, `BUY`·`SELL`은 `trade` 1행과 정확히 짝을 이룬다 |
 
@@ -393,12 +401,10 @@ INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`�
 
 | 엔드포인트 | 읽는/쓰는 테이블 |
 |---|---|
-| `GET /users/me` | users, investment_round(활성) |
-| `GET /account` | investment_round, holding + 시세 캐시 |
-| `POST /account/reset` | investment_round, ledger_entry |
-| `GET /rounds` | investment_round |
-| `GET /deposits/limit` | investment_round |
-| `POST /deposits` | investment_round, ledger_entry, deposit |
+| `GET /users/me` | users |
+| `GET /account` | account, holding + 시세 캐시 |
+| `GET /deposits/limit` | account |
+| `POST /deposits` | account, ledger_entry, deposit |
 | `GET /stocks/search` | stock |
 | `GET /stocks/{code}` | stock, holding, watchlist_item, recent_viewed_stock(쓰기) + 시세 캐시 |
 | `GET /stocks/{code}/candles` | daily_candle |
@@ -406,11 +412,11 @@ INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`�
 | `GET/DELETE /stocks/recent` | recent_viewed_stock, stock |
 | `GET/DELETE /stocks/search/recent` | recent_search_keyword |
 | `GET/POST/DELETE /watchlist` | watchlist_item, stock, holding |
-| `POST /orders` | investment_round, ledger_entry, trade, holding, stock |
-| `GET /orders/available` | investment_round, holding, stock + 시세 캐시 |
-| `GET /portfolio` | investment_round, holding, stock + 시세 캐시 |
+| `POST /orders` | account, ledger_entry, trade, holding, stock |
+| `GET /orders/available` | account, holding, stock + 시세 캐시 |
+| `GET /portfolio` | account, holding, stock + 시세 캐시 |
 | `GET /transactions` | ledger_entry, deposit, trade, stock |
-| `GET /internal/v1/portfolio` | investment_round, holding, stock |
+| `GET /internal/v1/portfolio` | account, holding, stock |
 | `GET /internal/v1/trades` | trade |
 
 `/api/v1/ai/**` 중계 경로는 DB를 읽지 않는다.
@@ -436,11 +442,10 @@ INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`�
 
 **이 문서에서 확정한 것**
 
-- 관심 종목·최근 본 종목·최근 검색어는 **회차가 아니라 계정(`user_id`)에 귀속된다.** 계좌를
-  리셋해도 유지된다. featureSpec 5장이 최근 본 종목을 "계정 기준"으로 못박았고, 관심 종목만
-  회차에 묶으면 리셋 때마다 50개를 다시 등록해야 해서 사용성이 나쁘다.
-  뒤집을 경우 영향 범위는 `watchlist_item`에 `round_id`를 추가하고 리셋 트랜잭션에서 복사하지
-  않는 것뿐이라 되돌리기는 싸다.
+- 관심 종목·최근 본 종목·최근 검색어는 **계좌가 아니라 계정(`user_id`)에 귀속된다.**
+  featureSpec 5장이 최근 본 종목을 "계정 기준"으로 못박았고, 셋 다 거래 기록이 아니라 탐색 기록이라
+  계좌에 묶을 이유가 없다. (v1.0에서는 "리셋해도 유지된다"가 이 결정의 근거였고, 리셋이 사라진
+  지금은 계좌와 계정이 1:1이라 실질 차이가 없다.)
 - 주문과 체결을 한 테이블(`trade`)로 합친다. 시장가 즉시 체결만 있는 MVP 전제에 의존한다.
   지정가가 들어오면 `order`를 신설하고 `trade`를 그 하위로 내린다.
 
@@ -448,7 +453,7 @@ INSERT → 현재 회차를 `status='CLOSED'`, `closed_at`, `final_total_asset`�
 
 | # | 항목 | 비고 |
 |---|---|---|
-| 1 | Flyway `V1__init.sql` 작성 | 이 문서가 입력. 별도 티켓 |
+| 1 | ~~Flyway `V1__init.sql` 작성~~ | 완료(2026-09-02). 회차 제거는 `V2__replace_round_with_account.sql` |
 | 2 | 종목 마스터 동기화 배치 · 일봉 적재 배치 설계 | §1.1의 대가. KIS 호출 설계와 함께 |
 | 3 | `stock.suspended` 갱신 주기 | S0-1 실측 결과에 의존 |
 | 4 | 서버 DB 리네임 (`moutoss_db` → `finch_db`) | 이름은 **`finch_db`로 확정**했다(backConvention 1장·`application.yaml`). 서버에 만들어진 DB와 `postgres-secret`의 `POSTGRES_DB` 갱신이 남았다. 백엔드 DB에는 아직 테이블이 하나도 없어 `ALTER DATABASE ... RENAME`으로 끝나므로 **지금이 가장 싸다** |
