@@ -1,5 +1,6 @@
 package com.finch.domain.auth.service
 
+import com.finch.domain.account.service.AccountService
 import com.finch.domain.auth.dto.request.KakaoLoginReq
 import com.finch.domain.auth.dto.response.AuthUserRes
 import com.finch.domain.auth.dto.response.KakaoLoginRes
@@ -25,19 +26,16 @@ import org.springframework.stereotype.Service
  * 리포지토리 호출은 각각이 자기 트랜잭션이다(Spring Data 기본). 그래서 프로필 갱신은
  * 영속 상태에 의존하지 않고 `save` 로 명시한다.
  *
- * ⚠️ **최초 로그인의 계좌·예수금 생성은 아직 없다.** erd.md 3.1 은 `users` INSERT 와 함께
- * `account`·`ledger_entry` 를 한 트랜잭션에서 만들라고 하지만 그 테이블의 소유 도메인
- * (`account`·`ledger`)이 아직 없다.
+ * **계좌·초기 예수금 생성은 `AccountService.openAccountIfAbsent` 가 한다.** 카카오 호출이 끝난 뒤
+ * 부르므로 위의 두 이유를 밟지 않는다 — 그 메서드가 자기 트랜잭션을 열고, 그 안에서 계좌 생성 ·
+ * 원장 기록 · 잔액 반영이 한 트랜잭션이 된다.
  *
- * 붙일 때 **이 메서드를 `@Transactional` 로 감싸면 안 된다.** 위의 두 이유를 그대로 밟는다.
- * 트랜잭션 경계는 **카카오 호출 밖의 별도 메서드**여야 한다 — `AccountService.openAccount` 를
- * `Propagation.MANDATORY` 로 두고, 이 클래스에서 카카오 호출이 끝난 뒤 `@Transactional` 을 건
- * 얇은 메서드로 감싸 부른다. 그 안에서 계좌 생성 · 원장 기록 · 잔액 반영이 한 트랜잭션이 된다.
+ * **`created` 플래그를 조건으로 걸지 않고 모든 로그인에서 부른다.** 그 플래그는 "이 요청이 계정을
+ * 만들었는지" 일 뿐이고, 기존 사용자(V2 가 보존한 카카오 검증 행)와 계좌 생성이 실패했던 사용자는
+ * 조건을 걸면 영원히 계좌를 못 받는다. 자세한 이유는 그 메서드의 주석에 있다.
  *
- * 그리고 **중복 지급을 막는 방어선은 아래 `created` 플래그가 아니다.** 그 플래그는 "이 요청이
- * 계정을 만들었는지" 일 뿐이라 동시 가입에서 둘 다 참이 될 수 있다. 진짜 방어선은 스키마의
- * `uq_account_user` UNIQUE 이고, `INITIAL_GRANT` 가 계정당 정확히 1건이라는 apiSpec 8.2 의
- * 전제는 그 제약이 지킨다.
+ * 중복 지급을 막는 방어선은 그 플래그가 아니라 스키마의 `uq_account_user` 다. `INITIAL_GRANT` 가
+ * 계정당 정확히 1건이라는 apiSpec 8.2 의 전제는 그 제약이 지킨다.
  */
 @Service
 class AuthService(
@@ -45,6 +43,7 @@ class AuthService(
 	private val userRepository: UserRepository,
 	private val jwtProvider: JwtProvider,
 	private val refreshTokenStore: RefreshTokenStore,
+	private val accountService: AccountService,
 ) {
 
 	fun loginWithKakao(request: KakaoLoginReq): LoginResult {
@@ -55,6 +54,8 @@ class AuthService(
 			.orElseGet { register(kakaoUser) }
 
 		val user = resolved.user
+		openAccount(user.id!!)
+
 		val body = KakaoLoginRes(
 			jwtProvider.createAccessToken(user.id!!),
 			resolved.created,
@@ -95,6 +96,25 @@ class AuthService(
 		refreshTokenStore.delete(userId)
 	}
 
+	/**
+	 * 계좌가 없으면 만든다. **`DataIntegrityViolationException` 을 여기서 잡는 것이 핵심이다.**
+	 *
+	 * 트랜잭션은 `openAccountIfAbsent` 안에서 시작하고 끝난다. 그 안에서 잡으면 rollback-only 로
+	 * 표시돼 커밋에서 다시 실패하므로, 트랜잭션 **밖**인 여기서 잡아야 재조회 없이 넘어갈 수 있다.
+	 * `register` 가 `users` 에 대해 하는 것과 같은 구조다.
+	 *
+	 * 잡고 그냥 넘어가는 이유 — 동시 로그인 둘이 모두 "계좌 없음" 을 보고 각각 INSERT 를 시도한 경우다.
+	 * `uq_account_user` 가 둘째를 막았으므로 계좌는 하나이고 초기 지급도 한 번이다. 이 요청이
+	 * 만들지 않았을 뿐 결과는 같으니 로그인을 실패시킬 이유가 없다.
+	 */
+	private fun openAccount(userId: Long) {
+		try {
+			accountService.openAccountIfAbsent(userId)
+		} catch (e: DataIntegrityViolationException) {
+			// 다른 요청이 먼저 만들었다. 로그인은 계속한다.
+		}
+	}
+
 	/** 발급과 저장은 항상 같이 일어난다. 저장을 빠뜨리면 그 토큰으로는 재발급이 안 된다. */
 	private fun issueRefreshToken(userId: Long): String {
 		val refreshToken = jwtProvider.createRefreshToken(userId)
@@ -119,8 +139,8 @@ class AuthService(
 		} catch (e: DataIntegrityViolationException) {
 			// 로그인 버튼을 빠르게 두 번 눌러 두 요청이 모두 "없음" 을 본 경우다.
 			// `uq_users_kakao_id` 가 둘째를 막았으므로 계정이 2개 생기지는 않는다. 다시 조회해 이어간다.
-			// created 는 false 다 — 이 요청이 만든 것이 아니다. 여기서 true 를 주면 나중에
-			// 최초 로그인 지급(erd.md 3.1)을 붙였을 때 한 계정에 두 번 지급될 수 있다.
+			// created 는 false 다 — 이 요청이 만든 것이 아니다. 이 값은 응답의 `isNewUser`(apiSpec 2.1)
+			// 로만 쓰이고 초기 지급을 가르지 않는다. 지급 여부는 계좌의 존재로 판단한다.
 			Resolved(
 				userRepository.findByKakaoId(kakaoUser.kakaoId)
 					.orElseThrow { CustomException(AuthErrorCode.AUTH_KAKAO_FAILED) },

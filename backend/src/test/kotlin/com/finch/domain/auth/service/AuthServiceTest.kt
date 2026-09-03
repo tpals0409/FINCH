@@ -1,5 +1,6 @@
 package com.finch.domain.auth.service
 
+import com.finch.domain.account.service.AccountService
 import com.finch.domain.auth.dto.request.KakaoLoginReq
 import com.finch.domain.auth.entity.User
 import com.finch.domain.auth.exception.AuthErrorCode
@@ -21,6 +22,7 @@ import org.mockito.BDDMockito.given
 import org.mockito.Mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
+import org.mockito.Mockito.doThrow
 import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.dao.DataIntegrityViolationException
@@ -39,13 +41,17 @@ class AuthServiceTest {
 	@Mock
 	private lateinit var refreshTokenStore: RefreshTokenStore
 
+	@Mock
+	private lateinit var accountService: AccountService
+
 	private val jwtProvider = JwtProvider(SECRET)
 
 	private lateinit var authService: AuthService
 
 	@BeforeEach
 	fun setUp() {
-		authService = AuthService(kakaoOAuthClient, userRepository, jwtProvider, refreshTokenStore)
+		authService =
+			AuthService(kakaoOAuthClient, userRepository, jwtProvider, refreshTokenStore, accountService)
 	}
 
 	@Test
@@ -93,7 +99,7 @@ class AuthServiceTest {
 		val result = authService.loginWithKakao(REQUEST)
 
 		assertThat(result.body.user.userId).isEqualTo(9L)
-		// 이 요청이 만든 계정이 아니다. true 로 주면 나중에 최초 로그인 지급을 붙였을 때 두 번 지급된다.
+		// 이 요청이 만든 계정이 아니다. 이 값은 응답의 isNewUser 로만 쓰이고 초기 지급을 가르지 않는다.
 		assertThat(result.body.isNewUser).isFalse()
 	}
 
@@ -107,7 +113,7 @@ class AuthServiceTest {
 			.isInstanceOf(CustomException::class.java)
 			.extracting("errorCode")
 			.isEqualTo(AuthErrorCode.AUTH_KAKAO_FAILED)
-		verifyNoInteractions(userRepository)
+		verifyNoInteractions(userRepository, accountService)
 	}
 
 	@Test
@@ -181,6 +187,49 @@ class AuthServiceTest {
 		val result = authService.loginWithKakao(REQUEST)
 
 		verify(refreshTokenStore).save(1L, result.refreshToken)
+	}
+
+	@Test
+	@DisplayName("최초 로그인은 계좌 개설을 부른다 — 초기 지급이 여기서 일어난다")
+	fun opensAccountOnFirstLogin() {
+		given(kakaoOAuthClient.fetchUser(anyString(), anyString())).willReturn(KAKAO_USER)
+		given(userRepository.findByKakaoId(KAKAO_USER.kakaoId)).willReturn(Optional.empty())
+		given(userRepository.save(anyOf(User::class.java))).willReturn(userWithId(1L, "홍길동"))
+
+		authService.loginWithKakao(REQUEST)
+
+		verify(accountService).openAccountIfAbsent(1L)
+	}
+
+	@Test
+	@DisplayName("재로그인도 계좌 개설을 부른다 — 계좌 없는 기존 사용자가 여기서 회복한다")
+	fun opensAccountOnReturningLoginToo() {
+		val existing = userWithId(7L, "홍길동")
+		given(kakaoOAuthClient.fetchUser(anyString(), anyString())).willReturn(KAKAO_USER)
+		given(userRepository.findByKakaoId(KAKAO_USER.kakaoId)).willReturn(Optional.of(existing))
+		given(userRepository.save(existing)).willReturn(existing)
+
+		authService.loginWithKakao(REQUEST)
+
+		// created 플래그로 가르면 이 호출이 없다. V2 가 보존한 카카오 검증 행과 계좌 생성이
+		// 실패했던 사용자는 그 경우 영원히 계좌를 못 받고 GET /account 가 500 이 된다.
+		verify(accountService).openAccountIfAbsent(7L)
+	}
+
+	@Test
+	@DisplayName("계좌 개설이 유니크 위반으로 막혀도 로그인은 성공한다 — 동시 로그인 경합")
+	fun logsInEvenWhenAccountAlreadyCreatedConcurrently() {
+		given(kakaoOAuthClient.fetchUser(anyString(), anyString())).willReturn(KAKAO_USER)
+		given(userRepository.findByKakaoId(KAKAO_USER.kakaoId)).willReturn(Optional.empty())
+		given(userRepository.save(anyOf(User::class.java))).willReturn(userWithId(1L, "홍길동"))
+		doThrow(DataIntegrityViolationException("uq_account_user"))
+			.`when`(accountService).openAccountIfAbsent(1L)
+
+		val result = authService.loginWithKakao(REQUEST)
+
+		// 계좌는 하나이고 초기 지급도 한 번이다. 이 요청이 만들지 않았을 뿐 결과는 같으니
+		// 로그인을 실패시킬 이유가 없다. 잡는 자리가 트랜잭션 밖이어야 하는 이유는 AuthService 주석에 있다.
+		assertThat(jwtProvider.parseAccessToken(result.body.accessToken)).isEqualTo(1L)
 	}
 
 	/** 엔티티에 id 세터가 없다. DB 가 채우는 값이라 테스트에서만 리플렉션으로 넣는다. */
