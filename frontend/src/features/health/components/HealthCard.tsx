@@ -1,7 +1,7 @@
 import { formatKstTime } from '@/shared/lib/formatDate';
 import {
   formatKrw,
-  formatSignedPercent,
+  formatSignedRatioAsPercent,
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
 import { Button } from '@/shared/ui/Button';
@@ -69,7 +69,7 @@ export function HealthCard() {
         <div className="flex items-baseline justify-between">
           <dt className="text-fg-neutral-subtle">등락률</dt>
           <dd className={`font-medium ${DIRECTION_TEXT_CLASS[direction]}`}>
-            {formatSignedPercent(data.sampleChangeRatio)}
+            {formatSignedRatioAsPercent(data.sampleChangeRatio)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between">
