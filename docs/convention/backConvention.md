@@ -26,7 +26,7 @@
 > 위 항목들이 무엇을 근거로 정해졌는지가 사라지지 않도록 참조는 남긴다. 배포 구성의 현재 사실은
 > `infra/CLAUDE.md` 와 finch-gitops 가 갖고 있고, 둘이 어긋나면 그쪽이 진실이다.
 
-- 캐시·멱등성 키 저장 Redis
+- 캐시 Redis (**멱등성 키는 Redis 가 아니라 Postgres 다** — §5.3)
 - 인증 Spring Security + JWT, 카카오 OAuth
   - OAuth2 Client 기각 — apiSpec.md 2.1의 계약은 프론트가 인가 코드를 받아 `POST /auth/kakao`로 넘기는 구조다. Spring Security의 리다이렉트 로그인 플로우를 쓰지 않으므로, 카카오 토큰 교환은 HTTP 클라이언트로 직접 호출한다
 - 외부 연동(KIS·AI 서버) WebClient
@@ -85,8 +85,16 @@ com.finch
 | `recent` | `recent_viewed_stock`, `recent_search_keyword` | 6장 최근 본·최근 검색어 |
 | `ai` | 없음 | 9장(`/internal/v1/**`), 10장(`/api/v1/ai/**`) |
 
-Refresh Token과 멱등성 키는 Redis에 있고 테이블이 없다 (ERD §1.4). Refresh Token은 `global/security`,
-멱등성 키는 `global/config`의 인터셉터가 다룬다 — 특정 도메인의 관심사가 아니다.
+Refresh Token은 Redis에 있고 테이블이 없다 (ERD §1.4). `global/security`가 다룬다.
+
+**멱등성 키는 Postgres `idempotency_record` 다** (`V3__add_idempotency.sql`). 위 표에 없는 이유는
+어느 도메인의 소유도 아니기 때문이고, 다루는 위치는 `global/idempotency`의 **서비스**다.
+
+> ⚠️ 이 문단은 v0.1에서 "Redis에 있고 `global/config`의 인터셉터가 다룬다"고 적고 있었다.
+> **§5.3(확정)이 그것을 뒤집었다** — 원장 INSERT와 키 표시가 한 트랜잭션이어야 하고, 인터셉터에
+> 두면 예약과 본 처리가 다른 트랜잭션이 되어 그 성질이 깨진다. Redis를 기각한 이유는
+> `V3__add_idempotency.sql` 머리말에 있다. 옛 서술을 남겨 두면 다음 사람이 인터셉터를 만들고,
+> 그 순간 중복 주문을 막던 원자성이 사라진다.
 
 #### 2.3 도메인 내부 계층
 

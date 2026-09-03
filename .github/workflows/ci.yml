@@ -64,6 +64,11 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check
+
+      # 프론트가 vitest 를 넣었는데 CI 가 부르지 않아 Sprint 3 내내 테스트가 안 돌았다.
+      # build 앞에 둔다 — 실패하면 번들을 만드는 시간을 쓰지 않는다.
+      - run: npm test
+
       - run: npm run build
 
       # 디자인 토큰의 APCA 대비. 회귀하면 여기서 막힌다 (docs/design/finch-seed.md §5)
