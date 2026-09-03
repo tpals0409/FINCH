@@ -18,6 +18,13 @@ export const STOCK_CODE_PARAM = 'stockCode';
  * 화면으로 이동할 때 쓰는 경로.
  * 링크·`navigate`·`redirect` 값은 전부 여기서 만든다.
  */
+/**
+ * **`/rounds`(회차 조회)와 `/watchlist`(관심 종목 독립 화면)는 여기 없다.**
+ * 회차 조회·계좌 초기화는 GitLab 이슈 #27 로 기능 자체가 빠졌고(ia.md §1 "기타"),
+ * 관심 종목은 독립 화면을 갖지 않고 홈 안의 섹션으로만 존재한다(ia.md §1 "홈·자산").
+ * **API 계약(`GET`·`POST`·`DELETE /watchlist`)은 그대로 살아 있다** — 화면만 없다.
+ * 되살릴 일이 생기면 ia.md §2 를 먼저 고친다.
+ */
 export const ROUTES = {
   home: '/',
   login: '/login',
@@ -28,9 +35,7 @@ export const ROUTES = {
   stockOrder: (stockCode: string) => `/stocks/${stockCode}/order`,
   portfolio: '/portfolio',
   transactions: '/transactions',
-  rounds: '/rounds',
   deposit: '/deposit',
-  watchlist: '/watchlist',
   chat: '/chat',
   my: '/my',
   myWiki: '/my/wiki',

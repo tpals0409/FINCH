@@ -105,16 +105,8 @@ export const router = createBrowserRouter([
             element: <RoutePlaceholder screen="매매 내역" />,
           },
           {
-            path: ROUTES.rounds,
-            element: <RoutePlaceholder screen="회차 조회" />,
-          },
-          {
             path: ROUTES.deposit,
             element: <RoutePlaceholder screen="충전" />,
-          },
-          {
-            path: ROUTES.watchlist,
-            element: <RoutePlaceholder screen="관심 종목" />,
           },
           {
             path: ROUTES.chat,
