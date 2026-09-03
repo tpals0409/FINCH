@@ -84,11 +84,15 @@ master 토큰을 발표자료 사다리로 옮긴다. 이름은 앱 쪽(`--color
 | `--color-border` | `#e9ecef` | gray-300 `#DFE1E5` | |
 | `--color-border-strong` | `#d9dee5` | gray-400 `#C8CCD2` | 외곽선 |
 | `--color-primary` | `#3b82f6` | **삭제** | 잉크가 브랜드다. 쓰는 곳은 gray-1000 으로 |
-| `--color-primary-soft` | `#eef5ff` | gray-200 또는 black-alpha-200 | 선택 상태 배경 |
-| `--color-ai-surface` / `-border` | 베이지 | **당신이 정한다** | 모노톤에서 AI 표면은 색이 아니라 깊이(그림자·테두리)로 구분 |
+| `--color-primary-soft` | `#eef5ff` | **`--color-selected-surface`** = black-alpha-200 `#0000000C` | 불투명 회색은 paper 위 1.00 으로 사라진다. 알파라야 흰 카드·paper 양쪽에서 남는다 |
+| `--color-ai-surface` / `-border` | 베이지 | **삭제. `--shadow-ai` 로 대체** | AI 표면은 surface + border-strong + `--shadow-ai`(발표자료 s1) + radius-ai. 색 토큰은 alias 일 뿐이라 지웠다 |
 | `--color-stock-up` | `#e25555` | **둘로 나눈다** `-up` = up-700, `-up-vivid` = up-600 | 아래 참고 |
 | `--color-stock-down` | `#2e5fcc` | `-down` = down-700 `#234FA6`, `-down-vivid` = down-600 | |
-| `--color-danger` | `#c9271a` | **당신이 정한다** | 발표자료는 위험을 잉크 채움과 굵기로 표현. 앱의 폼 에러에도 그게 되는지 판단 |
+| `--color-stock-neutral` | `#6b7280` | gray-700 `#5B616B` | text-secondary 와 값이 겹치는 건 의도. gray-600 은 3.03 이라 숫자에 못 쓴다 |
+| `--color-danger` | `#c9271a` | gray-1000 `#121417` · surface 는 gray-300 `#DFE1E5` | 색이 아니라 잉크. 폼 에러는 테두리 ink + 메시지 bold + 아이콘 셋으로 구분한다 |
+| `--color-skeleton` | `#e4e7eb` | gray-300 `#DFE1E5` | border 와 같은 단계. 흰 카드 위 1.31 로 옛 값(1.24)보다 잘 보인다 |
+| `--color-disabled-surface` / `-text` | `#e9ecef` / `#8b95a1` | gray-300 `#DFE1E5` / gray-500 `#A8ADB4` | 발표자료 비활성 면(gray-200)은 paper 위 1.00 이라 앱 하단 CTA 에 못 쓴다 |
+| `--shadow-float` | `rgba(31,35,40,.08)` | `0 6px 20px 0 #00000014` | 그림자는 잉크가 아니라 빛의 부재. 농도 8% 는 그대로 |
 
 **등락 색은 두 단계다.** 본문·캡션·표 안의 숫자는 `-up`(700, 흰 배경 8.14 · paper 7.60). 종목 상세 상단의 큰 가격처럼 18px 이상 굵게 나오는 곳만 `-up-vivid`(600, 3.99 — 큰 글씨 기준 3:1 통과).
 지금 `#e25555` 하나로 caption 13px 까지 쓰니 3.71 로 걸린 것이다. 값이 아니라 **단계를 안 나눈 게** 원인이었다.
@@ -114,8 +118,8 @@ master 토큰을 발표자료 사다리로 옮긴다. 이름은 앱 쪽(`--color
 - **에러를 등락 적색으로 쓰지 않는다.** 같으면 "떨어졌다" 로 오독된다. 발표자료는 위험을 색 없이 잉크 채움·굵기·형태로 푼다
 - **비활성은 opacity 가 아니라 전용 색.** opacity 는 자식 아이콘까지 흐려져 사라진다
 - **숫자는 `tabular-nums`.** 값이 갱신될 때 폭이 흔들리면 안 된다
-- **본문 폰트 Pretendard.** dynamic-subset 판. 웨이트 전체를 받지 않는다
-- **그림자는 기본 없음.** 플로팅 버튼·바텀시트·스티키 레이어에만 `--shadow-float`
+- **본문 폰트 Gmarket Sans.** 발표자료와 같은 얼굴. 서브셋 woff2 세 굵기만 서빙한다 (위 §서체)
+- **그림자는 기본 없음.** 플로팅 버튼·바텀시트·스티키 레이어에 `--shadow-float`, AI 박스에 `--shadow-ai`
 - **간격은 Tailwind 기본 4px 스케일.** 따로 토큰을 만들면 `p-5` 와 `space-5` 가 둘 다 생긴다
 - **반경**: 칩 10 · 입력/버튼 14 · 카드 16 · AI 박스 18 · 바텀시트 24
 
