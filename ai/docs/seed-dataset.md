@@ -188,3 +188,73 @@ podman exec ai_invest_db psql -U ai_invest -d ai_invest -c "
   30종만의 문제가 아니다. **`sector = '은행'` 119종 중 100종이 지주회사(`649xx`)다.**
   섹터 기준 상관·기여도 분석(엔진 산식 §3.2, §3.3)을 이 값으로 돌리면 결과가 왜곡된다.
   `ingest/ksic_sectors.json` 의 `override` 로 고칠 수 있으나 이 문서의 범위 밖이다 — 별도 티켓.
+
+## 백업과 복원 (Sprint 4)
+
+**이 데이터의 사본이 볼륨 하나(`ai_pgdata`)에만 있고 재생성 경로가 끊겼다.** 공시 219건과
+임베딩 10,198청크는 다시 만들 수 없다 — 임베딩은 LLM 호출 비용이 들고, 지수 시계열은
+`KRX_API_KEY` 가 없으면 받을 수 없다. 그래서 덤프를 저장소 밖에 둔다.
+
+```bash
+# 덤프 (커스텀 포맷. 저장소에 커밋하지 않는다 — 임베딩 벡터라 크고 diff 가 무의미하다)
+podman exec ai_invest_db pg_dump -U ai_invest -d ai_invest -Fc \
+  > ~/Desktop/finch-backups/ai_invest-$(date +%Y%m%d).dump
+```
+
+```bash
+# 복원 검증 (임시 DB 로 받아 행수를 대조한다. 운영 DB 를 덮어쓰지 않는다)
+podman exec ai_invest_db psql -U ai_invest -d postgres -c "CREATE DATABASE restore_check;"
+podman exec -i ai_invest_db pg_restore -U ai_invest -d restore_check --no-owner < <덤프파일>
+podman exec ai_invest_db psql -U ai_invest -d restore_check -tAc \
+  "select count(*) from document_chunks where embedding is not null"
+podman exec ai_invest_db psql -U ai_invest -d postgres -c "DROP DATABASE restore_check;"
+```
+
+2026-09-04 실측. 원본과 복원본이 **전부 일치**했다.
+
+| 항목 | 원본 | 복원본 |
+| --- | --- | --- |
+| `documents` | 219 | 219 |
+| `document_chunks` | 10,198 | 10,198 |
+| 임베딩이 있는 청크 | — | 10,198 (1,024차원) |
+| `instruments` | 2,598 | 2,598 |
+| `price_daily` | 8,594 | 8,594 |
+
+덤프 크기 67MB. 복원 후 벡터 차원까지 확인한 이유 — 행 수만 맞고 `embedding` 이 `NULL` 이면
+백업이 있다고 믿는 채로 검색이 죽는다.
+
+## 위험 엔진이 `None` 을 내는 실제 원인 (Sprint 4 실측)
+
+Sprint 3 이 "seed 271일 재생성(위험 엔진이 지금 전부 `None`)" 을 이월 항목으로 남겼다.
+**전제가 두 군데 틀렸다.**
+
+측정값 (2026-09-04):
+
+```
+price_daily        8,594행 · 32종 · 268일 26종 + 271일 6종 · 최소 268일 · 종가 0/NULL 0건
+공통 거래일        268일 (seed_portfolio 8종목의 교집합)
+settings.min_history_days   60
+index_daily        0행  ← KOSPI 벤치마크가 없다
+```
+
+1. **시세 데이터는 충분하다.** 게이트는 `observed < settings.min_history_days`(`risk.py`)이고
+   268일은 60일의 네 배가 넘는다. `--days 400` 을 다시 돌리면 8초를 쓰고 아무것도 안 바뀐다.
+2. **"전부 `None`" 이 아니다. `beta` 만 `None` 이다.** `risk_score`·`risk_level` 은
+   `volatility is not None and diversification is not None` 만 본다(`risk.py`) — 베타는 §3.6
+   가중 5개 구성요소에 들어가지 않는 보고용 지표다. 그 둘은 268일로 계산된다.
+   `test_risk_engine.py` 107건이 통과하는 것도 엔진 자체에는 문제가 없다는 뜻이다.
+
+`beta` 가 `None` 인 이유는 `index_daily` 가 0행이라는 것 하나다.
+`worklog-2026-08-19.md` 는 이 테이블을 **484행(KOSPI)** 으로 기록했으므로 적재됐다가 사라졌다.
+
+**복구 명령과 차단 지점:**
+
+```bash
+python -m ingest.krx index --days 730 --full   # KRX_API_KEY 필요
+```
+
+`ai/.env` 의 `KRX_API_KEY` 가 비어 있다. 키가 발급되면 이 한 줄이 베타를 되살린다 —
+그때까지 `beta: null` 은 데이터 결손이고 버그가 아니다.
+
+> `attribution.py` 도 `index_daily` 를 읽는다. 업종지수는 **원래부터** 0행이라(그 파일 주석)
+> 같은 키 발급이 두 엔진을 함께 푼다.
