@@ -35,8 +35,8 @@ docs/api/apiSpec.md                   백엔드 API 명세. 응답 형식·멱�
                                       프론트·AI 와 어긋나면 이 문서가 기준이다. 수정은 백엔드 파트가 한다
 docs/spec/featureSpec.md              기능 명세서
 docs/convention/backConvention.md     백엔드 컨벤션 (패키지 구조, 계층 경계, 도메인 규약)
-docs/convention/gitConvention.md      브랜치·커밋·MR 절차
-docs/convention/mrConvention.md       PR 템플릿
+docs/convention/gitConvention.md      브랜치·커밋 규칙
+.github/PULL_REQUEST_TEMPLATE.md      PR 템플릿
 docs/adr/sprints/                     관련 스프린트 결정. grep 으로 찾는다
 docs/api/aiApiSpec.md                 AI 파트 인터페이스 계약
 ai/docs/openapi.json                  AI 서버의 실제 구현 스키마. AI 파트 문서보다 이쪽이 사실이다

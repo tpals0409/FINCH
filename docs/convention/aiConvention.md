@@ -1,7 +1,7 @@
 # [AI] AI 파트 개발 컨벤션
 
 - 작성일: 2026-08-20
-- 관련 문서: [Git 컨벤션](./gitConvention.md) · [MR 템플릿](./mrConvention.md) · [AI 서비스 API 명세](../api/aiApiSpec.md)
+- 관련 문서: [Git 컨벤션](./gitConvention.md) · [PR 템플릿](../../.github/PULL_REQUEST_TEMPLATE.md) · [AI 서비스 API 명세](../api/aiApiSpec.md)
 
 ## 이 문서의 범위
 

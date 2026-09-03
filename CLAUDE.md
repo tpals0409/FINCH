@@ -12,7 +12,7 @@ AI 서버는 백엔드가 중계한다. AI 는 원장을 읽어 설명할 뿐 �
 그 디렉터리 안에서 작업하면 자동으로 읽힌다. 다른 파트를 건드릴 때는 그쪽 브리핑을 먼저 읽는다.
 
 ```
-backend/    Spring Boot 4 · Java 21          → backend/CLAUDE.md
+backend/    Spring Boot 4 · Kotlin           → backend/CLAUDE.md
 frontend/   React · Vite · TypeScript        → frontend/CLAUDE.md
 ai/         FastAPI · RAG · pgvector          → ai/CLAUDE.md
 infra/      로컬 compose (레거시)             → infra/CLAUDE.md  (배포 SSOT 는 finch-gitops)
@@ -90,9 +90,17 @@ Oracle 같은 중앙 위임자를 두지 않는다. 필요할 때 세민이 직�
 
 | 에이전트 | 소유 | 부르는 때 |
 |---|---|---|
-| `designer` | 토큰 SSOT(`frontend/src/styles/index.css`), `prototype/`, 브랜드 마크 | 화면 시안, 토큰 결정, 대비·반응형 감사. 프론트가 로직을, 디자이너가 그릇을 만든다 |
+| `backend` | `backend/src`, 스키마, `docs/api/apiSpec.md` | 원장·계좌·충전·주문·시세·AI 중계, 마이그레이션, API 계약. 돈이 오가는 코드라 "됐을 것이다"가 안 통한다 |
+| `frontend` | `frontend/src`, `frontend/docs/**` | 화면 구현, API 레이어, 상태 경계, 라우팅, MSW 목. 계약이 어긋나면 혼자 정하지 않고 `contracts.md` 에 올린다 |
+| `ai` | `ai/**` | 엔진 계산(Portfolio·Risk·Attribution), 공시·뉴스 수집과 검색, 프롬프트·Guardrail, 사용자 위키. 원장은 읽기만 한다 |
+| `designer` | 토큰 SSOT(`frontend/src/styles/`), `prototype/`, 브랜드 마크 | 화면 시안, 토큰 결정, 대비·반응형 감사. 프론트가 로직을, 디자이너가 그릇을 만든다 |
+| `infra` | `infra/**`, `.github/workflows/**`, finch-gitops | CI/CD, 컨테이너 이미지, k8s 배포(ArgoCD·Helm), 관측 스택. 배포 SSOT 는 이 저장소가 아니다 |
+| `librarian` | `docs/wiki/**`, ADR 색인, 문서 간 링크 | 문서끼리 어긋나거나 없어진 것을 가리킬 때. "이거 어디 적혀 있어?" 에 답한다 |
 
 토큰은 **디자이너 확정 → 프론트 등록** 순서다. 프론트가 임의로 토큰을 만들지 않는다.
+토큰은 2계층이다 — `frontend/src/styles/tokens.css` 가 SEED 토큰(`--finch-*`)을 담는 값의 출처이고,
+`index.css` 의 `@theme static` 별칭 층이 그중 유틸리티로 열 것만 Tailwind 네임스페이스로 옮겨 적는다.
+구조와 규칙은 `docs/design/finch-seed.md` 에 있다.
 
 아직 붙이지 않은 것과 붙일 시점:
 - **자동 교차 리뷰(Critic)**: 커밋마다 두 번째 모델이 리뷰. Codex CLI 가 준비되면 붙인다

@@ -1,15 +1,25 @@
 plugins {
-	id 'java'
+	// kotlin.plugin.spring(all-open) 이 없으면 Kotlin 클래스가 기본 final 이라 Spring 이
+	// @Configuration·@Transactional 프록시를 만들지 못하고 기동 시점에 실패한다.
+	// kotlin.plugin.jpa(no-arg) 는 엔티티의 기본 생성자를 만든다 — Hibernate 가 요구한다.
+	// 플러그인 버전은 Boot 4.1.1 BOM 의 kotlin.version 과 같은 2.3.21 이다.
+	// 갈리면 컴파일러가 만든 바이트코드와 런타임 stdlib 이 어긋난다.
+	id 'org.jetbrains.kotlin.jvm' version '2.3.21'
+	id 'org.jetbrains.kotlin.plugin.spring' version '2.3.21'
+	id 'org.jetbrains.kotlin.plugin.jpa' version '2.3.21'
 	id 'org.springframework.boot' version '4.1.1'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.ssafy'
+group = 'com.finch'
 version = '0.0.1-SNAPSHOT'
 
-java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+kotlin {
+	jvmToolchain(21)
+	compilerOptions {
+		// Spring 은 JSpecify 로 널 가능성을 표시한다. strict 로 두면 그 표시가 Kotlin 타입에 그대로 반영돼
+		// 플랫폼 타입으로 새지 않는다 — 널 정보를 타입에 담는 것이 이 이관의 목적이므로 켠다.
+		freeCompilerArgs.add('-Xjsr305=strict')
 	}
 }
 
@@ -33,12 +43,15 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'io.jsonwebtoken:jjwt-api'
 	implementation 'org.flywaydb:flyway-database-postgresql'
-	compileOnly 'org.projectlombok:lombok'
+	// Spring 이 Kotlin 클래스의 주 생성자 파라미터 이름과 널 가능성을 읽는 데 쓴다. 없으면 기동하지 못한다.
+	implementation 'org.jetbrains.kotlin:kotlin-reflect'
+	// Java record 는 Jackson 이 정규 생성자를 스스로 찾지만 Kotlin data class 는 그렇지 않다.
+	// 이 모듈이 주 생성자를 크리에이터로 잡아 준다 — 없으면 요청 본문 역직렬화가 깨진다.
+	implementation 'tools.jackson.module:jackson-module-kotlin'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson'
 	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	runtimeOnly 'org.postgresql:postgresql'
-	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
@@ -51,9 +64,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
-	testCompileOnly 'org.projectlombok:lombok'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
 tasks.named('test') {

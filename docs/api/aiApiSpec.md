@@ -2,7 +2,7 @@
 
 - 문서 버전: v0.2 (0-5 협의용)
 - 최종 수정: 2026-08-20
-- 관련 문서: [백엔드 API 명세서](./apiSpec.md) · [기능 명세서 v2.1](../spec/featureSpec.md) · [AI 파트 컨벤션](../convention/aiConvention.md)
+- 관련 문서: [백엔드 API 명세서](./apiSpec.md) · [기능 명세서 v2.2](../spec/featureSpec.md) · [AI 파트 컨벤션](../convention/aiConvention.md)
 - 범위: AI 서비스가 **프론트엔드·백엔드에 제공하는** 계약. 엔진 산식·프롬프트 정책 등 AI 내부 구현은 제외한다.
 
 > **방향에 주의하세요.** 반대 방향인 백엔드 → AI 읽기 전용 내부 API(`/internal/v1`)는

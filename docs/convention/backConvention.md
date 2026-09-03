@@ -20,8 +20,12 @@
 - DB PostgreSQL 17 / 마이그레이션 Flyway
   - MySQL 8 기각 — AI 파트가 같은 인스턴스에서 pgvector를 필수로 쓴다(초기 마이그레이션이 `CREATE EXTENSION vector`를 실행하고, 벡터 검색은 종목 분석·채팅의 런타임 기능이다). MySQL을 따로 두면 2vCPU 노드에 DB 엔진이 둘 올라가고 EC2 이관 절차(`pg_dump` 일괄 덤프·복원)도 갈라진다
   - 인스턴스 1개 + DB 2개 — 백엔드 `finch_db` / AI `ai_invest`. 스키마 관리 도구가 달라(Flyway vs Alembic) DB를 나눠야 마이그레이션 이력이 충돌 없이 공존한다
-  - ⚠️ 서버에 실제로 만들어진 DB는 아직 `moutoss_db`다. 프로젝트 이름을 `finch`로 통일하기로 했으므로 이름이 정답이고 서버 쪽 리네임이 남은 작업이다 (erd.md 후속 과제 4)
-  - 운영 이미지 `pgvector/pgvector:pg17` (infraSpec 결정 #10). `ddl-auto`는 `validate` 고정, 스키마 변경은 Flyway 전용 (infraSpec §3.2)
+  - 운영 이미지 `pgvector/pgvector:pg17` (infraSpec† 결정 #10). `ddl-auto`는 `validate` 고정, 스키마 변경은 Flyway 전용 (infraSpec† §3.2)
+
+> † **`infraSpec` 은 이 저장소에 없다.** SSAFY 팀 저장소에 있던 인프라 명세이고 ver2 로 옮겨오지 않았다.
+> 위 항목들이 무엇을 근거로 정해졌는지가 사라지지 않도록 참조는 남긴다. 배포 구성의 현재 사실은
+> `infra/CLAUDE.md` 와 finch-gitops 가 갖고 있고, 둘이 어긋나면 그쪽이 진실이다.
+
 - 캐시·멱등성 키 저장 Redis
 - 인증 Spring Security + JWT, 카카오 OAuth
   - OAuth2 Client 기각 — apiSpec.md 2.1의 계약은 프론트가 인가 코드를 받아 `POST /auth/kakao`로 넘기는 구조다. Spring Security의 리다이렉트 로그인 플로우를 쓰지 않으므로, 카카오 토큰 교환은 HTTP 클라이언트로 직접 호출한다
@@ -39,11 +43,11 @@
 #### 2.1 전체 트리
 
 ```
-com.ssafy.finch
-├── FinchApplication.java
+com.finch
+├── FinchApplication.kt
 ├── global/                     # 도메인에 속하지 않는 것만. 도메인을 참조하지 않는다
 │   ├── apiPayload/
-│   │   ├── ErrorResponse.java
+│   │   ├── ErrorResponse.kt
 │   │   └── code/               # BaseErrorCode, GeneralErrorCode
 │   ├── config/                 # Security · Jpa · Redis · WebSocket · Swagger 설정
 │   ├── exception/              # CustomException, AiRelayException, GlobalExceptionHandler
@@ -51,7 +55,7 @@ com.ssafy.finch
 │   └── util/
 └── domain/
     ├── auth/                   # 카카오 로그인, 토큰 회전, 내 정보
-    ├── account/                # 투자 회차 = 계좌, 리셋
+    ├── account/                # 계좌 (계정당 하나). 예수금 보유
     ├── deposit/                # 모의 충전
     ├── ledger/                 # 원장 기록 + 거래 내역 조회
     ├── stock/                  # 종목 마스터, 검색, 일봉
@@ -70,7 +74,7 @@ com.ssafy.finch
 | 도메인 | 소유 테이블 | 담당 엔드포인트 (apiSpec 장) |
 |---|---|---|
 | `auth` | `users` | 2장 전체 (`/auth/**`, `/users/me`) |
-| `account` | `investment_round` | 3장 (`/account`, `/account/reset`, `/rounds`) |
+| `account` | `account` | 3장 (`/account`) |
 | `deposit` | `deposit` | 4장 (`/deposits`, `/deposits/limit`) |
 | `ledger` | `ledger_entry` | 8.2 (`/transactions`) |
 | `stock` | `stock`, `daily_candle` | 5.1~5.3 (검색·상세·캔들) |
@@ -88,14 +92,14 @@ Refresh Token과 멱등성 키는 Redis에 있고 테이블이 없다 (ERD §1.4
 
 ```
 domain/order/
-├── controller/OrderController.java
-├── service/OrderService.java
-├── repository/TradeRepository.java
-├── entity/Trade.java
+├── controller/OrderController.kt
+├── service/OrderService.kt
+├── repository/TradeRepository.kt
+├── entity/Trade.kt
 ├── dto/
-│   ├── request/OrderCreateReq.java
-│   └── response/OrderRes.java
-└── exception/OrderErrorCode.java      # BaseErrorCode 구현
+│   ├── request/OrderCreateReq.kt
+│   └── response/OrderRes.kt
+└── exception/OrderErrorCode.kt      # BaseErrorCode 구현
 ```
 
 도메인 고유 에러 코드는 `global`이 아니라 해당 도메인의 `exception/`에 둔다. `global/apiPayload/code`에는
@@ -118,7 +122,6 @@ domain/order/
 
 - `order`는 `account`(예수금 락) · `ledger`(원장 기록) · `portfolio`(보유 갱신) · `price`(최신가) · `stock`(거래정지)을 참조한다
 - `deposit`은 `account`와 `ledger`를 참조한다
-- `account`의 리셋은 `ledger`를 참조한다
 - `ai`는 `portfolio`와 `order`를 읽어 내부 API로 노출한다 (읽기 전용, 원장을 쓰지 않는다 — featureSpec 10.1)
 - `ledger`·`stock`·`price`는 다른 도메인을 참조하지 않는다
 
@@ -131,11 +134,11 @@ domain/order/
 
 #### 2.5 원장 기록의 단일 경로
 
-`ledger_entry`에 6종을 기록하는 주체를 고정한다 (backConvention 7장의 "기록 시점과 책임 서비스").
+`ledger_entry`에 4종을 기록하는 주체를 고정한다 (backConvention 7장의 "기록 시점과 책임 서비스").
 
 | `type` | 기록 주체 |
 |---|---|
-| `ROUND_OPEN` · `INITIAL_GRANT` · `ROUND_CLOSE` | `account` |
+| `INITIAL_GRANT` | `account` |
 | `DEPOSIT` | `deposit` |
 | `BUY` · `SELL` | `order` |
 
@@ -151,7 +154,7 @@ domain/order/
 - **`order`와 `trade`를 나누지 않음** — 시장가 즉시 체결이라 주문 1건 = `trade` 1행이다 (ERD §2.5).
   지정가가 들어오면 `order` 도메인 안에서 테이블을 나눈다.
 - **`price`를 `stock`에 합치지 않음** — `stock`은 DB를 읽고 `price`는 Redis·KIS·STOMP를 다룬다.
-  더구나 시세 워커는 별도 Deployment로 배포되므로(infraSpec §3.2) 경계를 지금 그어두는 편이 낫다.
+  더구나 시세 워커는 별도 Deployment로 배포되므로(infraSpec† §3.2) 경계를 지금 그어두는 편이 낫다.
   ⚠️ **워커를 같은 jar에서 프로파일로 띄울지 별도 모듈로 뺄지는 아직 미결이다.**
 - **`/transactions`를 `portfolio`가 아니라 `ledger`에 둠** — apiSpec 8장이 `/portfolio`와 묶어 두었지만
   읽는 대상이 원장이다. 소유권을 API 장 번호보다 데이터 기준으로 정했다.
@@ -182,7 +185,7 @@ domain/order/
 - 커서 페이징(apiSpec.md 1.5): 공통 응답 타입, 커서 인코딩 방식 (12장 미확정 항목 — 여기서 제안하고 Sprint 0에서 확정)
 - 검증: Bean Validation 사용 기준, `INVALID_REQUEST` 매핑
 - 실시간 시세 STOMP(apiSpec.md 5.6): CONNECT 프레임의 `Authorization` 검증 위치(핸드셰이크가 아니다 — 브라우저 `WebSocket` 생성자가 커스텀 헤더를 못 붙인다), `/topic/prices/{stockCode}` 발행 주체, 하트비트 10초/10초와 30초 미수신 시 슬롯 회수 로직의 위치
-- **replica 2개 환경의 STOMP 팬아웃 방식 확정** — 내장 SimpleBroker는 각 인스턴스가 자기 연결에만 발행한다. 시세 캐시(Redis)를 각 인스턴스가 읽어 자기 구독자에게 발행하는 구조인지 Redis Pub/Sub으로 팬아웃하는지 명시하지 않으면, 단일 인스턴스에서는 되고 배포 후 절반의 사용자만 시세를 받는 형태로 깨진다 (infraSpec §3.2 — Spring Boot replicas 2)
+- **replica 2개 환경의 STOMP 팬아웃 방식 확정** — 내장 SimpleBroker는 각 인스턴스가 자기 연결에만 발행한다. 시세 캐시(Redis)를 각 인스턴스가 읽어 자기 구독자에게 발행하는 구조인지 Redis Pub/Sub으로 팬아웃하는지 명시하지 않으면, 단일 인스턴스에서는 되고 배포 후 절반의 사용자만 시세를 받는 형태로 깨진다 (infraSpec† §3.2 — Spring Boot replicas 2)
 
 ### 6. 데이터 표기 규약
 
@@ -194,9 +197,8 @@ domain/order/
 
 ### 7. 도메인 규약
 
-- 원장 유형 6종(`INITIAL_GRANT` ~ `ROUND_CLOSE`)의 기록 시점과 책임 서비스
+- 원장 유형 4종(`INITIAL_GRANT`·`DEPOSIT`·`BUY`·`SELL`)의 기록 시점과 책임 서비스
 - 주문 처리 순서(apiSpec.md 7.2의 5단계)를 코드 어디에 두는지 — 수량 임의 축소 체결 금지
-- 회차 규칙: 쓰기는 활성 회차만, `ROUND_READ_ONLY` 판정 위치
 - 계좌 요약·평가손익은 원장에서 계산한 서버 값 — 계산식의 단일 소스 위치
 
 ### 8. 외부 연동 규약
