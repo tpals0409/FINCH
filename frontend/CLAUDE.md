@@ -11,7 +11,7 @@
 프론트가 쓰는 Base URL은 `/api/v1` 하나다.
 
 - UI 레퍼런스: 토스증권
-- 플랫폼: 모바일 웹 (반응형, 모바일 우선). 기준 뷰포트 375px, 최소 지원 320px
+- 플랫폼: 모바일 웹 (반응형, 모바일 우선). 기준 뷰포트 390px, 최소 지원 320px
 
 ## 레포 구조
 
@@ -35,14 +35,19 @@ docs/       팀 공용 문서
 ```
 docs/spec/featureSpec.md              기능 명세서 (확정판)
 docs/api/apiSpec.md                   백엔드 API 명세
-docs/convention/gitConvention.md      브랜치·커밋·MR 절차
-docs/convention/mrConvention.md       PR 템플릿
+docs/convention/gitConvention.md      브랜치·커밋 규칙
+.github/PULL_REQUEST_TEMPLATE.md      PR 템플릿
 docs/adr/sprints/                     관련 스프린트 결정. grep 으로 찾는다
 docs/convention/frontConvention.md    프론트가 다른 파트와 공유하는 계약
 frontend/docs/frontConvention.md      프론트 내부 규약 (폴더 구조, 네이밍, 상태 경계)
+frontend/docs/contracts.md            계약 현황 — 무엇이 확정됐고 무엇을 기다리는지
 frontend/docs/ia.md                   화면 목록과 IA
+docs/design/finch-seed.md             디자인 토큰 체계 (SEED 2계층). 토큰 이름의 출처
 ai/docs/api-spec.md                   AI 파트 인터페이스 계약
 ```
+
+**`frontConvention.md` 는 두 개다.** 위 목록처럼 **항상 전체 경로로 가리킨다** —
+`docs/convention/` 쪽은 크로스파트 계약, `frontend/docs/` 쪽은 프론트 내부 규약이다.
 
 ## 기술 스택
 
@@ -71,8 +76,12 @@ ESLint의 `import-x/no-restricted-paths`가 이것을 강제한다. 규칙에 �
 `ReadableStream`으로 직접 파싱한다"는 지침은 유효하지 않다. 되살리기 전에 AI 파트 구현을 확인한다.
 
 **단위와 응답 형태가 서버마다 다르다.** 백엔드는 `camelCase`에 봉투 없이 리소스를 주고,
-AI 서버는 `snake_case`에 공통 봉투를 준다. 중계된 AI 응답이 어느 쪽 형태로 오는지는 미확정이므로
-변환과 정규화는 API 레이어에서 한 번만 하고, 화면 컴포넌트는 어느 서버에서 온 값인지 몰라야 한다.
+AI 서버는 `snake_case`에 공통 봉투를 준다. **중계된 AI 응답도 백엔드 형식으로 온다**
+(apiSpec v0.5 §10.3 확정 — 백엔드가 봉투를 벗겨 재포장한다). 변환과 정규화는 API 레이어에서
+한 번만 하고, 화면 컴포넌트는 어느 서버에서 온 값인지 몰라야 한다.
+
+**등락률·수익률은 백분율 값이다.** `-1.21`이 −1.21%다. **100을 곱하지 않는다** (apiSpec §1.1).
+비중처럼 등락률이 아닌 비율만 0~1 소수다.
 
 **등락 색은 국내 관례를 따른다. 상승 적색, 하락 청색.** 미국식과 반대다.
 색은 값이 아니라 의미 토큰으로 참조한다.

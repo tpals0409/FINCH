@@ -45,8 +45,11 @@ GitOps 가 성립하지 않는다. 편의용 가변 태그를 곁들이는 건 �
 **AI 서버는 외부에 노출하지 않는다.** `/internal/v1` 은 `X-Internal-Token` 만 믿고 `X-User-Id` 를
 검증 없이 신뢰한다. 외부에서 닿으면 누구나 남의 데이터를 읽는다. Ingress·NetworkPolicy 로 막는다.
 
-**k8s 에서 `/api` 는 Ingress 가 담당한다.** frontend 이미지의 nginx 는 정적 파일만 서빙한다.
-nginx 에 `/api` 프록시를 남겨두면 로컬과 배포의 라우팅이 갈라진다.
+**k8s 에서 `/api` 는 Ingress 가 담당한다. 그래도 nginx 의 `/api` 프록시는 지우지 않는다.**
+로컬 compose 는 호스트에 nginx 80 하나만 열어서, 브라우저가 같은 오리진의 `/api` 를 부를 길이
+그 프록시뿐이다. k8s 에서는 Ingress 의 `/api` 가 `/` 보다 긴 프리픽스라 **먼저 매칭돼 이 블록에
+요청이 닿지 않는다** — 그래서 둘이 공존해도 라우팅이 갈라지지 않는다. compose 를 버리는 날 같이 지운다.
+근거와 실측은 `infra/CLAUDE.md` 와 `infra/nginx/nginx.conf` 주석에 있다.
 
 **CI 는 경로로 거른다.** 문서만 고친 PR 이 gradle 빌드를 기다리게 하면 아무도 CI 를 기다리지
 않게 되고, 그러면 관문이 있으나 마나가 된다.
@@ -66,8 +69,10 @@ export TESTCONTAINERS_RYUK_DISABLED=true
 GitHub Actions 의 ubuntu 러너에는 Docker 가 있으므로 워크플로에서는 신경 쓰지 않아도 된다.
 
 **크로스 레포 커밋은 `GITHUB_TOKEN` 으로 안 된다.** 앱 저장소의 워크플로가 `finch-gitops` 에
-태그를 커밋하려면 별도 PAT(`secrets.GITOPS_TOKEN`)가 필요하다. 권한은 `finch-gitops` 하나에
-`Contents: Read and write` 만 준다. **시크릿이 없을 때 조용히 건너뛰지 말고 명확하게 실패하게 한다** —
+태그를 커밋하려면 별도 PAT(**`secrets.FINCH_TOKEN`**)가 필요하다. FINCH 의 크로스 레포 git 작업을
+이 토큰 하나로 통합한다. 권한은 `FINCH`·`finch-gitops` 둘에 `Contents` · `Pull requests` 쓰기다.
+**이 토큰으로 `.github/workflows/` 아래 파일은 푸시할 수 없다** — fine-grained 토큰이 워크플로 파일을
+고치려면 `Workflows` 권한이 따로 필요한데 주지 않았다. 워크플로가 워크플로를 고치는 설계를 넣지 않는다. **시크릿이 없을 때 조용히 건너뛰지 말고 명확하게 실패하게 한다** —
 조용히 건너뛰면 "빌드는 성공했는데 배포가 안 됨" 이 원인 불명으로 남는다.
 
 **gitops 에 푸시하는 잡은 직렬화한다.** 두 push 가 겹치면 경합이 난다. `concurrency` 를 걸거나

@@ -97,7 +97,8 @@ docker run --rm -v $PWD/alloy-config.alloy:/c.alloy grafana/alloy:v1.5.1 fmt /c.
 
 ### 남은 것
 
-- **AI 애플리케이션 지표** — FastAPI 가 `/metrics` 를 노출하지 않는다(실측 404). 계측 추가는
-  `ai/` 소유인 AI 파트에 요청해야 한다 (ADR-0002)
+- **AI 애플리케이션 지표** — FastAPI 가 `/metrics` 를 노출하지 않는다(실측 404). 계측은 앱 코드에
+  들어가야 하는데 `ai/` 는 AI 파트 소유라 인프라가 직접 넣을 수 없다. AI 파트에 요청해야 한다 —
+  인프라만으로는 컨테이너·호스트 지표까지가 한계다
 - **관측 스택 자체를 finch-gitops 로** — 컨테이너·대시보드 이름이 아직 `a101` 이다.
   옮기면서 같이 고친다
