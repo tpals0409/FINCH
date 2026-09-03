@@ -130,13 +130,21 @@
 }
 
 /*
- * duration 은 Tailwind v4 에 테마 네임스페이스가 없어 유틸리티가 생기지 않는다.
- * duration-(--motion-fast) 나 CSS 에서 var() 로 참조한다.
+ * duration · z-index 는 Tailwind v4 에 테마 네임스페이스가 없어 유틸리티가 생기지 않는다.
+ * duration-(--motion-fast) · z-(--z-sticky) 처럼 CSS 변수 임의값 문법으로 쓰거나,
+ * 손으로 쓴 CSS 에서 var() 로 참조한다.
  */
 :root {
   --motion-fast: var(--finch-duration-fast);
   --motion-normal: var(--finch-duration-normal);
   --motion-sheet: var(--finch-duration-sheet);
+
+  /* 상단 내비·하단 탭바·하단 고정 CTA·FAB·바텀시트가 쌓일 순서. tokens.css 사다리(10절)
+     그대로 별칭만 붙인다. 값은 여기 적지 않는다. */
+  --z-base: var(--finch-z-base);
+  --z-sticky: var(--finch-z-sticky);
+  --z-floating: var(--finch-z-floating);
+  --z-overlay: var(--finch-z-overlay);
 }
 
 html,
