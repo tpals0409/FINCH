@@ -12,9 +12,9 @@ import { useHealthStatus } from '../api/useHealthStatus';
 
 /** 등락 방향을 의미 토큰 클래스로 바꾼다. 색 이름을 직접 쓰지 않는다 (컨벤션 §6). */
 const DIRECTION_TEXT_CLASS = {
-  rise: 'text-rise',
-  fall: 'text-fall',
-  flat: 'text-flat',
+  rise: 'text-stock-up',
+  fall: 'text-stock-down',
+  flat: 'text-stock-neutral',
 } as const;
 
 /**
@@ -37,7 +37,7 @@ export function HealthCard() {
   if (isError) {
     return (
       <Card>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-text-secondary">
           연결 상태를 불러오지 못했습니다
         </p>
         <Button
@@ -55,26 +55,26 @@ export function HealthCard() {
 
   return (
     <Card>
-      <p className="text-sm text-slate-500">목 서버 연결 상태</p>
-      <p className="mt-1 text-2xl font-semibold text-slate-900">
+      <p className="text-sm text-text-secondary">목 서버 연결 상태</p>
+      <p className="mt-1 text-2xl font-semibold text-text-primary">
         {data.status === 'ok' ? '정상' : '지연'}
       </p>
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex items-baseline justify-between">
-          <dt className="text-slate-500">샘플 지수</dt>
-          <dd className="font-medium text-slate-900">
+          <dt className="text-text-secondary">샘플 지수</dt>
+          <dd className="font-medium text-text-primary">
             {formatKrw(data.sampleIndexValue)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between">
-          <dt className="text-slate-500">등락률</dt>
+          <dt className="text-text-secondary">등락률</dt>
           <dd className={`font-medium ${DIRECTION_TEXT_CLASS[direction]}`}>
             {formatSignedPercent(data.sampleChangeRatio)}
           </dd>
         </div>
         <div className="flex items-baseline justify-between">
-          <dt className="text-slate-500">서버 시각</dt>
-          <dd className="font-medium text-slate-900">
+          <dt className="text-text-secondary">서버 시각</dt>
+          <dd className="font-medium text-text-primary">
             {formatKstTime(data.serverTime)}
           </dd>
         </div>
