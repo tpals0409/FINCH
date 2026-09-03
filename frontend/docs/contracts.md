@@ -6,7 +6,7 @@
 무엇이 정해졌는지 알게 하는 것이다. **규약의 본문은 여기가 아니라 원본에 있다.**
 값이 어긋나면 원본이 진실이다.
 
-- 기준일: 2026-09-03 (**apiSpec v0.7 — 투자 회차·계좌 리셋 제거**. 우리 요청(이슈 #27)에 대한 백엔드 회신이고 **기존 계약을 깨는 변경이다**. 엔드포인트 2개(`POST /account/reset`·`GET /rounds`) 삭제 · `roundId`·`currentRoundId` 필드와 `roundId` 쿼리 전부 삭제 · `ROUND_READ_ONLY` 삭제 · 원장 유형 6종→4종 · 충전 누적 한도 기준이 회차→계정 전체로 바뀌고 `GET /deposits/limit` 응답 필드명도 함께 바뀜(→ C26·C47·C49 갱신, C48 폐기, P22 신규). **근거 MR !78 은 아직 열려 있다** — 아래 주의 참고. 이전 기준일 2026-09-02)
+- 기준일: 2026-09-03 (**apiSpec v0.7 — 투자 회차·계좌 리셋 제거**. 우리 요청(이슈 #27)에 대한 백엔드 회신이고 **기존 계약을 깨는 변경이다**. 엔드포인트 2개(`POST /account/reset`·`GET /rounds`) 삭제 · `roundId`·`currentRoundId` 필드와 `roundId` 쿼리 전부 삭제 · `ROUND_READ_ONLY` 삭제 · 원장 유형 6종→4종 · 충전 누적 한도 기준이 회차→계정 전체로 바뀌고 `GET /deposits/limit` 응답 필드명도 함께 바뀜(→ C26·C47·C49 갱신, C48 폐기, P22 신규). 근거 MR !78 은 `master` 에 머지됐다(커밋 `c15caee`). 이전 기준일 2026-09-02)
 - 이전 기준일 2026-09-02 (백엔드가 열려 있던 이슈 5건 — #10·#11·#12·#19·#22 — 에 한꺼번에 회신. AI 재포장 후 `content` 컨테이너 유지 확정(이슈 #22, 프론트가 반대 가정으로 구현했던 것이 뒤집힘) · 웹소켓 CONNECT 인증 실패·토큰 만료·SockJS 여부 확정(이슈 #10) · AI 응답 본문의 `ticker` 필드 이름 유지 확정(이슈 #11) · AI 중계 요청 본문 camelCase 확정(이슈 #12) · 전량 매도·상장폐지 종목 노출 규칙 확정(이슈 #19) · 이슈 #13 11:02 회신으로 `wiki`·`feedback` 전용 pydantic 모델 반영 확인 · 새 이슈 #23(최근 검색어) 발행 · GitLab 이슈 상태 재확인. 이슈 #23 회신과 apiSpec v0.6 §6.2 로 최근 검색어 응답 본문 확정(→ C81) · `profileImageUrl` 이 `null` 일 수 있다는 계약을 apiSpec v0.6 §2.1·§2.4 와 MR !69 근거로 신규 등재(→ C82). 이전 기준일 2026-09-01)
 - 참조 원본
   - [`docs/api/apiSpec.md`](../../docs/api/apiSpec.md) — 백엔드 API 명세 **v0.7 (확정판).**
@@ -19,11 +19,8 @@
 - 관련 규약: [`docs/convention/frontConvention.md`](../../docs/convention/frontConvention.md) (크로스파트) ·
   [`frontConvention.md`](./frontConvention.md) (프론트 내부) · [`ia.md`](./ia.md) (화면 목록)
 
-> **⚠️ v0.7 의 근거 MR !78 은 아직 `master` 에 머지되지 않았다.**
-> 이 문서는 **v0.7 기준으로 갱신했다** — 프론트가 뒤늦게 나가면 목과 실서버가 갈리기 때문이다.
-> 다만 `master` 의 `docs/api/apiSpec.md` 는 아직 v0.6 이므로 링크를 따라가면 v0.6 이 보인다.
-> v0.7 원문은 MR !78 의 소스 브랜치(`S15P21A101-126-investment_round-account-v2`)에 있다.
-> **MR !78 이 리뷰에서 뒤집히면 이 판의 C26·C47·C49·P22 와 C48 폐기를 함께 되돌린다.**
+> v0.7 의 근거 MR !78 은 `master` 에 머지됐다(커밋 `c15caee`).
+> `master` 의 `docs/api/apiSpec.md` 가 이제 v0.7 이므로 위 링크를 따라가면 v0.7 이 보인다.
 
 > **공통 API 규격 v0.3은 기준에서 폐기됐다.** 값이 같아도 근거를 v0.3으로 적으면
 > 다음 사람이 폐기된 문서를 다시 찾아 읽는다. 이 문서의 근거 열은 전부 `apiSpec.md` 기준으로 바꿨다.
