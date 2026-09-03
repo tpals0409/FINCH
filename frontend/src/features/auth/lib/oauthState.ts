@@ -14,6 +14,8 @@
  * 부를 수 없고, 리렌더 한 번에 값이 사라져 교환 중인 화면이 실패로 뒤집힌다.
  */
 
+import { createUuidV4 } from '@/shared/lib/uuid';
+
 const STORAGE_KEY = 'auth.pendingOauth';
 
 export const DEFAULT_REDIRECT_TO = '/';
@@ -38,15 +40,13 @@ export function toSafeRedirectPath(candidate: string | null): string {
 }
 
 /**
- * crypto.randomUUID 는 보안 컨텍스트에서만 있다. 폰에서 `http://192.168.x.x:5173` 으로
- * 열면 없어서 로그인 버튼이 그 자리에서 터진다. getRandomValues 는 그 제약이 없다.
+ * 난수 자체는 `shared/lib/uuid.ts`의 `createUuidV4`를 그대로 쓴다 — state 값은
+ * UUID 형식일 필요가 없지만(대조만 하면 된다), `crypto.randomUUID`가 보안 컨텍스트
+ * 에서만 있어서 비보안 컨텍스트로 우회해야 하는 문제 자체가 멱등성 키 생성기와 같다.
+ * 문제가 같은데 둘로 나눠 둘 이유가 없다.
  */
 function createNonce(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
-    '',
-  );
+  return createUuidV4();
 }
 
 function isPendingOauth(value: unknown): value is PendingOauth {
