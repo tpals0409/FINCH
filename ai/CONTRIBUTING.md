@@ -158,34 +158,14 @@ v0.3.0    Phase 3 — Attribution Engine
 
 ## 6. 설계 문서
 
-문서는 두 형식으로 둔다.
+문서는 `docs/*.md` 하나다.
 
-| 형식 | 대상 | 이유 |
-|---|---|---|
-| `docs/*.md` | **에이전트·워커** | HTML은 절반 이상이 CSS·태그라 컨텍스트를 낭비한다 |
-| `docs/*.html` | 사람, 팀 공유 | 아티팩트로 배포된 읽기 좋은 형태 |
+전에는 HTML 이 원본이고 Markdown 이 파생물이었다. 팀에 아티팩트로 공유하려던 형태이고
+`scripts/html2md.py` 가 변환했다. 팀이 없어졌고 GitHub 이 Markdown 을 렌더하므로 HTML 판과
+변환 스크립트를 함께 지웠다(3,782줄). `check.sh` 의 "설계 문서 최신" 단계는 스크립트가 없으면
+스스로 건너뛴다.
 
-HTML이 원본이고 Markdown은 파생물이다. 문서를 고치면 반드시 다시 생성한다.
-
-단, `.html` 짝이 없는 `.md`는 손으로 쓴 문서다(예: `api-testing.md`).
-변환 대상이 아니므로 직접 고친다.
-
-```bash
-python scripts/html2md.py          # 재생성
-python scripts/html2md.py --check  # 최신 여부 확인 (CI용)
-```
-
-워커 지시문에서는 `.md` 경로를 가리킨다. 전체가 아니라 필요한 절만 지정하면
-더 줄어든다.
-
----
-
-## 7. 적재 순서
-
-`price_daily.ticker`는 `instruments`를 참조한다. 따라서 **시세 적재는 종목 마스터에
-의존한다.**
-
-```
+**이제 `.md` 가 원본이다.** 손으로 고친다.
 ingest/instruments.py   ← 먼저
 ingest/prices.py        ← 그다음
 ```
