@@ -57,17 +57,16 @@ const PORTFOLIO_SORTS = ['EVALUATION', 'PROFIT_RATE'];
  * `type` 필터 한 값이 어느 원장 유형을 걷어 오는가 (apiSpec §8.2).
  * 필터 값 4종은 이 표의 키가 전부다.
  *
- * **`DEPOSIT` 이 `INITIAL_GRANT` 를 포함하는지가 미확정이다** (contracts P22 · MR !78 에 질의).
- * 명세는 필터 값 4종(`ALL`·`BUY`·`SELL`·`DEPOSIT`)과 원장 유형 4종(`INITIAL_GRANT`·`DEPOSIT`·
- * `BUY`·`SELL`)만 적고 둘의 대응을 적지 않았다. 목은 **포함하는 쪽**으로 답한다 — 사용자
- * 입장에서 초기 지급 1,000,000원도 입금으로 읽히고, 빼면 `type=DEPOSIT` 합계가 예수금 유입과
- * 어긋난다. **가정은 아래 `DEPOSIT` 한 줄에만 있다.** 답이 오면 그 줄만 고치면 된다.
+ * **`DEPOSIT` 은 `INITIAL_GRANT` 를 포함하지 않는다** (apiSpec §8.2, 커밋 `af96862`).
+ * `type=DEPOSIT` 은 원장 유형 `DEPOSIT`(모의 결제 충전)만이다. 이 필터의 합계가
+ * `GET /deposits/limit` 의 `depositedAmount`(초기 지급 제외)와 같아야 하기 때문이다.
+ * `INITIAL_GRANT` 1건은 `type=ALL` 에서만 나온다.
  */
 const TRANSACTION_FILTER_LEDGER_TYPES = {
   ALL: ['INITIAL_GRANT', 'DEPOSIT', 'BUY', 'SELL'],
   BUY: ['BUY'],
   SELL: ['SELL'],
-  DEPOSIT: ['DEPOSIT', 'INITIAL_GRANT'],
+  DEPOSIT: ['DEPOSIT'],
 } as const satisfies Record<string, readonly string[]>;
 
 type TransactionFilterValue = keyof typeof TRANSACTION_FILTER_LEDGER_TYPES;

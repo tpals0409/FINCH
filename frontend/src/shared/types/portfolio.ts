@@ -67,9 +67,9 @@ export type TransactionType = z.infer<typeof TransactionTypeSchema>;
  * `GET /transactions` 의 `type` 필터 (apiSpec §8.2). 원장 유형 전체와 값이 다르다 —
  * `ALL` 이 더 있고 `INITIAL_GRANT` 가 없다.
  *
- * **미확정 (contracts P22)** — `type=DEPOSIT` 이 `INITIAL_GRANT` 행을 포함하는지 명세에 없다.
- * MR !78 에 물어 뒀고, 목은 포함하는 쪽으로 답해 둔다 (`mocks/handlers/trading.ts`
- * `TRANSACTION_FILTER_LEDGER_TYPES`). 사용자 입장에서 초기 지급 1,000,000원도 입금으로 읽힌다.
+ * **`type=DEPOSIT` 은 `INITIAL_GRANT` 행을 포함하지 않는다** (apiSpec §8.2, 커밋 `af96862`).
+ * 원장 유형 `DEPOSIT`(모의 결제 충전)만 걷어 온다 (`mocks/handlers/trading.ts`
+ * `TRANSACTION_FILTER_LEDGER_TYPES`). `INITIAL_GRANT` 1건은 `type=ALL` 에서만 나온다.
  */
 export const TransactionFilterSchema = z.enum([
   'ALL',
