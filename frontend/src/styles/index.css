@@ -79,60 +79,54 @@
   --shadow-float: var(--finch-shadow-float);
 
   /* ── 타이포 ──────────────────────────────────────────────────────── */
-  /* 의미 이름 8단을 유지한다. SEED 의 t1~t14 숫자 스케일로 바꾸지 않는다 —
-     숫자로 바꾸면 어느 단이 캡션이고 어느 단이 제목인지가 이름에서 사라진다. */
-  --font-sans:
-    'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
-    system-ui, sans-serif;
+  /* 의미 이름 8단. 값은 tokens.css 의 7절이다. 여기는 Tailwind 가 text-caption 같은
+     유틸리티를 만들 수 있게 --text-* 네임스페이스로 옮겨 적는 것뿐이다. */
+  --font-sans: var(--finch-font-family-sans);
 
-  --text-display: 36px;
-  --text-display--line-height: 44px;
-  --text-display--font-weight: 700;
+  --text-display: var(--finch-font-size-display);
+  --text-display--line-height: var(--finch-line-height-display);
+  --text-display--font-weight: var(--finch-font-weight-display);
 
-  --text-title-1: 28px;
-  --text-title-1--line-height: 36px;
-  --text-title-1--font-weight: 700;
+  --text-title-1: var(--finch-font-size-title-1);
+  --text-title-1--line-height: var(--finch-line-height-title-1);
+  --text-title-1--font-weight: var(--finch-font-weight-title-1);
 
-  --text-title-2: 22px;
-  --text-title-2--line-height: 30px;
-  --text-title-2--font-weight: 700;
+  --text-title-2: var(--finch-font-size-title-2);
+  --text-title-2--line-height: var(--finch-line-height-title-2);
+  --text-title-2--font-weight: var(--finch-font-weight-title-2);
 
-  --text-title-3: 18px;
-  --text-title-3--line-height: 26px;
-  --text-title-3--font-weight: 600;
+  --text-title-3: var(--finch-font-size-title-3);
+  --text-title-3--line-height: var(--finch-line-height-title-3);
+  --text-title-3--font-weight: var(--finch-font-weight-title-3);
 
-  --text-body-1: 16px;
-  --text-body-1--line-height: 24px;
+  --text-body-1: var(--finch-font-size-body-1);
+  --text-body-1--line-height: var(--finch-line-height-body-1);
 
-  --text-body-2: 15px;
-  --text-body-2--line-height: 22px;
+  --text-body-2: var(--finch-font-size-body-2);
+  --text-body-2--line-height: var(--finch-line-height-body-2);
 
-  --text-label: 14px;
-  --text-label--line-height: 20px;
-  --text-label--font-weight: 500;
+  --text-label: var(--finch-font-size-label);
+  --text-label--line-height: var(--finch-line-height-label);
+  --text-label--font-weight: var(--finch-font-weight-label);
 
-  --text-caption: 13px;
-  --text-caption--line-height: 18px;
-  --text-caption--font-weight: 400;
+  --text-caption: var(--finch-font-size-caption);
+  --text-caption--line-height: var(--finch-line-height-caption);
+  --text-caption--font-weight: var(--finch-font-weight-caption);
 
   /* ── 간격 ────────────────────────────────────────────────────────── */
-  /* 발표자료의 4px 그리드는 Tailwind 기본 4px 스케일과 1:1 로 맞는다 (p-1 … p-12).
-     SEED 의 x0_5~x30 dimension 토큰을 만들지 않는다.
-     이름을 새로 만들면 p-5 와 space-5 가 같은 값으로 둘 다 존재하게 된다. */
+  /* 토큰을 두지 않는다. 이유는 tokens.css 6절. */
 
   /* ── 반경 ────────────────────────────────────────────────────────── */
   /* Tailwind 기본 --radius-sm/md 를 앱 값으로 덮어쓴다.
-     rounded-sm·rounded-md 의 값이 Tailwind 기본과 달라진다. 의도한 것이다.
-     SEED 의 r0_5~r6 사다리를 쓰지 않는 이유는 앱이 쓰는 반경이 다섯 개뿐이고
-     각각 어느 컴포넌트의 것인지가 이름에 남아야 하기 때문이다. */
-  --radius-sm: 10px; /* 칩, 태그 */
-  --radius-md: 14px; /* 입력, 세그먼티드, 주요 버튼, Soft Box */
-  --radius-card: 16px; /* Standard Card */
-  --radius-ai: 18px; /* AI Insight Box */
-  --radius-sheet: 24px; /* Bottom Sheet 상단 */
+     rounded-sm·rounded-md 의 값이 Tailwind 기본과 달라진다. 의도한 것이다. */
+  --radius-sm: var(--finch-radius-chip);
+  --radius-md: var(--finch-radius-control);
+  --radius-card: var(--finch-radius-card);
+  --radius-ai: var(--finch-radius-ai);
+  --radius-sheet: var(--finch-radius-sheet);
 
   /* ── 모션 ────────────────────────────────────────────────────────── */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-standard: var(--finch-timing-function-standard);
 }
 
 /*
@@ -140,9 +134,9 @@
  * duration-(--motion-fast) 나 CSS 에서 var() 로 참조한다.
  */
 :root {
-  --motion-fast: 140ms; /* 마이크로 인터랙션 */
-  --motion-normal: 200ms; /* 탭, 아코디언 */
-  --motion-sheet: 260ms; /* 바텀시트 */
+  --motion-fast: var(--finch-duration-fast);
+  --motion-normal: var(--finch-duration-normal);
+  --motion-sheet: var(--finch-duration-sheet);
 }
 
 html,
@@ -156,7 +150,7 @@ body {
   overflow-x: hidden;
   background-color: var(--finch-color-bg-layer-basement);
   color: var(--finch-color-fg-neutral);
-  font-family: var(--font-sans);
+  font-family: var(--finch-font-family-sans);
 }
 
 /* 숫자는 자리폭을 고정한다. 값이 갱신될 때 폭이 흔들리지 않는다. */

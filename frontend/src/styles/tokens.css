@@ -221,7 +221,71 @@
   /* 플로팅 버튼·바텀시트·스티키 레이어 */
   --finch-shadow-float: var(--finch-shadow-s3);
 
-  /* ═══════════ 6. Elevation ═══════════ */
+  /* ═══════════ 6. Dimension ═══════════ */
+  /* 없다. 발표자료의 4px 그리드는 Tailwind 기본 4px 스케일과 1:1 로 맞아서
+     SEED 의 x0_5~x30 을 만들지 않는다. 만들면 p-5 와 space-5 가 같은 값으로 둘 다 생긴다.
+     간격은 Tailwind 기본 유틸리티로 적는다. */
+
+  /* ═══════════ 7. Typography ═══════════ */
+  /* SEED 의 t1~t14 숫자 스케일 대신 의미 이름 8단을 쓴다. 숫자로 바꾸면 어느 단이
+     캡션이고 어느 단이 제목인지가 이름에서 사라지고, 화면을 읽을 때마다 표를 봐야 한다.
+     rem 이 아니라 px 다 — 기준 뷰포트 390 고정이라 OS 글자 크기 배율을 받지 않는다.
+
+     굵기는 서브셋 woff2 세 개(Light 100–399 · Medium 400–599 · Bold 600–900)로 매핑된다.
+     여기 600 은 Bold, 500·400 은 Medium 이다. 새 굵기를 넣을 때 어느 구간에 떨어지는지 본다 —
+     550 과 600 은 다른 얼굴이다. */
+  --finch-font-family-sans:
+    'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    system-ui, sans-serif;
+
+  --finch-font-size-display: 36px;
+  --finch-line-height-display: 44px;
+  --finch-font-weight-display: 700;
+
+  --finch-font-size-title-1: 28px;
+  --finch-line-height-title-1: 36px;
+  --finch-font-weight-title-1: 700;
+
+  --finch-font-size-title-2: 22px;
+  --finch-line-height-title-2: 30px;
+  --finch-font-weight-title-2: 700;
+
+  --finch-font-size-title-3: 18px;
+  --finch-line-height-title-3: 26px;
+  --finch-font-weight-title-3: 600;
+
+  --finch-font-size-body-1: 16px;
+  --finch-line-height-body-1: 24px;
+
+  --finch-font-size-body-2: 15px;
+  --finch-line-height-body-2: 22px;
+
+  --finch-font-size-label: 14px;
+  --finch-line-height-label: 20px;
+  --finch-font-weight-label: 500;
+
+  --finch-font-size-caption: 13px;
+  --finch-line-height-caption: 18px;
+  --finch-font-weight-caption: 400;
+
+  /* ═══════════ 8. Radius ═══════════ */
+  /* SEED 의 r0_5~r6 사다리를 쓰지 않는다. 앱이 쓰는 반경은 다섯 개뿐이고,
+     각각 어느 컴포넌트의 것인지가 이름에 남아야 화면에서 고를 때 헷갈리지 않는다. */
+  --finch-radius-chip: 10px;
+  --finch-radius-control: 14px; /* 입력 · 세그먼티드 · 버튼 */
+  --finch-radius-card: 16px;
+  --finch-radius-ai: 18px; /* AI Insight Box */
+  --finch-radius-sheet: 24px; /* 바텀시트 상단 */
+
+  /* ═══════════ 9. Motion ═══════════ */
+  /* 발표자료는 장면 타이밍이라 d1~d6 이지만 앱은 마이크로 인터랙션 셋뿐이다.
+     이징도 하나다 — 들어오고 나가는 곡선을 나누는 건 시트가 여러 종류일 때 얘기다. */
+  --finch-duration-fast: 140ms; /* 눌림 · 색 전환 */
+  --finch-duration-normal: 200ms; /* 탭 · 아코디언 */
+  --finch-duration-sheet: 260ms; /* 바텀시트 */
+  --finch-timing-function-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ═══════════ 10. Elevation ═══════════ */
   /* Design.md 12 는 전역 z 스케일을 두지 말라고 하지만, 그건 포털 DOM 순서를 통제할 수 있는
      컴포넌트 라이브러리 얘기다. 앱에는 상단 내비·하단 탭바·하단 고정 CTA·FAB·바텀시트가
      서로 다른 트리에서 자라므로 겹침 순서를 한 곳에 적어야 한다. 네 단계로 끝낸다.
