@@ -159,10 +159,10 @@ body {
   background-color: var(--finch-color-bg-layer-basement);
   color: var(--finch-color-fg-neutral);
   font-family: var(--finch-font-family-sans);
-}
-
-/* 숫자는 자리폭을 고정한다. 값이 갱신될 때 폭이 흔들리지 않는다. */
-:where(table, dd, output, time) {
+  /* 숫자는 자리폭을 고정한다 — 값이 갱신될 때 폭이 흔들리면 안 된다 (finch-seed.md §4).
+     table · dd · output · time 만 걸면 시세 행처럼 <span> 으로 그려지는 숫자를 놓친다
+     (ia.md §5). font-variant-numeric 은 숫자 글리프에만 붙는 OpenType 기능이라 문자에는
+     영향이 없다 — body 전체에 걸어도 안전하고, 그래야 새 컴포넌트가 매번 챙기지 않아도 된다. */
   font-variant-numeric: tabular-nums;
 }
 
