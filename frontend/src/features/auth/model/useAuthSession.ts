@@ -14,7 +14,7 @@ type AuthSessionState = {
    * 한 줄로 가져간다. Refresh Token 은 HttpOnly 쿠키라 여기 자리가 없다.
    */
   accessToken: string | null;
-  /** 최초 로그인이면 서버가 계좌·1회차·예수금을 함께 만든 것이다 (apiSpec §2.1). */
+  /** 최초 로그인이면 서버가 계좌·예수금을 함께 만든 것이다 (apiSpec §2.1). */
   isNewUser: boolean;
   setSession: (session: { accessToken: string; isNewUser: boolean }) => void;
   /** 재발급 성공. isNewUser 는 건드리지 않는다 — 재발급은 가입이 아니다. */

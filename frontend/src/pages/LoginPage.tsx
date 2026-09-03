@@ -9,7 +9,7 @@ import { PageMain } from '@/shared/ui/PageMain';
 
 /**
  * 로그인 화면 (`/login`). 자체 회원가입 폼은 없다 — 인증 수단은 카카오 OAuth 하나이고
- * 최초 로그인이면 서버가 계정과 함께 가상 계좌·1회차·예수금을 만든다 (apiSpec §2.1).
+ * 최초 로그인이면 서버가 계정과 함께 가상 계좌·예수금을 만든다 (apiSpec §2.1).
  */
 export function LoginPage() {
   const [searchParams] = useSearchParams();

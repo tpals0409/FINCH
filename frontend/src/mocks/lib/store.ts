@@ -24,18 +24,9 @@ export interface MockHolding {
   avgBuyPrice: number;
 }
 
-export interface MockRound {
-  roundId: number;
-  status: 'ACTIVE' | 'CLOSED';
-  startedAt: string;
-  closedAt: string | null;
-  finalTotalAsset: number | null;
-}
-
 export interface MockTransaction {
   transactionId: number;
-  type:
-    'INITIAL_GRANT' | 'DEPOSIT' | 'BUY' | 'SELL' | 'ROUND_OPEN' | 'ROUND_CLOSE';
+  type: 'INITIAL_GRANT' | 'DEPOSIT' | 'BUY' | 'SELL';
   occurredAt: string;
   stockCode: string | null;
   stockName: string | null;
@@ -46,8 +37,6 @@ export interface MockTransaction {
   /** 백분율 */
   realizedProfitRate: number | null;
   paymentMethod: 'VIRTUAL_CARD' | 'VIRTUAL_TRANSFER' | null;
-  /** 어느 회차의 원장인지. `GET /transactions` 의 `roundId` 필터에 쓴다 */
-  roundId: number;
 }
 
 export interface MockWatchlistEntry {
@@ -87,11 +76,9 @@ export interface MockAiFeedback {
 }
 
 interface MockStore {
-  activeRoundId: number;
-  rounds: MockRound[];
   cashBalance: number;
-  /** 이번 회차 누적 충전액. 계좌 리셋 시 0 으로 돌아간다 (apiSpec §3.2) */
-  roundDepositedAmount: number;
+  /** 계정 전체 누적 충전액. 되돌릴 경로가 없다 (apiSpec §4.1) */
+  depositedAmount: number;
   holdings: MockHolding[];
   watchlist: MockWatchlistEntry[];
   recentStocks: MockRecentStock[];
@@ -108,32 +95,8 @@ interface MockStore {
 }
 
 export const store: MockStore = {
-  activeRoundId: 3,
-  rounds: [
-    {
-      roundId: 3,
-      status: 'ACTIVE',
-      startedAt: '2026-08-25T10:00:00+09:00',
-      closedAt: null,
-      finalTotalAsset: null,
-    },
-    {
-      roundId: 2,
-      status: 'CLOSED',
-      startedAt: '2026-07-01T09:30:00+09:00',
-      closedAt: '2026-08-25T10:00:00+09:00',
-      finalTotalAsset: 1_842_500,
-    },
-    {
-      roundId: 1,
-      status: 'CLOSED',
-      startedAt: '2026-06-02T09:10:00+09:00',
-      closedAt: '2026-07-01T09:30:00+09:00',
-      finalTotalAsset: 946_300,
-    },
-  ],
   cashBalance: 1_250_000,
-  roundDepositedAmount: 3_000_000,
+  depositedAmount: 3_000_000,
   holdings: [
     { stockCode: '005930', quantity: 10, avgBuyPrice: 71_200 },
     { stockCode: '000660', quantity: 3, avgBuyPrice: 180_000 },
@@ -177,7 +140,6 @@ export const store: MockStore = {
       realizedProfit: -11_600,
       realizedProfitRate: -3.15,
       paymentMethod: null,
-      roundId: 3,
     },
     {
       transactionId: 304,
@@ -191,7 +153,6 @@ export const store: MockStore = {
       realizedProfit: null,
       realizedProfitRate: null,
       paymentMethod: null,
-      roundId: 3,
     },
     {
       transactionId: 303,
@@ -205,7 +166,6 @@ export const store: MockStore = {
       realizedProfit: null,
       realizedProfitRate: null,
       paymentMethod: null,
-      roundId: 3,
     },
     {
       transactionId: 302,
@@ -219,7 +179,6 @@ export const store: MockStore = {
       realizedProfit: null,
       realizedProfitRate: null,
       paymentMethod: null,
-      roundId: 3,
     },
     {
       transactionId: 301,
@@ -233,7 +192,6 @@ export const store: MockStore = {
       realizedProfit: null,
       realizedProfitRate: null,
       paymentMethod: 'VIRTUAL_CARD',
-      roundId: 3,
     },
     {
       transactionId: 300,
@@ -247,21 +205,6 @@ export const store: MockStore = {
       realizedProfit: null,
       realizedProfitRate: null,
       paymentMethod: null,
-      roundId: 3,
-    },
-    {
-      transactionId: 299,
-      type: 'ROUND_OPEN',
-      occurredAt: '2026-08-25T10:00:00+09:00',
-      stockCode: null,
-      stockName: null,
-      price: null,
-      quantity: null,
-      amount: 0,
-      realizedProfit: null,
-      realizedProfitRate: null,
-      paymentMethod: null,
-      roundId: 3,
     },
   ],
   nextTransactionId: 306,
@@ -276,12 +219,11 @@ export function findHolding(stockCode: string): MockHolding | undefined {
 
 /** 원장에 한 줄 남긴다. 목록 맨 앞(최신)에 붙는다. */
 export function recordTransaction(
-  entry: Omit<MockTransaction, 'transactionId' | 'roundId'>,
+  entry: Omit<MockTransaction, 'transactionId'>,
 ): MockTransaction {
   const transaction: MockTransaction = {
     ...entry,
     transactionId: store.nextTransactionId,
-    roundId: store.activeRoundId,
   };
   store.nextTransactionId += 1;
   store.transactions.unshift(transaction);
@@ -327,79 +269,4 @@ export function touchRecentSearchKeyword(keyword: string): void {
     ...store.recentSearchKeywords,
   ].slice(0, RECENT_SEARCH_KEYWORDS_MAX_COUNT);
   store.nextSearchKeywordId += 1;
-}
-
-/** 계좌 리셋 (apiSpec §3.2). 원장을 지우지 않고 회차를 갈아 끼운다. */
-export function resetAccount(finalTotalAsset: number): {
-  closedRoundId: number;
-  closedStartedAt: string;
-  newRoundId: number;
-  at: string;
-} {
-  const at = nowKstIso();
-  const closed = store.rounds.find(
-    (round) => round.roundId === store.activeRoundId,
-  );
-  const closedStartedAt = closed?.startedAt ?? at;
-
-  if (closed !== undefined) {
-    closed.status = 'CLOSED';
-    closed.closedAt = at;
-    closed.finalTotalAsset = finalTotalAsset;
-  }
-
-  const closedRoundId = store.activeRoundId;
-  const newRoundId = closedRoundId + 1;
-
-  recordTransaction({
-    type: 'ROUND_CLOSE',
-    occurredAt: at,
-    stockCode: null,
-    stockName: null,
-    price: null,
-    quantity: null,
-    amount: finalTotalAsset,
-    realizedProfit: null,
-    realizedProfitRate: null,
-    paymentMethod: null,
-  });
-
-  store.activeRoundId = newRoundId;
-  store.rounds.unshift({
-    roundId: newRoundId,
-    status: 'ACTIVE',
-    startedAt: at,
-    closedAt: null,
-    finalTotalAsset: null,
-  });
-  store.cashBalance = INITIAL_CASH_BALANCE;
-  store.roundDepositedAmount = 0;
-  store.holdings = [];
-
-  recordTransaction({
-    type: 'ROUND_OPEN',
-    occurredAt: at,
-    stockCode: null,
-    stockName: null,
-    price: null,
-    quantity: null,
-    amount: 0,
-    realizedProfit: null,
-    realizedProfitRate: null,
-    paymentMethod: null,
-  });
-  recordTransaction({
-    type: 'INITIAL_GRANT',
-    occurredAt: at,
-    stockCode: null,
-    stockName: null,
-    price: null,
-    quantity: null,
-    amount: INITIAL_CASH_BALANCE,
-    realizedProfit: null,
-    realizedProfitRate: null,
-    paymentMethod: null,
-  });
-
-  return { closedRoundId, closedStartedAt, newRoundId, at };
 }

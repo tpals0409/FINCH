@@ -40,7 +40,6 @@ export type Holding = z.infer<typeof HoldingSchema>;
 
 /** `GET /portfolio` 응답 (apiSpec §8.1). 상단 요약과 보유 목록이 한 응답에 온다. */
 export const PortfolioResponseSchema = z.object({
-  roundId: z.number().int(),
   cashBalance: KrwAmountSchema,
   evaluationAmount: KrwAmountSchema,
   totalAsset: KrwAmountSchema,
@@ -51,19 +50,27 @@ export type PortfolioResponse = z.infer<typeof PortfolioResponseSchema>;
 
 /**
  * 원장 유형 (apiSpec §8.2 매매 내역, 명세 8장 원장 유형).
- * 충전과 회차 전환도 같은 내역에 섞여 온다.
+ * 초기 지급과 충전도 같은 내역에 섞여 온다.
+ *
+ * **apiSpec v0.7 에서 6종 → 4종이 됐다** — 투자 회차가 없어지면서
+ * `ROUND_OPEN`·`ROUND_CLOSE` 가 삭제됐다 (이슈 #27).
  */
 export const TransactionTypeSchema = z.enum([
   'INITIAL_GRANT',
   'DEPOSIT',
   'BUY',
   'SELL',
-  'ROUND_OPEN',
-  'ROUND_CLOSE',
 ]);
 export type TransactionType = z.infer<typeof TransactionTypeSchema>;
 
-/** `GET /transactions` 의 `type` 필터 (apiSpec §8.2). 원장 유형 전체와 값이 다르다. */
+/**
+ * `GET /transactions` 의 `type` 필터 (apiSpec §8.2). 원장 유형 전체와 값이 다르다 —
+ * `ALL` 이 더 있고 `INITIAL_GRANT` 가 없다.
+ *
+ * **`type=DEPOSIT` 은 `INITIAL_GRANT` 행을 포함하지 않는다** (apiSpec §8.2, 커밋 `af96862`).
+ * 원장 유형 `DEPOSIT`(모의 결제 충전)만 걷어 온다 (`mocks/handlers/trading.ts`
+ * `TRANSACTION_FILTER_LEDGER_TYPES`). `INITIAL_GRANT` 1건은 `type=ALL` 에서만 나온다.
+ */
 export const TransactionFilterSchema = z.enum([
   'ALL',
   'BUY',
@@ -98,9 +105,6 @@ export type Transaction = z.infer<typeof TransactionSchema>;
  * `GET /transactions` 응답 (apiSpec §8.2).
  * 커서 페이징이고 정렬은 최신순 고정이다. 종료 판정은 `hasNext` 로 한다.
  */
-export const TransactionsResponseSchema = createCursorPageSchema(
-  TransactionSchema,
-).extend({
-  roundId: z.number().int(),
-});
+export const TransactionsResponseSchema =
+  createCursorPageSchema(TransactionSchema);
 export type TransactionsResponse = z.infer<typeof TransactionsResponseSchema>;

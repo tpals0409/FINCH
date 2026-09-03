@@ -40,7 +40,8 @@ import { nowKstIso, toKstDateString } from '../lib/time';
  * `lib/ai.ts` 의 `aiResponse()` 한 곳에 갇혀 있다.
  *
  * **상태 유지 범위** — 보유 종목이 0개면 진단·원인 분석이 `INSUFFICIENT_DATA` 로 갈린다.
- * 계좌 리셋 뒤 그 갈래를 볼 수 있다. `POST /ai/feedback` 이 접수한 평가는 `store.aiFeedback` 에
+ * 계좌 리셋이 apiSpec v0.7 에서 없어졌으므로(이슈 #27) 그 갈래는 **보유 종목을 전량 매도해서**
+ * 본다. `POST /ai/feedback` 이 접수한 평가는 `store.aiFeedback` 에
  * `requestId` 를 키로 남는다 — **누적하지 않고 덮어쓴다**(contracts C66). 그 밖의 본문은
  * 고정 픽스처다.
  *

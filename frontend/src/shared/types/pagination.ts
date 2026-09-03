@@ -25,7 +25,7 @@ export function createCursorPageSchema<TItem extends z.ZodType>(
 
 /**
  * 커서가 없는 목록 응답. 배열을 그대로 주지 않고 `{items}` 로 감싸 내려준다
- * (apiSpec §3.3 회차 목록 · §5.1 종목 검색 · §6.1 최근 본 종목).
+ * (apiSpec §5.1 종목 검색 · §6.1 최근 본 종목 · §6.2 최근 검색어).
  */
 export function createItemsSchema<TItem extends z.ZodType>(itemSchema: TItem) {
   return z.object({ items: z.array(itemSchema) });

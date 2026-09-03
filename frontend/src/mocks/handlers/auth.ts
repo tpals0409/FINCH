@@ -126,7 +126,6 @@ export const authHandlers = [
       userId: 1,
       nickname: '홍길동',
       profileImageUrl: 'https://placehold.co/96x96',
-      currentRoundId: 3,
       joinedAt: '2026-08-25T10:00:00+09:00',
     });
   }),
