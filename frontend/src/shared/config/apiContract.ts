@@ -37,11 +37,14 @@ export const RECENT_SEARCH_KEYWORDS_MAX_COUNT = 10;
 /** 종목 검색을 시작하는 최소 글자 수 (apiSpec §5.1 종목 검색 · 자동완성). */
 export const STOCK_SEARCH_MIN_KEYWORD_LENGTH = 2;
 
-/** 충전 한도 (apiSpec §4.2 충전 · contracts C49). 회차 누적 한도는 계좌 리셋 시 초기화된다. */
+/**
+ * 충전 한도 (apiSpec §4.1~4.2 · contracts C49).
+ * **누적 한도의 기준은 계정 전체다** — v0.7 에서 회차 기준이 사라져 되돌릴 경로가 없다 (이슈 #27).
+ */
 export const DEPOSIT_PER_REQUEST_LIMIT = 10_000_000;
-export const DEPOSIT_ROUND_CUMULATIVE_LIMIT = 100_000_000;
+export const DEPOSIT_CUMULATIVE_LIMIT = 100_000_000;
 
-/** 최초 로그인·계좌 리셋 시 지급되는 예수금 (apiSpec §2.1 · §3.2 · contracts C47·C48). */
+/** 최초 로그인 시 지급되는 예수금 (apiSpec §2.1 · contracts C47). */
 export const INITIAL_CASH_BALANCE = 1_000_000;
 
 /**
@@ -98,8 +101,6 @@ export const API_PATHS = {
   },
   account: {
     summary: '/account',
-    reset: '/account/reset',
-    rounds: '/rounds',
   },
   deposits: {
     limit: '/deposits/limit',

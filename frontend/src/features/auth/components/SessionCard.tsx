@@ -59,12 +59,6 @@ function SignedInCard() {
       </p>
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex items-baseline justify-between">
-          <dt className="text-text-secondary">현재 회차</dt>
-          <dd className="font-medium text-text-primary">
-            {data.currentRoundId}
-          </dd>
-        </div>
-        <div className="flex items-baseline justify-between">
           <dt className="text-text-secondary">가입일</dt>
           <dd className="font-medium text-text-primary">
             {data.joinedAt.slice(0, 10)}

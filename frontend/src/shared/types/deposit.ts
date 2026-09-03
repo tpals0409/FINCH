@@ -17,12 +17,18 @@ export type PaymentMethod = z.infer<typeof PaymentMethodSchema>;
 
 /**
  * `GET /deposits/limit` 응답 (apiSpec §4.1 충전 한도 조회).
- * 1회 1,000만 원, 회차 누적 1억 원이다. 누적 한도는 계좌 리셋 시 초기화된다.
+ * 1회 1,000만 원, **계정 전체 누적** 1억 원이다.
+ *
+ * **apiSpec v0.7 에서 필드 이름이 바뀌었다** — 누적 한도의 기준이 회차에서 계정 전체로
+ * 옮겨가면서 `roundCumulativeLimit`·`roundDepositedAmount` 가
+ * `cumulativeLimit`·`depositedAmount` 가 됐다. 회차가 없어져 한도를 되돌릴 경로도 없다 (이슈 #27).
  */
 export const DepositLimitResponseSchema = z.object({
   perRequestLimit: KrwAmountSchema,
-  roundCumulativeLimit: KrwAmountSchema,
-  roundDepositedAmount: KrwAmountSchema,
+  /** 계정 전체 누적 한도 */
+  cumulativeLimit: KrwAmountSchema,
+  /** 계정 전체 누적 충전액 */
+  depositedAmount: KrwAmountSchema,
   remainingAmount: KrwAmountSchema,
 });
 export type DepositLimitResponse = z.infer<typeof DepositLimitResponseSchema>;

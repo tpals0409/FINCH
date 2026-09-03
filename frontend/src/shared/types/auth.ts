@@ -36,7 +36,7 @@ export type KakaoLoginRequest = z.infer<typeof KakaoLoginRequestSchema>;
 
 /**
  * `POST /auth/kakao` 응답 (apiSpec §2.1).
- * `isNewUser` 가 `true` 면 서버가 계정·가상 계좌·1회차·예수금 1,000,000원을 함께 만든 것이다
+ * `isNewUser` 가 `true` 면 서버가 계정·가상 계좌·예수금 1,000,000원을 함께 만든 것이다
  * (contracts C47).
  */
 export const KakaoLoginResponseSchema = z.object({
@@ -62,13 +62,15 @@ export type TokenRefreshResponse = z.infer<typeof TokenRefreshResponseSchema>;
 /**
  * `GET /users/me` 응답 (apiSpec §2.4 내 정보 조회).
  * 사용자 식별자는 토큰에서만 나온다. 경로·본문·쿼리로 `userId` 를 보내지 않는다 (contracts C25).
+ *
+ * **`currentRoundId` 는 apiSpec v0.7 에서 삭제됐다** (이슈 #27). 계좌는 사용자당 하나라
+ * 클라이언트가 식별자로 들고 있을 이유가 없고, 계좌 도메인이 붙어도 `accountId` 로 되살리지 않는다.
  */
 export const MeResponseSchema = z.object({
   userId: z.number().int(),
   nickname: z.string(),
   /** null 가능. 이유는 `AuthUserSchema` 주석 참고. */
   profileImageUrl: z.string().nullable(),
-  currentRoundId: z.number().int(),
   joinedAt: IsoDateTimeSchema,
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
