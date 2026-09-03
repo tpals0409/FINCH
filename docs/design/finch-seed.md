@@ -124,7 +124,8 @@ Design.md §0.1 이 🔒유지로 표시했는데 FINCH 가 벗어난 것이다.
 - **에러에 등락 적색을 재사용하지 않는다.** 같으면 "떨어졌다" 로 오독된다.
   폼 에러는 셋을 함께 바꾼다 — 입력 테두리 `stroke-critical-solid`, 메시지 `fg-critical` + bold, 아이콘.
 - **비활성은 `opacity` 가 아니라 전용 색.** opacity 는 겹친 자식 아이콘·스피너까지 흐려져 사라진다.
-- **숫자는 `tabular-nums`.** `index.css` 가 `table, dd, output, time` 에 걸어 둔다.
+- **숫자는 `tabular-nums`.** `index.css` 가 `body` 전체에 건다. 숫자 글리프에만 붙는
+  OpenType 기능이라 문자에는 영향이 없고, 그래서 셀렉터를 좁히지 않고 전역으로 걸었다 (§6).
 
 ---
 
@@ -166,8 +167,8 @@ grep -rn 'palette-' frontend/src --include='*.tsx'
 ```
 
 첫째는 Tailwind 기본 팔레트와 하드코딩 hex, 둘째는 우리 팔레트 층 직접 참조를 잡는다.
-둘 다 비어야 한다. 지금 유일한 예외는 `Button.tsx` 의 카카오 로그인 버튼(`bg-[#FEE500]`)이다 —
-카카오 브랜드 가이드가 강제하는 색이라 토큰화하지 않는다.
+둘 다 비어야 한다. 지금 유일한 예외는 `Button.tsx` 의 카카오 로그인 버튼(`bg-[#FEE500]
+text-[#191600]`)이다 — 카카오 브랜드 가이드가 강제하는 색이라 토큰화하지 않는다.
 
 ---
 
@@ -184,6 +185,19 @@ grep -rn 'palette-' frontend/src --include='*.tsx'
 **elevation 이 4단인 이유.** base 0 · sticky · floating · overlay. 10 씩 띄운 건 일회성 예외가
 사이에 들어와도 전체를 다시 매기지 않기 위해서다. 딤·시트·다이얼로그·토스트는 모두 overlay 한 층이고
 그 안의 순서는 포털 DOM 순서로 정한다. 토스트가 다이얼로그 위에 와야 하는 것도 DOM 순서에 달려 있다.
+
+**z 토큰에 쓸 길을 낸 이유.** `--finch-z-*` 넷은 있었지만 Tailwind v4 에 `z` 테마
+네임스페이스가 없어 유틸리티가 생기지 않았다 — `z-sticky` 같은 클래스는 애초에 만들어지지
+않는다. `duration` 이 이미 같은 문제였고 `index.css` 가 `:root` 에 `--motion-*` 별칭을 두고
+`duration-(--motion-fast)` 임의값 문법으로 풀었다. z 도 같은 자리에 `--z-*` 로 별칭을 냈다 —
+`z-(--z-sticky)`. `@theme` 이 아니라 `:root` 인 이유도 같다: 테마 네임스페이스가 없는 값은
+`@theme` 에 넣어도 유틸리티가 안 생긴다.
+
+**숫자 `tabular-nums` 를 `body` 전체로 넓힌 이유.** 원래 `:where(table, dd, output, time)`
+넷에만 걸려 있었는데, 종목 시세 행처럼 리스트 안 `<span>` 으로 그려지는 숫자는 그 넷 중
+어디에도 안 든다. `font-variant-numeric` 은 숫자 글리프에만 붙는 OpenType 기능이라 문자
+렌더링에는 영향이 없다 — 그래서 셀렉터를 하나씩 추가하는 대신 `body` 에 걸어 모든 숫자를
+한 번에 덮었다. 새 컴포넌트가 이 규칙을 챙기려고 클래스를 기억할 필요가 없다.
 
 **비활성 두 단계를 함께 내린 이유.** 측정이 근거다.
 

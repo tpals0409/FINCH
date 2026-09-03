@@ -130,13 +130,21 @@
 }
 
 /*
- * duration 은 Tailwind v4 에 테마 네임스페이스가 없어 유틸리티가 생기지 않는다.
- * duration-(--motion-fast) 나 CSS 에서 var() 로 참조한다.
+ * duration · z-index 는 Tailwind v4 에 테마 네임스페이스가 없어 유틸리티가 생기지 않는다.
+ * duration-(--motion-fast) · z-(--z-sticky) 처럼 CSS 변수 임의값 문법으로 쓰거나,
+ * 손으로 쓴 CSS 에서 var() 로 참조한다.
  */
 :root {
   --motion-fast: var(--finch-duration-fast);
   --motion-normal: var(--finch-duration-normal);
   --motion-sheet: var(--finch-duration-sheet);
+
+  /* 상단 내비·하단 탭바·하단 고정 CTA·FAB·바텀시트가 쌓일 순서. tokens.css 사다리(10절)
+     그대로 별칭만 붙인다. 값은 여기 적지 않는다. */
+  --z-base: var(--finch-z-base);
+  --z-sticky: var(--finch-z-sticky);
+  --z-floating: var(--finch-z-floating);
+  --z-overlay: var(--finch-z-overlay);
 }
 
 html,
@@ -151,10 +159,10 @@ body {
   background-color: var(--finch-color-bg-layer-basement);
   color: var(--finch-color-fg-neutral);
   font-family: var(--finch-font-family-sans);
-}
-
-/* 숫자는 자리폭을 고정한다. 값이 갱신될 때 폭이 흔들리지 않는다. */
-:where(table, dd, output, time) {
+  /* 숫자는 자리폭을 고정한다 — 값이 갱신될 때 폭이 흔들리면 안 된다 (finch-seed.md §4).
+     table · dd · output · time 만 걸면 시세 행처럼 <span> 으로 그려지는 숫자를 놓친다
+     (ia.md §5). font-variant-numeric 은 숫자 글리프에만 붙는 OpenType 기능이라 문자에는
+     영향이 없다 — body 전체에 걸어도 안전하고, 그래야 새 컴포넌트가 매번 챙기지 않아도 된다. */
   font-variant-numeric: tabular-nums;
 }
 

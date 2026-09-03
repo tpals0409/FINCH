@@ -37,7 +37,8 @@ export const ROUTES = {
   transactions: '/transactions',
   /**
    * 브리핑 전체 화면. **경로 미확정** (ia.md §1·§7).
-   * 프로토타입(`finch-screens.dc.html`)의 내부 화면 id `briefing` 을 따라 프론트가
+   * 프로토타입(`finch-screens.dc.html`, Sprint 3 에서 삭제 — git 이력에 있다)의
+   * 내부 화면 id `briefing` 을 따라 프론트가
    * 제안한 값이고 팀 확인을 받지 않았다. PRD v1.0 §06 의 화면 집계에는 독립 항목으로
    * 없다. 답이 오면 여기 한 줄만 고친다.
    */
@@ -47,7 +48,7 @@ export const ROUTES = {
   /**
    * 알림함 — Finch 가 물어다 놓는 것 열람. **경로 미확정** (ia.md §1·§7).
    * 경로 `/inbox` 와 키 `inbox` 는 프론트가 제안한 값이고 팀 확인을 받지 않았다.
-   * **프로토타입(`finch-screens.dc.html`) 내부 식별자는 여전히 `isMail`·`goMail` 이다** —
+   * **프로토타입 내부 식별자는 여전히 `isMail`·`goMail` 이었다** (그 파일은 Sprint 3 에서 삭제) —
    * 라우트 이름만 `/inbox` 로 옮겼으므로 프로토타입을 보고 `/mail` 로 되돌리지 않는다.
    * **API 계약도 아직 없다** — GitLab 이슈 #26 1번으로 문의 중이다.
    */

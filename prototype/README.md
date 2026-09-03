@@ -38,3 +38,26 @@ brand/logo-wordmark.svg
 작업 중인 중간 캡처는 올리지 않고 확정본만 올린다.
 
 Figma 같은 도구의 원본 파일은 올리지 않는다. 링크로 공유하고 여기에는 내보낸 결과만 둔다.
+
+### `.dc.html` 은 토큰을 실제로 참조해야 한다
+
+`.dc.html` (design canvas) 시안은 `styles/tokens.css` 를 `<link>` 로 불러와야 한다 —
+`styleguide.dc.html` 이 그 방식이다. `tokens.css` 를 고치면 시안도 같이 바뀌어야
+안 썩는다. **손으로 적은 hex 색값이 들어간 `.dc.html` 은 시안이 아니라 화석이다** — 토큰이
+바뀌어도 따라가지 않고, 지운 색(옛 `--color-primary` 파랑, 버린 상승 적색 등)이 그대로
+남아 있으면 다음 사람이 그걸 "실제 구현" 으로 읽고 지운 시스템을 복원한다. 그런 파일을
+발견하면 토큰을 실제로 불러오게 고치거나 지운다 — 경고 배너만 붙이는 건 열어 보는 사람이
+안 읽으면 소용없다.
+
+`.dc.html` 을 Artifact 로 확인할 때 인라인한 사본은 확인용으로만 쓰고 커밋하지 않는다
+(`styleguide.dc.html` 머리말 참고). 통째로 인라인·번들된 `.dc.html` (폰트·에셋이
+data URI 나 자산 ID 로 박혀 수 MB 짜리가 된 것)을 커밋하면 그 사본이 곧 위 화석이 된다.
+
+`screen/finch-screens.dc.html` 은 Sprint 3 에서 지웠다 — 토큰 마이그레이션 이전의 색이 박힌
+번들 사본이라 열면 지운 시스템을 되살리게 된다. 필요하면 `git show a62cc42:prototype/screen/finch-screens.dc.html`.
+정확히 이 상태였다 — 옛 파랑 프라이머리 · 버린 상승 적색 · 옛 잉크 값이 손으로 박혀 있고
+Gmarket Sans 이전의 Pretendard 를 실었다. `frontend/src/app/layouts/AiFloatingOverlay.tsx`
+가 이 파일을 "프로토타입의 실제 구현" 으로 인용하고 있었는데, 다시 만들려면 화면
+시안을 새로 그려야 해서(`contracts.md` P10 등이 열려 있어 지금 그리면 절반이 버려진다)
+이번엔 지웠다. 그 사실 자체(`showFab` 배치)는 `frontend/docs/ia.md` §3 에 이미 프로즈로
+남아 있어 파일을 지워도 없어지지 않는다.
