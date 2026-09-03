@@ -25,10 +25,10 @@ export function LoginPage() {
 
   return (
     <PageMain className="flex flex-col justify-center">
-      <h1 className="text-2xl font-semibold text-text-primary">
+      <h1 className="text-2xl font-semibold text-fg-neutral">
         모의투자를 시작합니다
       </h1>
-      <p className="mt-2 text-sm text-text-secondary">
+      <p className="mt-2 text-sm text-fg-neutral-subtle">
         카카오 계정으로 로그인하면 가상 계좌와 예수금이 준비됩니다
       </p>
       <div className="mt-8">

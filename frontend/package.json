@@ -14,7 +14,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "design:contrast": "node tools/check-contrast.cjs src/styles/tokens.css"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",

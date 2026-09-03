@@ -8,7 +8,7 @@ export function Card({ className = '', ...props }: ComponentProps<'section'>) {
   return (
     <section
       {...props}
-      className={`rounded-card border border-border bg-surface p-5 ${className}`}
+      className={`rounded-card border border-stroke-neutral-weak bg-bg-layer-default p-5 ${className}`}
     />
   );
 }

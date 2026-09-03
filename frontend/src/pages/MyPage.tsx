@@ -11,8 +11,8 @@ import { PageMain } from '@/shared/ui/PageMain';
 export function MyPage() {
   return (
     <PageMain>
-      <h1 className="text-lg font-semibold text-text-primary">마이페이지</h1>
-      <p className="mt-1 text-xs text-text-muted">
+      <h1 className="text-lg font-semibold text-fg-neutral">마이페이지</h1>
+      <p className="mt-1 text-xs text-fg-neutral-subtle">
         프로필 · 알림함 · 위키 · 매매 내역 진입은 별도 티켓입니다
       </p>
 

@@ -89,7 +89,7 @@ export function KakaoCallback() {
   if (failure === null) {
     return (
       <Card aria-busy="true">
-        <p className="text-sm text-text-secondary">로그인 중입니다</p>
+        <p className="text-sm text-fg-neutral-subtle">로그인 중입니다</p>
         <Skeleton className="mt-3 h-4 w-40" />
         <Skeleton className="mt-2 h-4 w-24" />
       </Card>
@@ -98,7 +98,7 @@ export function KakaoCallback() {
 
   return (
     <Card>
-      <p className="text-sm text-text-primary">{describeFailure(failure)}</p>
+      <p className="text-sm text-fg-neutral">{describeFailure(failure)}</p>
       <LinkButton to="/login" replace className="mt-3">
         로그인 화면으로
       </LinkButton>
