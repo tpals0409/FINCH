@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+
+<!-- 토큰은 여기서 손으로 적지 않는다. 앱이 쓰는 파일을 그대로 불러온다.
+     tokens.css 를 고치면 이 페이지도 같이 바뀐다. 그게 이 파일이 안 썩는 유일한 방법이다.
+     빌드에 들어가지 않는다 (prototype/README.md).
+
+     주의: 상대 경로라 저장소 안에서 열 때만 해석된다. Artifact 로 띄우려면
+     tokens.css 와 woff2 를 인라인해야 한다 — 사본이 생기므로 확인용으로만 쓰고 커밋하지 않는다. -->
+<link rel="stylesheet" href="../frontend/src/styles/tokens.css">
+
+<style>
+/* 앱이 서빙하는 서브셋 woff2 를 그대로 쓴다. index.css 의 @font-face 와 같은 굵기 범위. */
+@font-face { font-family:'Gmarket Sans'; src:url('../frontend/public/fonts/gmarket-sans-light.woff2') format('woff2'); font-weight:100 399; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../frontend/public/fonts/gmarket-sans-medium.woff2') format('woff2'); font-weight:400 599; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../frontend/public/fonts/gmarket-sans-bold.woff2') format('woff2'); font-weight:600 900; font-display:swap }
+
+/* 시트 자체의 여백·격자만 여기 있다. 색·크기·반경·그림자는 전부 토큰에서 온다. */
+body { margin:0; background:#EDEFF3; font-family:var(--finch-font-family-sans); color:var(--finch-color-fg-neutral); -webkit-font-smoothing:antialiased }
+.sg { width:1240px; padding:56px 60px 72px; box-sizing:border-box; background:var(--finch-color-bg-layer-basement); display:flex; flex-direction:column; gap:44px }
+.sg-eyebrow { font-size:12px; font-weight:600; letter-spacing:.14em; color:var(--finch-color-fg-placeholder) }
+.sg-h1 { font-size:34px; font-weight:700; line-height:1.15; letter-spacing:-.028em; margin-top:12px }
+.sg-lead { font-size:16px; line-height:1.65; color:var(--finch-color-fg-neutral-subtle); margin-top:12px; max-width:660px }
+.sg-rule { height:1px; background:var(--finch-color-stroke-neutral-subtle) }
+.sg-sec { display:flex; flex-direction:column; gap:18px }
+.sg-sec-head { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap }
+.sg-sec-head b { font-size:19px; font-weight:700; letter-spacing:-.015em }
+.sg-sec-head span { font-size:14px; color:var(--finch-color-fg-placeholder) }
+.sg-panel { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-ai); padding:26px 28px }
+.sg-name { font-size:12px; line-height:16px; color:var(--finch-color-fg-neutral-subtle) }
+.sg-note { font-size:13px; line-height:1.7; color:var(--finch-color-fg-neutral-subtle) }
+.sg-note b { color:var(--finch-color-fg-neutral) }
+
+/* 팔레트 */
+.sg-ladder { display:flex; gap:6px }
+.sg-ladder + .sg-ladder { margin-top:14px }
+.sg-step { flex:1; display:flex; flex-direction:column; gap:5px }
+.sg-step i { display:block; height:56px; border-radius:8px; border:1px solid var(--finch-color-stroke-neutral-subtle) }
+.sg-step span { font-size:11px; color:var(--finch-color-fg-placeholder); text-align:center }
+.sg-ladder-label { font-size:13px; font-weight:600; margin-bottom:8px }
+
+/* 역할 */
+.sg-roles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 22px }
+.sg-role { display:grid; grid-template-columns:64px minmax(0,1fr); gap:12px; align-items:center }
+.sg-role i { height:38px; border-radius:8px; border:1px solid var(--finch-color-stroke-neutral-subtle); display:grid; place-items:center; font-size:13px; font-weight:700; font-style:normal }
+.sg-role i[data-on="paper"] { background:var(--finch-color-bg-layer-basement) }
+.sg-role i[data-on="card"] { background:var(--finch-color-bg-layer-default) }
+
+/* 타이포 */
+.sg-type { display:grid; grid-template-columns:150px minmax(0,1fr); gap:24px; align-items:baseline; padding:14px 0; border-bottom:1px solid var(--finch-color-stroke-neutral-subtle) }
+.sg-type:last-child { border-bottom:0 }
+
+/* 형태 */
+.sg-shapes { display:flex; gap:22px; flex-wrap:wrap }
+.sg-shape { display:flex; flex-direction:column; gap:8px; align-items:center }
+.sg-shape i { width:104px; height:72px; background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.sg-shadow i { border:0; background:var(--finch-color-bg-layer-default); border-radius:var(--finch-radius-card) }
+.sg-kv { display:grid; grid-template-columns:210px 96px minmax(0,1fr); gap:10px 16px; font-size:13px; align-items:center }
+.sg-kv > .k { color:var(--finch-color-fg-neutral) }
+.sg-kv > .v { color:var(--finch-color-fg-placeholder) }
+.sg-kv > .d { color:var(--finch-color-fg-neutral-subtle) }
+
+/* 컴포넌트 — 앱 컴포넌트의 클래스를 토큰으로 그대로 옮겨 그린다 */
+.sg-phone { width:390px; background:var(--finch-color-bg-layer-basement); border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:20px; overflow:hidden }
+.sg-main { max-width:448px; margin:0 auto; padding:24px 20px; display:flex; flex-direction:column; gap:16px }
+.sg-btn { display:flex; min-height:54px; width:100%; align-items:center; justify-content:center; gap:8px; border-radius:var(--finch-radius-control); padding:0 16px; border:0;
+  font-family:inherit; font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label); font-weight:var(--finch-font-weight-label) }
+.sg-btn[data-v="primary"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.sg-btn[data-v="secondary"] { background:var(--finch-color-bg-layer-default); color:var(--finch-color-fg-neutral); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.sg-btn[data-v="kakao"] { background:#FEE500; color:#191600 }
+.sg-btn[data-v="disabled"] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+.sg-card { border-radius:var(--finch-radius-card); border:1px solid var(--finch-color-stroke-neutral-weak); background:var(--finch-color-bg-layer-default); padding:20px }
+.sg-skel { border-radius:var(--finch-radius-chip); background:var(--finch-color-bg-skeleton) }
+.sg-num { font-variant-numeric:tabular-nums }
+.sg-rail { height:8px; border-radius:999px; background:var(--finch-color-bg-transparent-selected); overflow:hidden }
+.sg-rail i { display:block; height:100%; border-radius:999px; background:var(--finch-color-bg-neutral-solid);
+  animation-name:sg-sweep; animation-timing-function:var(--finch-timing-function-standard); animation-iteration-count:infinite; animation-direction:alternate }
+@keyframes sg-sweep { from { width:12% } to { width:100% } }
+.sg-stack { position:relative; width:250px; height:150px; flex:none }
+.sg-stack i { position:absolute; width:110px; height:60px; border-radius:var(--finch-radius-chip); border:1px solid var(--finch-color-stroke-neutral-weak);
+  display:grid; place-items:center; font-size:12px; font-style:normal }
+</style>
+</helmet>
+
+
+<!-- ═══════════════ 아트보드 1 · 색 ═══════════════ -->
+<section class="sg">
+
+<div>
+<div class="sg-eyebrow">FINCH · SEED</div>
+<div class="sg-h1">디자인 토큰 — 색</div>
+<div class="sg-lead">이 페이지는 <b>frontend/src/styles/tokens.css</b> 를 실제로 불러와 그립니다. 아래 색은 전부 그 파일의 값이고, 여기에 손으로 적은 색은 카카오 노랑 하나뿐입니다. 토큰을 고치면 이 페이지도 같이 바뀝니다.</div>
+</div>
+
+<div class="sg-rule"></div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Palette</b><span>사다리. 값을 직접 적는 유일한 층입니다. 화면에서는 이 층을 참조하지 않습니다.</span></div>
+<div class="sg-panel">
+
+<div class="sg-ladder-label">gray — 200 paper · 400 외곽선 · 700 캡션 · 900 반전 표면 · 1000 ink 가 지정값, 나머지는 oklab 보간</div>
+<div class="sg-ladder">
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-00)"></i><span>00</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-100)"></i><span>100</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-200)"></i><span>200</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-300)"></i><span>300</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-400)"></i><span>400</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-500)"></i><span>500</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-600)"></i><span>600</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-700)"></i><span>700</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-800)"></i><span>800</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-900)"></i><span>900</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-gray-1000)"></i><span>1000</span></div>
+</div>
+
+<div class="sg-ladder-label" style="margin-top:22px">up — 상승. 국내 관례로 빨강입니다. 600 이 원색, 700 이 본문용</div>
+<div class="sg-ladder">
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-100)"></i><span>100</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-200)"></i><span>200</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-300)"></i><span>300</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-400)"></i><span>400</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-500)"></i><span>500</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-600)"></i><span>600</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-700)"></i><span>700</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-800)"></i><span>800</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-900)"></i><span>900</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-up-1000)"></i><span>1000</span></div>
+</div>
+
+<div class="sg-ladder-label" style="margin-top:22px">down — 하락. 파랑. 600 원색 · 700 본문</div>
+<div class="sg-ladder">
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-100)"></i><span>100</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-200)"></i><span>200</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-300)"></i><span>300</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-400)"></i><span>400</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-500)"></i><span>500</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-600)"></i><span>600</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-700)"></i><span>700</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-800)"></i><span>800</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-900)"></i><span>900</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-down-1000)"></i><span>1000</span></div>
+</div>
+
+<div class="sg-ladder-label" style="margin-top:22px">static black-alpha — paper 위에 얹은 모습입니다. 불투명 회색과 달리 어떤 면 위에서도 아래를 같은 양만큼 누릅니다</div>
+<div class="sg-ladder">
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-100)"></i><span>100</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-200)"></i><span>200</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-300)"></i><span>300</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-400)"></i><span>400</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-500)"></i><span>500</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-600)"></i><span>600</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-700)"></i><span>700</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-800)"></i><span>800</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-900)"></i><span>900</span></div>
+<div class="sg-step"><i style="background:var(--finch-color-palette-static-black-alpha-1000)"></i><span>1000</span></div>
+</div>
+
+</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Foreground</b><span>글자·아이콘. 잉크 사다리 1000 → 500, 아래로 갈수록 "읽지 않아도 되는" 쪽입니다.</span></div>
+<div class="sg-panel sg-roles">
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-neutral)">가</i><div><div class="sg-name">fg-neutral</div><div class="sg-name">본문·제목</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-neutral-muted)">가</i><div><div class="sg-name">fg-neutral-muted</div><div class="sg-name">보조 문장</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-neutral-subtle)">가</i><div><div class="sg-name">fg-neutral-subtle</div><div class="sg-name">캡션·3차 텍스트</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-neutral-solid);color:var(--finch-color-fg-neutral-inverted)">가</i><div><div class="sg-name">fg-neutral-inverted</div><div class="sg-name">잉크 면 위 글자</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-placeholder)">가</i><div><div class="sg-name">fg-placeholder</div><div class="sg-name">플레이스홀더·메타</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-disabled);color:var(--finch-color-fg-disabled)">가</i><div><div class="sg-name">fg-disabled</div><div class="sg-name">비활성 라벨</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-up)">+가</i><div><div class="sg-name">fg-up</div><div class="sg-name">상승 — 본문·표</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-up-vivid)">+가</i><div><div class="sg-name">fg-up-vivid</div><div class="sg-name">상승 — 18px+ bold</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-flat)">가</i><div><div class="sg-name">fg-flat</div><div class="sg-name">보합</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-down)">−가</i><div><div class="sg-name">fg-down</div><div class="sg-name">하락 — 본문·표</div></div></div>
+<div class="sg-role"><i data-on="card" style="color:var(--finch-color-fg-down-vivid)">−가</i><div><div class="sg-name">fg-down-vivid</div><div class="sg-name">하락 — 18px+ bold</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-critical-weak);color:var(--finch-color-fg-critical)">!가</i><div><div class="sg-name">fg-critical</div><div class="sg-name">위험 — 색이 아니라 잉크</div></div></div>
+</div>
+<div class="sg-note"><b>등락은 두 단계입니다.</b> 리스트·표·캡션의 숫자는 <b>fg-up</b>/<b>fg-down</b>, 종목 상세 상단의 큰 가격만 <b>-vivid</b>. 한 값으로 합치면 13px 캡션에서 반드시 깨집니다. 그리고 색만으로 방향을 알리지 않습니다 — 부호와 화살표가 같이 옵니다.</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Background</b><span>면. 화면 배경은 basement(paper), 그 위 블록이 default(카드)입니다.</span></div>
+<div class="sg-panel sg-roles">
+<div class="sg-role"><i style="background:var(--finch-color-bg-layer-basement)"></i><div><div class="sg-name">bg-layer-basement</div><div class="sg-name">화면 배경 — paper</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-layer-default)"></i><div><div class="sg-name">bg-layer-default</div><div class="sg-name">카드·입력·내비·시트</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-layer-default-pressed)"></i><div><div class="sg-name">bg-layer-default-pressed</div><div class="sg-name">눌림</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-neutral-solid)"></i><div><div class="sg-name">bg-neutral-solid</div><div class="sg-name">주요 버튼 — 잉크 채움</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-neutral-solid-pressed)"></i><div><div class="sg-name">bg-neutral-solid-pressed</div><div class="sg-name">눌림</div></div></div>
+<div class="sg-role"><i data-on="paper" style="background:var(--finch-color-bg-transparent-selected)"></i><div><div class="sg-name">bg-transparent-selected</div><div class="sg-name">선택 — 알파</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-up-weak)"></i><div><div class="sg-name">bg-up-weak</div><div class="sg-name">상승 칩 배경</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-up-solid)"></i><div><div class="sg-name">bg-up-solid</div><div class="sg-name">양봉·상승 채움</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-down-weak)"></i><div><div class="sg-name">bg-down-weak</div><div class="sg-name">하락 칩 배경</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-down-solid)"></i><div><div class="sg-name">bg-down-solid</div><div class="sg-name">음봉·하락 채움</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-critical-weak)"></i><div><div class="sg-name">bg-critical-weak</div><div class="sg-name">경고 면</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-disabled)"></i><div><div class="sg-name">bg-disabled</div><div class="sg-name">비활성 면</div></div></div>
+<div class="sg-role"><i style="background:var(--finch-color-bg-skeleton)"></i><div><div class="sg-name">bg-skeleton</div><div class="sg-name">로딩 자리표시자</div></div></div>
+<div class="sg-role"><i data-on="paper" style="background:var(--finch-color-bg-overlay)"></i><div><div class="sg-name">bg-overlay</div><div class="sg-name">시트·모달 뒤 딤</div></div></div>
+<div class="sg-role"><i data-on="paper" style="background:var(--finch-color-bg-transparent-pressed)"></i><div><div class="sg-name">bg-transparent-pressed</div><div class="sg-name">면 없는 요소 눌림</div></div></div>
+</div>
+<div class="sg-note"><b>선택과 눌림 면은 APCA 바닥 아래입니다(Lc 0). 의도한 것입니다.</b> 이 면 하나로 상태를 알리지 않고 글자 무게나 테두리가 같이 움직입니다. <b>up/down weak 면</b>도 밝기는 흰 면과 거의 같고 색상으로만 구분되므로, 면 위 숫자가 방향을 말해야 합니다.</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Stroke</b><span>선. 흰 카드는 paper 위에서 Lc 0 이라 카드 경계는 전적으로 이 층이 만듭니다.</span></div>
+<div class="sg-panel sg-roles">
+<div class="sg-role"><i data-on="card" style="border-color:var(--finch-color-stroke-neutral-subtle);border-width:2px"></i><div><div class="sg-name">stroke-neutral-subtle</div><div class="sg-name">카드 안 항목 구분선</div></div></div>
+<div class="sg-role"><i data-on="card" style="border-color:var(--finch-color-stroke-neutral-weak);border-width:2px"></i><div><div class="sg-name">stroke-neutral-weak</div><div class="sg-name">카드·입력 외곽선</div></div></div>
+<div class="sg-role"><i data-on="card" style="border-color:var(--finch-color-stroke-neutral-contrast);border-width:2px"></i><div><div class="sg-name">stroke-neutral-contrast</div><div class="sg-name">선택된 칩·세그먼트</div></div></div>
+<div class="sg-role"><i data-on="card" style="border-color:var(--finch-color-stroke-critical-solid);border-width:2px"></i><div><div class="sg-name">stroke-critical-solid</div><div class="sg-name">에러 입력 테두리</div></div></div>
+<div class="sg-role"><i data-on="paper" style="outline:2px solid var(--finch-color-stroke-focus-ring);outline-offset:2px;border-color:transparent"></i><div><div class="sg-name">stroke-focus-ring</div><div class="sg-name">포커스 — offset 2px 필수</div></div></div>
+</div>
+<div class="sg-note"><b>포커스 링은 파랑이 아니라 잉크입니다.</b> 증권 화면에서 파란 링은 "하락"과 섞입니다. 대신 반드시 <b>outline-offset</b> 으로 바깥에 띄웁니다 — offset 0 이면 잉크 채움 버튼 위에서 링이 사라집니다.</div>
+</div>
+
+</section>
+
+
+<!-- ═══════════════ 아트보드 2 · 타이포와 형태 ═══════════════ -->
+<section class="sg">
+
+<div>
+<div class="sg-eyebrow">FINCH · SEED</div>
+<div class="sg-h1">타이포 · 형태 · 깊이</div>
+<div class="sg-lead">서체는 Gmarket Sans 서브셋(Light · Medium · Bold 셋)입니다. 굵기가 셋뿐이라 <b>@font-face</b> 가 범위로 받습니다 — 토큰의 600 은 Bold, 500·400 은 Medium 이 됩니다.</div>
+</div>
+
+<div class="sg-rule"></div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Typography</b><span>SEED 의 t1~t14 대신 의미 이름 8단. 숫자로 바꾸면 어느 단이 캡션인지가 이름에서 사라집니다.</span></div>
+<div class="sg-panel">
+<div class="sg-type"><div class="sg-name">display</div><div style="font-size:var(--finch-font-size-display);line-height:var(--finch-line-height-display);font-weight:var(--finch-font-weight-display)">삼성전자 71,900</div></div>
+<div class="sg-type"><div class="sg-name">title-1</div><div style="font-size:var(--finch-font-size-title-1);line-height:var(--finch-line-height-title-1);font-weight:var(--finch-font-weight-title-1)">오늘의 관심 종목</div></div>
+<div class="sg-type"><div class="sg-name">title-2</div><div style="font-size:var(--finch-font-size-title-2);line-height:var(--finch-line-height-title-2);font-weight:var(--finch-font-weight-title-2)">보유 종목 현황</div></div>
+<div class="sg-type"><div class="sg-name">title-3</div><div style="font-size:var(--finch-font-size-title-3);line-height:var(--finch-line-height-title-3);font-weight:var(--finch-font-weight-title-3)">근거 정리</div></div>
+<div class="sg-type"><div class="sg-name">body-1</div><div style="font-size:var(--finch-font-size-body-1);line-height:var(--finch-line-height-body-1)">판단은 당신이, 근거 정리는 Finch 가.</div></div>
+<div class="sg-type"><div class="sg-name">body-2</div><div style="font-size:var(--finch-font-size-body-2);line-height:var(--finch-line-height-body-2)">체결가 기준으로 계산한 평가 손익입니다.</div></div>
+<div class="sg-type"><div class="sg-name">label</div><div style="font-size:var(--finch-font-size-label);line-height:var(--finch-line-height-label);font-weight:var(--finch-font-weight-label)">매수하기</div></div>
+<div class="sg-type"><div class="sg-name">caption</div><div style="font-size:var(--finch-font-size-caption);line-height:var(--finch-line-height-caption);font-weight:var(--finch-font-weight-caption);color:var(--finch-color-fg-neutral-subtle)">15분 지연 시세 · 09:32 기준</div></div>
+</div>
+<div class="sg-note">숫자는 <b>tabular-nums</b> 입니다 — <span class="sg-num">71,900 / 11,000</span> 처럼 값이 갱신돼도 자리폭이 흔들리지 않습니다. 단위는 rem 이 아니라 px 입니다. 기준 뷰포트 390 고정이라 OS 글자 배율을 받지 않습니다.</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Radius</b><span>사다리가 아니라 컴포넌트 이름입니다. 다섯 개뿐입니다.</span></div>
+<div class="sg-panel sg-shapes">
+<div class="sg-shape"><i style="border-radius:var(--finch-radius-chip)"></i><div class="sg-name">chip · 칩 · 태그</div></div>
+<div class="sg-shape"><i style="border-radius:var(--finch-radius-control)"></i><div class="sg-name">control · 입력 · 버튼</div></div>
+<div class="sg-shape"><i style="border-radius:var(--finch-radius-card)"></i><div class="sg-name">card</div></div>
+<div class="sg-shape"><i style="border-radius:var(--finch-radius-ai)"></i><div class="sg-name">ai · AI Insight Box</div></div>
+<div class="sg-shape"><i style="border-radius:var(--finch-radius-sheet) var(--finch-radius-sheet) 0 0"></i><div class="sg-name">sheet · 바텀시트 상단</div></div>
+</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Shadow</b><span>기본은 그림자 없음. 그림자는 잉크가 아니라 빛의 부재라 순수 검정 알파입니다.</span></div>
+<div class="sg-panel sg-shapes sg-shadow">
+<div class="sg-shape"><i style="box-shadow:var(--finch-shadow-s1)"></i><div class="sg-name">s1</div></div>
+<div class="sg-shape"><i style="box-shadow:var(--finch-shadow-s2)"></i><div class="sg-name">s2</div></div>
+<div class="sg-shape"><i style="box-shadow:var(--finch-shadow-s3)"></i><div class="sg-name">s3</div></div>
+<div class="sg-shape"><i style="box-shadow:var(--finch-shadow-ai);border:1px solid var(--finch-color-stroke-neutral-weak);border-radius:var(--finch-radius-ai)"></i><div class="sg-name">ai (= s1)</div></div>
+<div class="sg-shape"><i style="box-shadow:var(--finch-shadow-float)"></i><div class="sg-name">float (= s3)</div></div>
+</div>
+<div class="sg-note"><b>AI 표면에는 색 토큰이 없습니다.</b> 모노톤에 "AI 색" 은 없고, 표면은 깊이로 구분합니다 — 카드와 같은 흰 면에 <b>stroke-neutral-weak</b> 외곽선, <b>shadow-ai</b>, <b>radius-ai</b>. 일반 카드와 획 무게·깊이·반경 셋이 한꺼번에 달라집니다. 근거가 확정되지 않은 카드는 테두리를 dashed 로 바꾸고 그림자를 뺍니다 — 그건 토큰이 아니라 형태입니다.</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Motion</b><span>마이크로 인터랙션 셋과 이징 하나.</span></div>
+<div class="sg-panel sg-kv">
+<div class="k">duration-fast</div><div class="v">눌림 · 색 전환</div><div class="sg-rail"><i style="animation-duration:var(--finch-duration-fast)"></i></div>
+<div class="k">duration-normal</div><div class="v">탭 · 아코디언</div><div class="sg-rail"><i style="animation-duration:var(--finch-duration-normal)"></i></div>
+<div class="k">duration-sheet</div><div class="v">바텀시트</div><div class="sg-rail"><i style="animation-duration:var(--finch-duration-sheet)"></i></div>
+<div class="k">timing-function-standard</div><div class="v">이징</div><div class="d">들어오고 나가는 곡선을 나누지 않습니다. 시트가 여러 종류일 때 할 일입니다</div>
+</div>
+<div class="sg-note">막대는 각 토큰을 <b>animation-duration</b> 으로 직접 받습니다. 값을 여기 적지 않았으므로 빠른 것이 실제로 빨리 끝납니다.</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Elevation</b><span>겹침 순서. 10 씩 띄운 건 예외가 사이에 들어와도 전체를 다시 매기지 않기 위해서입니다.</span></div>
+<div class="sg-panel" style="display:flex;gap:30px;align-items:center">
+<div class="sg-stack">
+<i style="z-index:var(--finch-z-base);left:0;top:0;background:var(--finch-color-bg-layer-default);color:var(--finch-color-fg-neutral-subtle)">base</i>
+<i style="z-index:var(--finch-z-sticky);left:44px;top:26px;background:var(--finch-color-bg-layer-default);box-shadow:var(--finch-shadow-s1);color:var(--finch-color-fg-neutral-subtle)">sticky</i>
+<i style="z-index:var(--finch-z-floating);left:88px;top:52px;background:var(--finch-color-bg-layer-default);box-shadow:var(--finch-shadow-float);color:var(--finch-color-fg-neutral-subtle)">floating</i>
+<i style="z-index:var(--finch-z-overlay);left:132px;top:78px;background:var(--finch-color-bg-neutral-solid);color:var(--finch-color-fg-neutral-inverted)">overlay</i>
+</div>
+<div class="sg-kv" style="flex:1;grid-template-columns:120px minmax(0,1fr)">
+<div class="k">z-base</div><div class="d">문서 흐름</div>
+<div class="k">z-sticky</div><div class="d">상단 내비 · 하단 탭바 · 하단 고정 CTA</div>
+<div class="k">z-floating</div><div class="d">플로팅 버튼</div>
+<div class="k">z-overlay</div><div class="d">딤 · 바텀시트 · 다이얼로그 · 토스트. 이 안의 순서는 포털 DOM 순서로 정합니다</div>
+</div>
+</div>
+<div class="sg-note">겹침 순서는 각 상자의 <b>z-index</b> 가 토큰을 직접 받아 만듭니다. 숫자를 여기 적지 않았으므로 순서를 바꾸면 그림이 따라 바뀝니다.</div>
+</div>
+
+</section>
+
+
+<!-- ═══════════════ 아트보드 3 · 컴포넌트 ═══════════════ -->
+<section class="sg">
+
+<div>
+<div class="sg-eyebrow">FINCH · SEED</div>
+<div class="sg-h1">컴포넌트</div>
+<div class="sg-lead"><b>frontend/src/shared/ui</b> 의 공용 컴포넌트를 같은 토큰으로 다시 그린 것입니다. 색·반경·글자 크기가 실제 화면과 같은 곳에서 옵니다.</div>
+</div>
+
+<div class="sg-rule"></div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Button</b><span>높이 54px — 최소 터치 영역 44px 를 넘기고 주요 CTA 로도 충분합니다. 반경은 control.</span></div>
+<div class="sg-panel" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px">
+<div><button class="sg-btn" data-v="primary">매수하기</button><div class="sg-name" style="margin-top:8px">primary — 잉크 채움 + paper 글자. 브랜드 액센트가 아닙니다</div></div>
+<div><button class="sg-btn" data-v="secondary">관심 종목에 추가</button><div class="sg-name" style="margin-top:8px">secondary — 흰 면 + stroke-neutral-weak</div></div>
+<div><button class="sg-btn" data-v="kakao">카카오로 시작하기</button><div class="sg-name" style="margin-top:8px">kakao — 토큰 밖 유일한 색. 카카오 가이드가 강제합니다</div></div>
+<div><button class="sg-btn" data-v="disabled">매수하기</button><div class="sg-name" style="margin-top:8px">disabled — opacity 가 아니라 전용 색. opacity 는 자식 아이콘까지 흐려져 사라집니다</div></div>
+</div>
+<div class="sg-note">비활성 면이 <b>gray-400</b> 인 이유: 하단 고정 CTA 는 paper 위에도 놓입니다. 한 단계 밝은 면은 paper 위에서 버튼 모양이 배경에 녹습니다.</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>Card · Skeleton</b><span>카드는 그림자를 쓰지 않습니다. 흰 면은 paper 위에서 Lc 0 이라 경계는 테두리가 만듭니다.</span></div>
+<div class="sg-panel" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px">
+
+<div>
+<div class="sg-card">
+<div style="display:flex;justify-content:space-between;align-items:baseline">
+<div style="font-size:var(--finch-font-size-body-1);line-height:var(--finch-line-height-body-1);font-weight:600">삼성전자</div>
+<div class="sg-num" style="font-size:var(--finch-font-size-body-1);font-weight:600">71,900</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px">
+<div style="font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-neutral-subtle)">005930 · 10주</div>
+<div class="sg-num" style="font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-up)">+1,400 (+1.98%)</div>
+</div>
+<div style="height:1px;background:var(--finch-color-stroke-neutral-subtle);margin:14px 0"></div>
+<div style="display:flex;justify-content:space-between;align-items:baseline">
+<div style="font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-neutral-subtle)">SK하이닉스</div>
+<div class="sg-num" style="font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-down)">−2,500 (−1.31%)</div>
+</div>
+</div>
+<div class="sg-name" style="margin-top:8px">Card — 카드 외곽선은 stroke-neutral-weak, 카드 <i>안</i> 구분선은 stroke-neutral-subtle</div>
+</div>
+
+<div>
+<div class="sg-card">
+<div class="sg-skel" style="height:20px;width:45%"></div>
+<div class="sg-skel" style="height:14px;width:70%;margin-top:12px"></div>
+<div class="sg-skel" style="height:14px;width:55%;margin-top:8px"></div>
+<div style="height:1px;background:var(--finch-color-stroke-neutral-subtle);margin:16px 0"></div>
+<div class="sg-skel" style="height:14px;width:62%"></div>
+</div>
+<div class="sg-name" style="margin-top:8px">Skeleton — 스피너 대신 같은 크기를 차지해 레이아웃이 흔들리지 않게 합니다. 한 단계 더 진하면 자리표시자가 실제 내용보다 무거워집니다</div>
+</div>
+
+</div>
+</div>
+
+<div class="sg-sec">
+<div class="sg-sec-head"><b>PageMain</b><span>390px 에서 만들고 320px 에서 안 깨지는지 본 다음 넓은 화면을 봅니다. 데스크톱 전용 레이아웃은 만들지 않습니다.</span></div>
+<div class="sg-panel" style="display:flex;gap:26px;align-items:flex-start">
+
+<div>
+<div class="sg-phone">
+<div class="sg-main">
+<div style="font-size:var(--finch-font-size-title-2);line-height:var(--finch-line-height-title-2);font-weight:var(--finch-font-weight-title-2)">내 자산</div>
+<div class="sg-card">
+<div style="font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-neutral-subtle)">총 평가금액</div>
+<div class="sg-num" style="font-size:var(--finch-font-size-display);line-height:var(--finch-line-height-display);font-weight:var(--finch-font-weight-display);margin-top:4px">10,482,300</div>
+<div class="sg-num" style="font-size:var(--finch-font-size-body-2);color:var(--finch-color-fg-up-vivid);font-weight:600;margin-top:2px">+482,300 (+4.82%)</div>
+</div>
+<div class="sg-card" style="border-color:var(--finch-color-stroke-neutral-weak);border-radius:var(--finch-radius-ai);box-shadow:var(--finch-shadow-ai)">
+<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--finch-color-fg-neutral-subtle)">FINCH AI · 오늘의 정리</div>
+<div style="font-size:var(--finch-font-size-body-2);line-height:var(--finch-line-height-body-2);font-weight:600;margin-top:8px">반도체 비중이 62% 입니다. 어제보다 4%p 늘었습니다.</div>
+<div style="font-size:var(--finch-font-size-caption);line-height:var(--finch-line-height-caption);color:var(--finch-color-fg-neutral-subtle);margin-top:8px">판단은 당신이, 근거 정리는 Finch 가.</div>
+</div>
+<button class="sg-btn" data-v="primary">매수하기</button>
+</div>
+</div>
+<div class="sg-name" style="margin-top:8px">390 × 기준 뷰포트. 좌우 여백 20px, 하단 여백에 safe-area-inset-bottom 을 더합니다</div>
+</div>
+
+<div class="sg-note" style="flex:1">
+<b>AI 박스는 색이 아니라 깊이로 구분됩니다.</b> 위 화면에서 일반 카드와 AI 박스는 같은 흰 면이지만 외곽선 무게·그림자·반경이 다릅니다. AI 카드에 브랜드 마크를 붙이지 않습니다 — 증권 앱 톤이 깨집니다.
+<br><br>
+<b>큰 가격에만 -vivid 를 씁니다.</b> 총 평가금액 아래 등락은 15px 600 이라 vivid 를 쓸 수 있는 경계에 있고, 카드 리스트의 13px 캡션은 반드시 진한 쪽(fg-up / fg-down)입니다.
+<br><br>
+<b>하단 고정 CTA 는 safe-area 를 더합니다.</b> 홈 인디케이터가 있는 기기에서 마지막 버튼이 그 밑에 깔립니다. 페이지마다 손으로 적으면 빠뜨린 화면에서만 조용히 어긋납니다.
+</div>
+
+</div>
+</div>
+
+<div style="border-left:3px solid var(--finch-color-stroke-neutral-contrast);background:var(--finch-color-bg-layer-default);padding:18px 22px;border-radius:0 12px 12px 0">
+<div class="sg-note"><b>이 페이지가 안 썩는 이유.</b> 색·타이포·반경·그림자·모션이 전부 <b>../frontend/src/styles/tokens.css</b> 에서 <b>var()</b> 로 옵니다. 토큰을 지우면 그 자리가 눈에 보이게 비고, 값을 바꾸면 여기가 같이 바뀝니다. 문서로 옮겨 적은 값은 없습니다. 규칙과 근거는 <b>docs/design/finch-seed.md</b> 에 있습니다.</div>
+</div>
+
+</section>
+
+</x-dc>
+</body>
+</html>

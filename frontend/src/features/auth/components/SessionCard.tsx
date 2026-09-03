@@ -6,7 +6,7 @@ import { useMe } from '../api/useMe';
 import { useAuthSession } from '../model/useAuthSession';
 
 function SessionLabel({ children }: { children: string }) {
-  return <p className="text-sm text-text-secondary">{children}</p>;
+  return <p className="text-sm text-fg-neutral-subtle">{children}</p>;
 }
 
 function PendingCard() {
@@ -22,7 +22,7 @@ function SignedOutCard() {
   return (
     <Card>
       <SessionLabel>세션</SessionLabel>
-      <p className="mt-1 text-lg font-semibold text-text-primary">비로그인</p>
+      <p className="mt-1 text-lg font-semibold text-fg-neutral">비로그인</p>
       <LinkButton to="/login" className="mt-3">
         로그인하러 가기
       </LinkButton>
@@ -46,7 +46,7 @@ function SignedInCard() {
     return (
       <Card>
         <SessionLabel>세션</SessionLabel>
-        <p className="mt-1 text-sm text-text-secondary">{error.message}</p>
+        <p className="mt-1 text-sm text-fg-neutral-subtle">{error.message}</p>
       </Card>
     );
   }
@@ -54,13 +54,13 @@ function SignedInCard() {
   return (
     <Card>
       <SessionLabel>세션</SessionLabel>
-      <p className="mt-1 text-lg font-semibold text-text-primary">
+      <p className="mt-1 text-lg font-semibold text-fg-neutral">
         {data.nickname}
       </p>
       <dl className="mt-4 space-y-2 text-sm">
         <div className="flex items-baseline justify-between">
-          <dt className="text-text-secondary">가입일</dt>
-          <dd className="font-medium text-text-primary">
+          <dt className="text-fg-neutral-subtle">가입일</dt>
+          <dd className="font-medium text-fg-neutral">
             {data.joinedAt.slice(0, 10)}
           </dd>
         </div>

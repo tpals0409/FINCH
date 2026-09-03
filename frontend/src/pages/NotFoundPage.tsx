@@ -12,10 +12,10 @@ import { PageMain } from '@/shared/ui/PageMain';
 export function NotFoundPage() {
   return (
     <PageMain className="flex flex-col justify-center">
-      <h1 className="text-lg font-semibold text-text-primary">
+      <h1 className="text-lg font-semibold text-fg-neutral">
         찾을 수 없는 화면입니다
       </h1>
-      <p className="mt-2 text-sm text-text-secondary">
+      <p className="mt-2 text-sm text-fg-neutral-subtle">
         주소가 바뀌었거나 잘못 입력된 경로입니다
       </p>
       <div className="mt-6">

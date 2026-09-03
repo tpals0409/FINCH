@@ -1,0 +1,298 @@
+/*
+ * tokens.css — FINCH SEED 토큰. 앱 색·깊이·계층의 단일 출처다.
+ *
+ * 값의 출처는 발표자료(FINCH-presentation)의 styles/tokens.css 이고,
+ * 구조는 계획/Design.md(당근 SEED)의 2절 네이밍을 따른다: --finch-{type}-{category}-{name}.
+ * 색 역할 토큰의 구조는 Property(fg/bg/stroke) · Role · Variant · State 다.
+ *
+ * 두 층으로 나뉜다.
+ *   1. Palette — 사다리. 값을 직접 적는 유일한 곳이다.
+ *   2. 역할    — 팔레트 별칭. 컴포넌트가 참조하는 것은 이쪽뿐이다.
+ * 팔레트를 화면에서 직접 쓰지 않는다. 그래서 팔레트는 index.css 의 별칭 층에도
+ * 올리지 않는다 — 올리면 Tailwind 가 text-palette-gray-700 유틸리티를 만들고,
+ * 존재하는 유틸리티는 언젠가 쓰인다.
+ *
+ * 무채색 모노톤이다. 유채색은 시세 방향(상승 적·하락 청) 하나뿐이고,
+ * 그 밖의 구분 — 브랜드·위험·AI·선택 — 은 잉크의 무게와 형태와 깊이로 한다.
+ * 브랜드 색은 없다. Finch 의 브랜드는 잉크의 무게다.
+ *
+ * 라이트 모드 하나만 쓴다. prefers-color-scheme·data-theme 분기를 새로 넣지 않는다.
+ * 기준 뷰포트 390px 고정이라 길이는 px 다. rem·clamp 를 쓰지 않는다.
+ *
+ * 대비는 눈이 아니라 tools/check-contrast.cjs 로 검증한다 (APCA).
+ * 아래 주석의 Lc 값은 그 도구가 낸 숫자다.
+ */
+:root {
+  /* ═══════════ 1. Palette ═══════════ */
+
+  /* gray — 무채색 모노톤. 200 paper · 400 외곽선 · 700 캡션 · 900 반전 표면 · 1000 ink 가
+     지정값이고 나머지는 oklab 보간이다. 중간 단계가 필요하면 손으로 보간하지 말고
+     발표자료의 tools/ladder.cjs 로 다시 뽑는다. */
+  --finch-color-palette-gray-00: #ffffff;
+  --finch-color-palette-gray-100: #fbfbfb;
+  --finch-color-palette-gray-200: #f7f7f8;
+  --finch-color-palette-gray-300: #dfe1e5;
+  --finch-color-palette-gray-400: #c8ccd2;
+  --finch-color-palette-gray-500: #a8adb4;
+  --finch-color-palette-gray-600: #8a8f98;
+  --finch-color-palette-gray-700: #5b616b;
+  --finch-color-palette-gray-800: #42474f;
+  --finch-color-palette-gray-900: #2a2e35;
+  --finch-color-palette-gray-1000: #121417;
+
+  /* up — 상승. 국내 관례로 빨강이다. 미국식과 반대다. 600 이 원색, 700 이 본문용.
+     이 두 단계를 나누는 게 핵심이다. 하나로 합치면 13px 캡션에서 반드시 깨진다. */
+  --finch-color-palette-up-100: #fef0ee;
+  --finch-color-palette-up-200: #ffd9d4;
+  --finch-color-palette-up-300: #fec1ba;
+  --finch-color-palette-up-400: #fb9c91;
+  --finch-color-palette-up-500: #f17166;
+  --finch-color-palette-up-600: #e6443d;
+  --finch-color-palette-up-700: #a01015;
+  --finch-color-palette-up-800: #81020a;
+  --finch-color-palette-up-900: #610005;
+  --finch-color-palette-up-1000: #500003;
+
+  /* down — 하락. 파랑. 600 원색 · 700 본문. */
+  --finch-color-palette-down-100: #edf4ff;
+  --finch-color-palette-down-200: #d3e2fe;
+  --finch-color-palette-down-300: #b8d0fa;
+  --finch-color-palette-down-400: #90b3f2;
+  --finch-color-palette-down-500: #6693e8;
+  --finch-color-palette-down-600: #3f75dd;
+  --finch-color-palette-down-700: #234fa6;
+  --finch-color-palette-down-800: #183d86;
+  --finch-color-palette-down-900: #0c2b69;
+  --finch-color-palette-down-1000: #072257;
+
+  /* static — 알파는 8자리 hex. 불투명 회색과 달리 알파는 어떤 면 위에 놓여도
+     아래를 같은 양만큼 눌러서 흰 카드에서도 paper 에서도 살아남는다.
+     white-alpha 사다리는 두지 않는다 — 반전 표면(토스트·night)이 앱에 없다.
+     생기면 그때 발표자료에서 가져온다. */
+  --finch-color-palette-static-white: #ffffff;
+  --finch-color-palette-static-black: #000000;
+  --finch-color-palette-static-black-alpha-100: #00000007;
+  --finch-color-palette-static-black-alpha-200: #0000000c;
+  --finch-color-palette-static-black-alpha-300: #00000010;
+  --finch-color-palette-static-black-alpha-400: #00000021;
+  --finch-color-palette-static-black-alpha-500: #0000002c;
+  --finch-color-palette-static-black-alpha-600: #0000004c;
+  --finch-color-palette-static-black-alpha-700: #00000074;
+  --finch-color-palette-static-black-alpha-800: #000000a2;
+  --finch-color-palette-static-black-alpha-900: #000000d0;
+  --finch-color-palette-static-black-alpha-1000: #000000e3;
+
+  /* ═══════════ 2. Foreground — 글자·아이콘 ═══════════ */
+
+  /* 잉크 사다리 1000 → 500. 아래로 갈수록 "읽지 않아도 되는" 쪽이다. */
+  /* 본문·제목. paper 100.3 / 카드 105.1 */
+  --finch-color-fg-neutral: var(--finch-color-palette-gray-1000);
+  /* 보조 문장. paper 86.9 */
+  --finch-color-fg-neutral-muted: var(--finch-color-palette-gray-800);
+  /* 캡션·3차 텍스트. paper 76.4 */
+  --finch-color-fg-neutral-subtle: var(--finch-color-palette-gray-700);
+  /* ink 면 위 글자. 107.2 */
+  --finch-color-fg-neutral-inverted: var(--finch-color-palette-gray-00);
+
+  /* paper 위 55.1 로 본문 기준(90)에 한참 못 미친다. 같은 내용이 다른 곳에도 있는
+     글자에만 쓴다 — 입력 플레이스홀더, 비활성 라벨, 읽지 않아도 되는 메타.
+     사용자가 읽어야 하는 문장은 fg-neutral-subtle 이다. */
+  --finch-color-fg-placeholder: var(--finch-color-palette-gray-600);
+
+  /* 비활성 글자. 발표자료는 gray-500 이지만 그건 gray-200 면 위에 놓일 때 얘기다(39.8).
+     앱의 비활성 CTA 면은 한 단계 진한 gray-400 이라 gray-500 을 얹으면 14.8 로 무너진다.
+     한 단계 내려 gray-600 이면 30.0 — Design.md 14 의 비활성 기준선 30 을 정확히 넘는다.
+     여유가 0.05 뿐이다. 사다리를 다시 뽑으면 이 쌍부터 확인한다. */
+  --finch-color-fg-disabled: var(--finch-color-palette-gray-600);
+
+  /* 위험. 모노톤에서 위험은 색이 아니라 잉크 채움과 굵기다. 등락 적색을 재사용하면
+     "떨어졌다" 로 오독되고, 세 번째 빨강을 만들면 상승 적색과 다시 헷갈린다.
+     폼 에러는 세 가지를 함께 바꿔서 알린다 — 입력 테두리를 stroke-critical-solid 로,
+     메시지를 이 색 + bold 로 주변 보조문보다 무겁게, 그리고 아이콘과 문구.
+     -contrast 짝을 두지 않는다. 모노톤에서는 weak 면 위든 paper 위든 같은 잉크다. */
+  --finch-color-fg-critical: var(--finch-color-palette-gray-1000);
+
+  /* ── 시세 방향 — 유일한 유채색 ──
+     본문·캡션·표 안의 숫자는 700 단계(paper 81.4). 종목 상세 상단의 큰 가격처럼
+     18px 이상 굵게 나오는 곳만 vivid(600, paper 61.2)를 쓴다. */
+  --finch-color-fg-up: var(--finch-color-palette-up-700);
+  --finch-color-fg-up-vivid: var(--finch-color-palette-up-600);
+  --finch-color-fg-down: var(--finch-color-palette-down-700);
+  --finch-color-fg-down-vivid: var(--finch-color-palette-down-600);
+
+  /* 보합. 값은 fg-neutral-subtle 과 같다 — 방향이 없는 수치는 보조 잉크 무게로 읽는 게 맞다.
+     이름을 따로 두는 건 up/down/flat 을 한 벌로 참조하기 위해서다.
+     fg-neutral 계열과 이름이 겹치지 않게 neutral 이 아니라 flat 이다.
+     한 단계 연한 gray-600 은 55.1 이라 숫자에 쓸 수 없다. */
+  --finch-color-fg-flat: var(--finch-color-palette-gray-700);
+
+  /* ═══════════ 3. Background — 면 ═══════════ */
+
+  /* 레이어. 단일 모드라 floating(시트·모달)과 default(카드)가 영원히 같은 값이다.
+     그래서 floating 토큰을 따로 두지 않는다 — 시트도 bg-layer-default 를 쓴다.
+     떠 있다는 건 색이 아니라 shadow-float 와 z-overlay 가 말한다.
+
+     흰 카드는 paper 위에서 APCA Lc 0 이다. 즉 면 색만으로는 카드 경계가 안 보인다.
+     경계는 stroke 가 만든다. 카드에 테두리를 빼지 않는다. */
+  /* paper — 화면 배경 */
+  --finch-color-bg-layer-basement: var(--finch-color-palette-gray-200);
+  /* 카드·입력·내비 표면 */
+  --finch-color-bg-layer-default: var(--finch-color-palette-gray-00);
+  --finch-color-bg-layer-default-pressed: var(--finch-color-palette-gray-100);
+
+  /* 잉크 채움. 주요 버튼이 여기 온다. 액센트 채움이 아니라 ink 채움에 paper 글자다. */
+  --finch-color-bg-neutral-solid: var(--finch-color-palette-gray-1000);
+  --finch-color-bg-neutral-solid-pressed: var(--finch-color-palette-gray-900);
+
+  /* 불투명 회색 면(gray-200)은 두지 않는다. paper 위에서 Lc 0 으로 사라지기 때문이다.
+     카드 위 회색 칩·선택 면은 전부 알파로 간다. */
+  --finch-color-bg-transparent-pressed: var(
+    --finch-color-palette-static-black-alpha-100
+  );
+  --finch-color-bg-transparent-selected: var(
+    --finch-color-palette-static-black-alpha-200
+  );
+
+  /* 위험 면. solid 를 따로 두지 않는다 — 모노톤에서 파괴적 확인 버튼의 채움은
+     주요 버튼과 같은 잉크다. 구분은 문구와 이 weak 면이 한다. */
+  /* 위 잉크 87.3 */
+  --finch-color-bg-critical-weak: var(--finch-color-palette-gray-300);
+
+  /* 시세 칩·캔들. weak 면은 밝기가 흰 면과 거의 같아 APCA 로는 0 이 나온다 —
+     색상(hue)으로만 구분되는 면이라는 뜻이다. 그래서 이 면 하나로 방향을 알리지 않는다.
+     안에 부호(+/−)와 fg-up/fg-down 숫자가 반드시 같이 온다. */
+  --finch-color-bg-up-solid: var(--finch-color-palette-up-600);
+  --finch-color-bg-up-weak: var(--finch-color-palette-up-100);
+  --finch-color-bg-down-solid: var(--finch-color-palette-down-600);
+  --finch-color-bg-down-weak: var(--finch-color-palette-down-100);
+
+  /* 비활성 면. opacity 가 아니라 전용 색을 쓴다 —
+     opacity 는 겹친 자식 요소까지 함께 흐려져 아이콘·스피너가 사라진다.
+     발표자료의 gray-200 은 흰 슬라이드 카드 위에만 놓이지만, 앱의 하단 고정 CTA 는
+     paper(=gray-200) 위에도 놓인다. 그대로 쓰면 Lc 0, 버튼 모양이 배경에 녹는다.
+     gray-300 도 paper 위 10.6 으로 경계 기준 15 에 못 미친다. gray-400 이 22.8 로
+     테두리 없이도 버튼 모양이 남는 첫 단계다. */
+  --finch-color-bg-disabled: var(--finch-color-palette-gray-400);
+
+  /* 로딩 자리표시자. 흰 카드 위 15.3 — 경계 기준 15 를 겨우 넘는다.
+     한 단계 더 내리면 자리표시자가 실제 내용보다 무거워져 로딩 화면이 더 시끄러워진다. */
+  --finch-color-bg-skeleton: var(--finch-color-palette-gray-300);
+
+  /* 바텀시트·모달 뒤 딤. */
+  --finch-color-bg-overlay: var(--finch-color-palette-static-black-alpha-700);
+
+  /* ═══════════ 4. Stroke — 선 ═══════════ */
+
+  /* subtle 은 발표자료에서 알파-200 이지만 앱에서는 불투명 gray-300 이다.
+     알파-200 은 흰 카드 위에서 Lc 0 — 카드 안 반복 항목 구분선이 통째로 사라진다.
+     발표자료의 구분선은 paper 위에만 놓여서 문제가 안 됐다. */
+  /* 카드 안 항목 구분선. 카드 위 15.3 */
+  --finch-color-stroke-neutral-subtle: var(--finch-color-palette-gray-300);
+  /* 카드·입력·아웃라인 버튼 외곽선. paper 22.8 */
+  --finch-color-stroke-neutral-weak: var(--finch-color-palette-gray-400);
+  /* 선택된 칩·세그먼트 */
+  --finch-color-stroke-neutral-contrast: var(--finch-color-palette-gray-1000);
+  /* 에러 상태 입력 테두리 */
+  --finch-color-stroke-critical-solid: var(--finch-color-palette-gray-1000);
+
+  /* 포커스 링. 발표자료는 down-600(파랑)을 쓰지만 증권 화면에서 파란 링은 "하락"과 섞인다.
+     모노톤에 유채색 링을 하나 더 들이는 대신 잉크로 간다.
+     반드시 outline-offset 으로 요소 바깥에 띄운다. offset 0 이면 ink 채움 버튼 위에서
+     링과 버튼이 같은 색이라 사라진다. 2px 링 + 2px offset 이 기본이다. */
+  --finch-color-stroke-focus-ring: var(--finch-color-palette-gray-1000);
+
+  /* ═══════════ 5. Shadow ═══════════ */
+  /* 기본은 그림자 없음. 발표자료 s1~s3 사다리를 그대로 쓴다.
+     그림자는 잉크가 아니라 빛의 부재라 순수 검정 알파로 적는다.
+
+     Sprint 1 의 --shadow-float(0 6px 20px 0 #00000014)는 사다리 밖 값이었다.
+     한 값이라도 사다리를 벗어나면 사다리가 출처 구실을 못 해서 s3 으로 옮겼다.
+     블러는 20px → 16px 로 줄고 농도는 8% → 12% 로 오른다. */
+  --finch-shadow-s1: 0 1px 4px 0 #00000014;
+  --finch-shadow-s2: 0 2px 10px 0 #0000001a;
+  --finch-shadow-s3: 0 4px 16px 0 #0000001f;
+
+  /* AI 표면에는 색 토큰을 두지 않는다. 모노톤에 "AI 색" 은 없고, 표면은 깊이로 구분한다 —
+     bg-layer-default 면에 stroke-neutral-weak 외곽선, 여기에 s1 과 radius-ai(18px).
+     일반 카드는 stroke-neutral-subtle 에 그림자가 없으니 획 무게·깊이·반경 셋이
+     한꺼번에 달라진다. 근거가 확정되지 않은 카드는 테두리를 dashed 로 바꾸고 그림자를 뺀다 —
+     그건 토큰이 아니라 형태다. AI 카드에 브랜드 마크를 붙이지 않는다. */
+  --finch-shadow-ai: var(--finch-shadow-s1);
+  /* 플로팅 버튼·바텀시트·스티키 레이어 */
+  --finch-shadow-float: var(--finch-shadow-s3);
+
+  /* ═══════════ 6. Dimension ═══════════ */
+  /* 없다. 발표자료의 4px 그리드는 Tailwind 기본 4px 스케일과 1:1 로 맞아서
+     SEED 의 x0_5~x30 을 만들지 않는다. 만들면 p-5 와 space-5 가 같은 값으로 둘 다 생긴다.
+     간격은 Tailwind 기본 유틸리티로 적는다. */
+
+  /* ═══════════ 7. Typography ═══════════ */
+  /* SEED 의 t1~t14 숫자 스케일 대신 의미 이름 8단을 쓴다. 숫자로 바꾸면 어느 단이
+     캡션이고 어느 단이 제목인지가 이름에서 사라지고, 화면을 읽을 때마다 표를 봐야 한다.
+     rem 이 아니라 px 다 — 기준 뷰포트 390 고정이라 OS 글자 크기 배율을 받지 않는다.
+
+     굵기는 서브셋 woff2 세 개(Light 100–399 · Medium 400–599 · Bold 600–900)로 매핑된다.
+     여기 600 은 Bold, 500·400 은 Medium 이다. 새 굵기를 넣을 때 어느 구간에 떨어지는지 본다 —
+     550 과 600 은 다른 얼굴이다. */
+  --finch-font-family-sans:
+    'Gmarket Sans', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    system-ui, sans-serif;
+
+  --finch-font-size-display: 36px;
+  --finch-line-height-display: 44px;
+  --finch-font-weight-display: 700;
+
+  --finch-font-size-title-1: 28px;
+  --finch-line-height-title-1: 36px;
+  --finch-font-weight-title-1: 700;
+
+  --finch-font-size-title-2: 22px;
+  --finch-line-height-title-2: 30px;
+  --finch-font-weight-title-2: 700;
+
+  --finch-font-size-title-3: 18px;
+  --finch-line-height-title-3: 26px;
+  --finch-font-weight-title-3: 600;
+
+  --finch-font-size-body-1: 16px;
+  --finch-line-height-body-1: 24px;
+
+  --finch-font-size-body-2: 15px;
+  --finch-line-height-body-2: 22px;
+
+  --finch-font-size-label: 14px;
+  --finch-line-height-label: 20px;
+  --finch-font-weight-label: 500;
+
+  --finch-font-size-caption: 13px;
+  --finch-line-height-caption: 18px;
+  --finch-font-weight-caption: 400;
+
+  /* ═══════════ 8. Radius ═══════════ */
+  /* SEED 의 r0_5~r6 사다리를 쓰지 않는다. 앱이 쓰는 반경은 다섯 개뿐이고,
+     각각 어느 컴포넌트의 것인지가 이름에 남아야 화면에서 고를 때 헷갈리지 않는다. */
+  --finch-radius-chip: 10px;
+  --finch-radius-control: 14px; /* 입력 · 세그먼티드 · 버튼 */
+  --finch-radius-card: 16px;
+  --finch-radius-ai: 18px; /* AI Insight Box */
+  --finch-radius-sheet: 24px; /* 바텀시트 상단 */
+
+  /* ═══════════ 9. Motion ═══════════ */
+  /* 발표자료는 장면 타이밍이라 d1~d6 이지만 앱은 마이크로 인터랙션 셋뿐이다.
+     이징도 하나다 — 들어오고 나가는 곡선을 나누는 건 시트가 여러 종류일 때 얘기다. */
+  --finch-duration-fast: 140ms; /* 눌림 · 색 전환 */
+  --finch-duration-normal: 200ms; /* 탭 · 아코디언 */
+  --finch-duration-sheet: 260ms; /* 바텀시트 */
+  --finch-timing-function-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ═══════════ 10. Elevation ═══════════ */
+  /* Design.md 12 는 전역 z 스케일을 두지 말라고 하지만, 그건 포털 DOM 순서를 통제할 수 있는
+     컴포넌트 라이브러리 얘기다. 앱에는 상단 내비·하단 탭바·하단 고정 CTA·FAB·바텀시트가
+     서로 다른 트리에서 자라므로 겹침 순서를 한 곳에 적어야 한다. 네 단계로 끝낸다.
+     10 씩 띄운 건 일회성 예외가 사이에 들어와도 전체를 다시 매기지 않기 위해서다.
+     딤·시트·다이얼로그·토스트는 모두 overlay 층이고 그 안의 순서는 포털 DOM 순서로 정한다. */
+  --finch-z-base: 0; /* 문서 흐름 */
+  --finch-z-sticky: 10; /* 상단 내비 · 하단 탭바 · 하단 고정 CTA */
+  --finch-z-floating: 20; /* 플로팅 버튼 */
+  --finch-z-overlay: 30; /* 딤 · 바텀시트 · 다이얼로그 · 토스트 */
+}
