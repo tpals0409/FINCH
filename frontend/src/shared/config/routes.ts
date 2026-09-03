@@ -53,10 +53,14 @@ export const ROUTE_PATTERNS = {
  * 하단 탭 바에 들어가는 4개 (ia.md §3).
  * 탭을 5개 이상 두면 44x44px 터치 영역 기준이 깨진다.
  * **탭 바 컴포넌트 자체는 티켓 S15P21A101-28 이 만든다.** 여기 있는 것은 목록뿐이다.
+ *
+ * **2026-09-03 개정에서 4번째 자리가 `AI`(`/chat`) 에서 `내 정보`(`/my`) 로 바뀌었다.**
+ * AI 는 보던 화면의 맥락을 물고 들어가는 플로팅 버튼으로 옮겨졌으므로 탭에 별도
+ * 진입점을 둘 이유가 없다 (ia.md §3). `/chat` 라우트 자체는 남아 있고 탭 밖이다.
  */
 export const BOTTOM_TAB_ROUTES = [
   { label: '홈', path: ROUTES.home },
   { label: '탐색', path: ROUTES.search },
   { label: '포트폴리오', path: ROUTES.portfolio },
-  { label: 'AI', path: ROUTES.chat },
+  { label: '내 정보', path: ROUTES.my },
 ] as const;
