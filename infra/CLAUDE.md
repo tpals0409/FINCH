@@ -62,7 +62,7 @@ SSAFY 시절의 GitLab CI · Jenkins 파일은 Sprint 3 에서 전부 지웠다.
 
 ## 자주 틀리는 지점
 
-**포트는 컨테이너 내부 기준이다.** backend 8080, ai 8000, frontend 80. compose 가 호스트에 여는 건 nginx 의 **80 하나뿐이다** (`docker-compose.yml` 의 `"80:80"`, `nginx.conf` 의 `listen 80`). 443 은 TLS 블록과 함께 Sprint 3 에서 사라졌다 — TLS 는 여기서 끊지 않는다.
+**포트는 컨테이너 내부 기준이다.** backend 8080, ai 8000, frontend **8080**(nginxinc/nginx-unprivileged — k8s 기본 securityContext 가 non-root UID 1000 이라 1024 미만 포트를 못 열어 Sprint 3 후반에 80 에서 옮겼다). compose 가 호스트에 여는 건 nginx 하나뿐이고 `"80:8080"` 으로 매핑한다 (`docker-compose.yml`, `nginx.conf` 의 `listen 8080`). 443 은 TLS 블록과 함께 Sprint 3 에서 사라졌다 — TLS 는 여기서 끊지 않는다.
 
 **postgres 는 두 대다.** `postgres-backend`(postgres:17) 와 `postgres-ai`(pgvector/pgvector:pg17). 이미지가 다르니 합치지 않는다.
 

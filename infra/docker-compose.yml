@@ -29,8 +29,9 @@ services:
     mem_limit: 256m
     # TLS 는 더 이상 여기서 끊지 않는다 (nginx.conf 참고). 배포는 k8s 의 Ingress 가 맡고
     # 로컬은 평문 80 이면 충분하다. 인증서 마운트도 같이 사라졌다.
+    # 컨테이너는 8080 을 듣는다 (unprivileged nginx, nginx.conf 참고). 호스트는 그대로 80.
     ports:
-      - "80:80"
+      - "80:8080"
     depends_on:
       - backend
       - ai
