@@ -1,11 +1,9 @@
-import { Link } from 'react-router-dom';
-
 import { ROUTES } from '@/shared/config/routes';
 import { formatKstDateTime } from '@/shared/lib/formatDate';
 import { formatKrw } from '@/shared/lib/formatNumber';
 import { PAYMENT_METHOD_LABEL } from '@/shared/lib/paymentMethod';
 import type { DepositResponse } from '@/shared/types/deposit';
-import { Button } from '@/shared/ui/Button';
+import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 
 /**
@@ -52,12 +50,12 @@ export function DepositDone({ deposit, onDepositAgain }: Props) {
         <Button onClick={onDepositAgain} variant="secondary">
           더 충전하기
         </Button>
-        <Link
-          to={ROUTES.portfolio}
-          className="flex min-h-[54px] w-full items-center justify-center rounded-md bg-bg-neutral-solid text-label text-fg-neutral-inverted"
-        >
-          잔고로 돌아가기
-        </Link>
+        {/*
+          손으로 Link 에 버튼 클래스를 붙이지 않는다. shared/ui 의 LinkButton 이 같은 모양을
+          이미 갖고 있고, 직접 적으면 비활성 색·전환처럼 나중에 Button 에 더해지는 것을
+          이 자리만 못 받는다.
+        */}
+        <LinkButton to={ROUTES.portfolio}>잔고로 돌아가기</LinkButton>
       </div>
     </Card>
   );

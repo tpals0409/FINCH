@@ -53,6 +53,15 @@ export function AmountStep({
 
       <label className="mt-5 block">
         <span className="sr-only">충전 금액</span>
+        {/*
+          `focus:outline-none` 을 두지 않는다. 있어도 **효과가 없었다** — 실측한 computed 값이
+          `outline: rgb(18,20,23) solid 2px` 로 링이 살아 있었다. 캐스케이드 레이어 때문이다:
+          `@layer utilities` 안의 Tailwind 규칙은 레이어 밖 규칙(`index.css` 의
+          `:where(a, button, input, …):focus-visible`)에 명시도와 무관하게 진다.
+
+          그래서 지운 이유는 버그를 고치려는 게 아니라 **거짓말을 지우는 것**이다. 저 줄을 남기면
+          다음 사람이 "이 input 은 링이 없다" 로 읽거나 링이 필요한 곳에 복사한다.
+        */}
         <input
           type="number"
           inputMode="numeric"
@@ -60,7 +69,7 @@ export function AmountStep({
           value={amount === 0 ? '' : amount}
           placeholder="0"
           onChange={(event) => setAmount(Number(event.target.value))}
-          className="w-full border-b border-stroke-neutral-weak bg-transparent pb-2 text-display text-fg-neutral placeholder:text-fg-placeholder focus:outline-none"
+          className="w-full border-b border-stroke-neutral-weak bg-transparent pb-2 text-display text-fg-neutral placeholder:text-fg-placeholder"
         />
       </label>
 
