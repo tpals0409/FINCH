@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+
+<!-- 탐색·거래 축 와이어프레임. ia.md §1 의 17화면 중 6개 —
+     홈 · 종목 검색 · 최근 검색어 · 최근 본 종목 · 종목 상세 · 주문.
+     sprint-4.dc.html 의 형식과 클래스 이름을 그대로 따른다. 두 캔버스가 같은 얼굴이어야
+     다음 사람이 한쪽만 읽고도 다른 쪽을 읽을 수 있다.
+
+     토큰은 여기서 손으로 적지 않는다. 앱이 쓰는 파일을 그대로 불러온다.
+     tokens.css 를 고치면 이 페이지도 같이 바뀐다 (prototype/README.md).
+     상대 경로라 저장소 안에서 열 때만 해석된다. -->
+<link rel="stylesheet" href="../../frontend/src/styles/tokens.css">
+
+<style>
+/* 앱이 서빙하는 서브셋 woff2 를 그대로 쓴다. index.css 의 @font-face 와 같은 굵기 범위. */
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-light.woff2') format('woff2'); font-weight:100 399; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-medium.woff2') format('woff2'); font-weight:400 599; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-bold.woff2') format('woff2'); font-weight:600 900; font-display:swap }
+
+/* 캔버스 바닥색만 여기 적는다 — 앱 색이 아니라 시트 배경이다 (sprint-4.dc.html 과 같은 값).
+   앱에 쓰이는 색·크기·반경·그림자는 전부 토큰에서 온다. */
+body { margin:0; background:#EDEFF3; font-family:var(--finch-font-family-sans);
+  color:var(--finch-color-fg-neutral); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; padding:44px }
+/* 캔버스 런타임 없이 브라우저로 열었을 때의 배치. 런타임이 있으면 런타임 스타일이 이긴다. */
+body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
+
+/* ── 아트보드 ── */
+.ab { width:var(--w,390px); display:flex; flex-direction:column; gap:12px; box-sizing:content-box }
+.ab-wide { width:1240px }
+.ab-tag { font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--finch-color-fg-placeholder) }
+.ab-name { font-size:17px; font-weight:700; letter-spacing:-.015em; margin-top:-4px }
+.ab-api { font-size:12px; line-height:17px; color:var(--finch-color-fg-neutral-subtle); font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+
+/* 아트보드 밖 주석. 화면 안에 개발 얘기를 쓰지 않기 위한 자리다. */
+.note { background:var(--finch-color-bg-layer-default); border:1px dashed var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:14px 16px; font-size:12px; line-height:1.7;
+  color:var(--finch-color-fg-neutral-subtle) }
+.note b { color:var(--finch-color-fg-neutral) }
+.note code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--finch-color-fg-neutral) }
+.note ul { margin:6px 0 0; padding-left:16px }
+
+/* ── 390×844 프레임 ── */
+.ph { width:var(--w,390px); height:844px; box-sizing:border-box; background:var(--finch-color-bg-layer-basement);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:20px; overflow:hidden;
+  display:flex; flex-direction:column; position:relative;
+  font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+
+/* 상단 내비 — z-sticky */
+.nav { flex:none; min-height:56px; display:flex; align-items:center; gap:4px; padding:0 8px 0 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.nav .t { flex:1; min-width:0; font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3); letter-spacing:-.015em;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* 홈 상단은 제목 대신 워드마크다. 브랜드 심볼(finch-symbol.svg)은 48px 미만에서 발과 힌지가
+   뭉개지므로 56px 내비에 넣지 않는다 — 잉크 워드마크로 간다. */
+.nav .wm { flex:1; padding-left:12px; font-size:var(--finch-font-size-title-3); font-weight:700; letter-spacing:.04em }
+/* 터치 대상 44×44 (frontConvention §9) */
+.icon { width:44px; height:44px; flex:none; display:grid; place-items:center; color:var(--finch-color-fg-neutral); position:relative }
+.icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+/* 미읽음 점. 모노톤에서 알림은 색이 아니라 잉크 점이다 — 노트 참고 */
+.icon i.dot { position:absolute; top:11px; right:10px; width:7px; height:7px; border-radius:999px;
+  background:var(--finch-color-bg-neutral-solid); box-shadow:0 0 0 2px var(--finch-color-bg-layer-default) }
+
+.scroll { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 20px }
+.scroll.flush { padding:0 }
+/* 스크롤 이음매 표시. 844 를 넘는 부분은 화면 밖이라 그리지 않고 이 선으로 어디서 이어지는지만 말한다. */
+.fold { flex:none; height:0; border-top:1px dashed var(--finch-color-stroke-neutral-weak); margin:8px 16px 0; position:relative }
+.fold::after { content:attr(data-t); position:absolute; right:0; top:3px; font-size:10px; color:var(--finch-color-fg-placeholder) }
+
+/* ── 카드 ── */
+.card { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:18px 16px }
+.card.tight { padding:0 }
+.sec { display:flex; align-items:center; gap:8px; font-size:var(--finch-font-size-label);
+  line-height:var(--finch-line-height-label); font-weight:var(--finch-font-weight-label);
+  color:var(--finch-color-fg-neutral-muted); padding:0 2px }
+.sec .more { margin-left:auto; font-size:var(--finch-font-size-caption); font-weight:400;
+  color:var(--finch-color-fg-neutral-subtle); display:flex; align-items:center; gap:2px }
+.sec .more svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* 값 행 */
+.kv { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:32px }
+.kv + .kv { border-top:1px solid var(--finch-color-stroke-neutral-subtle); margin-top:10px; padding-top:10px }
+.kv .k { color:var(--finch-color-fg-neutral-subtle); font-size:var(--finch-font-size-body-2) }
+.kv .v { font-weight:600; text-align:right }
+.hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.cap { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.meta { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder) }
+
+/* 인라인 링크 행 (예수금 → 충전하기) */
+.linkrow { display:flex; align-items:center; gap:2px; min-height:44px; margin:-6px -6px -6px 0; padding:0 6px;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-label); font-weight:600;
+  color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected) }
+.linkrow svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 버튼 ── */
+.btn { display:flex; min-height:54px; width:100%; box-sizing:border-box; align-items:center; justify-content:center;
+  gap:8px; border-radius:var(--finch-radius-control); padding:0 16px; border:0; font-family:inherit;
+  font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label); font-weight:600 }
+.btn[data-v="primary"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.btn[data-v="secondary"] { background:var(--finch-color-bg-layer-default); color:var(--finch-color-fg-neutral);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.btn[data-v="disabled"] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+/* 하단 고정 CTA — z-sticky. 노치에서 잘리지 않게 safe-area 를 더한다 */
+.cta { flex:none; background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:8px;
+  position:relative; z-index:var(--finch-z-sticky); box-shadow:var(--finch-shadow-float) }
+.cta.pair { flex-direction:row; gap:8px }
+
+/* ── 하단 탭바 ── */
+.tabbar { flex:none; display:flex; background:var(--finch-color-bg-layer-default);
+  border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-bottom:env(safe-area-inset-bottom);
+  position:relative; z-index:var(--finch-z-sticky) }
+.tabbar a { flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-size:11px; color:var(--finch-color-fg-placeholder); text-decoration:none }
+.tabbar a[aria-current] { color:var(--finch-color-fg-neutral); font-weight:600 }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── AI 플로팅 버튼 — z-floating. 브랜드 마크를 붙이지 않는다 (finch-seed §3) ── */
+.fab { position:absolute; right:16px; width:56px; height:56px; border-radius:999px;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  display:grid; place-items:center; box-shadow:var(--finch-shadow-float); z-index:var(--finch-z-floating) }
+.fab svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 시세 행. 검색 · 최근 본 · 관심 · 보유가 같은 형태를 쓴다 (ia.md §5 shared) ── */
+.rows { display:flex; flex-direction:column; background:var(--finch-color-bg-layer-default) }
+.rows.inset { border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-card); overflow:hidden }
+.row { display:flex; align-items:center; gap:12px; padding:12px 16px; min-height:44px; box-sizing:border-box }
+.row + .row { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.row .l { flex:1; min-width:0 }
+.row .l b { display:flex; align-items:center; gap:6px; font-size:var(--finch-font-size-body-2);
+  line-height:var(--finch-line-height-body-2); font-weight:600 }
+.row .l b span.nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+.row .l > span { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle); margin-top:2px }
+.row .r { text-align:right; white-space:nowrap; flex:none }
+.row .r b { display:block; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+/* 행 오른쪽의 × 삭제. 44×44 를 지키기 위해 행 패딩을 먹고 들어간다 */
+.row .x { width:44px; height:44px; flex:none; margin:-8px -12px -8px 0; display:grid; place-items:center;
+  color:var(--finch-color-fg-placeholder) }
+.row .x svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* 등락 — 부호 + 삼각형 + 숫자. 색만으로 알리지 않는다 (finch-seed §4).
+   본문·행 숫자는 700 단계, 18px 이상 굵은 큰 가격만 -vivid(600). */
+.chg { display:inline-flex; align-items:center; gap:3px; font-size:var(--finch-font-size-caption);
+  line-height:var(--finch-line-height-caption); font-weight:600 }
+.chg svg { width:8px; height:8px; fill:currentColor; stroke:none }
+.chg[data-d="up"] { color:var(--finch-color-fg-up) }
+.chg[data-d="down"] { color:var(--finch-color-fg-down) }
+.chg[data-d="flat"] { color:var(--finch-color-fg-flat) }
+.chg.lg { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1) }
+.chg.lg svg { width:10px; height:10px }
+/* 종목 상세 상단의 큰 가격만 vivid 를 쓴다 */
+.px-hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.px-hero[data-d="up"] { color:var(--finch-color-fg-up-vivid) }
+.px-hero[data-d="down"] { color:var(--finch-color-fg-down-vivid) }
+.px-hero[data-d="flat"] { color:var(--finch-color-fg-neutral) }
+
+/* ── 뱃지. 유채색을 쓰지 않는다 — 잉크 테두리와 굵기로 구분한다 ── */
+.badge { flex:none; font-size:11px; line-height:16px; font-weight:700; padding:1px 6px;
+  border-radius:6px; border:1px solid var(--finch-color-stroke-neutral-contrast); color:var(--finch-color-fg-neutral) }
+.badge[data-v="soft"] { border-color:var(--finch-color-stroke-neutral-weak); font-weight:600;
+  color:var(--finch-color-fg-neutral-subtle) }
+/* 시세 지연 칩. 임계 수치를 화면에 쓰지 않는다 (contracts P10 미정) */
+.stale { display:inline-flex; align-items:center; gap:4px; font-size:11px; line-height:16px; font-weight:600;
+  padding:2px 7px; border-radius:var(--finch-radius-chip); background:var(--finch-color-bg-critical-weak);
+  color:var(--finch-color-fg-critical) }
+.stale svg { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* ── 세그먼티드 · 칩 ── */
+.seg { display:flex; gap:6px; padding:3px; border-radius:var(--finch-radius-control);
+  background:var(--finch-color-bg-transparent-pressed) }
+.seg button { flex:1; min-height:44px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:400; color:var(--finch-color-fg-neutral-subtle);
+  background:transparent; border:1px solid transparent }
+.seg button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-layer-default); border-color:var(--finch-color-stroke-neutral-contrast) }
+.chips { display:flex; gap:6px; flex-wrap:wrap }
+.chips button { min-height:44px; padding:0 12px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-caption); font-weight:400; color:var(--finch-color-fg-neutral-subtle);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.chips button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  border-color:var(--finch-color-stroke-neutral-contrast); border-width:2px; padding:0 11px;
+  background:var(--finch-color-bg-transparent-selected) }
+
+/* ── 탭 (종목 상세) ── */
+.tabs { display:flex; background:var(--finch-color-bg-layer-default);
+  border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); position:relative; z-index:var(--finch-z-sticky) }
+.tabs button { flex:1; min-height:48px; font-family:inherit; font-size:var(--finch-font-size-label);
+  font-weight:400; color:var(--finch-color-fg-neutral-subtle); background:transparent;
+  border:0; border-bottom:2px solid transparent }
+.tabs button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  border-bottom-color:var(--finch-color-stroke-neutral-contrast) }
+
+/* ── 검색 입력 ── */
+.searchbar { flex:none; display:flex; align-items:center; gap:8px; padding:8px 8px 8px 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.field { flex:1; min-width:0; display:flex; align-items:center; gap:8px; min-height:44px; padding:0 12px;
+  box-sizing:border-box; border-radius:var(--finch-radius-control);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.field svg { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; color:var(--finch-color-fg-neutral-subtle) }
+.field input, .field .val { flex:1; min-width:0; border:0; background:transparent; font-family:inherit;
+  font-size:var(--finch-font-size-body-1); color:var(--finch-color-fg-neutral); outline:none }
+.field .plc { color:var(--finch-color-fg-placeholder) }
+/* 지우기 — 보이는 원은 20px 이지만 터치 대상은 44×44 다. 필드 오른쪽 패딩을 먹고 들어간다 */
+.field .clr { width:44px; height:44px; flex:none; margin:0 -12px 0 0; display:grid; place-items:center;
+  color:var(--finch-color-fg-neutral-subtle) }
+.field .clr svg { width:20px; height:20px; padding:4.5px; box-sizing:border-box; border-radius:999px;
+  background:var(--finch-color-bg-transparent-selected); stroke-width:3 }
+
+/* ── 수량 입력 (주문) ── */
+.amt { display:flex; align-items:baseline; gap:6px; min-height:56px; padding:0 14px; box-sizing:border-box;
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-control) }
+.amt[data-err] { border-color:var(--finch-color-stroke-critical-solid); border-width:2px; padding:0 13px }
+.amt b { flex:1; font-size:var(--finch-font-size-title-2); line-height:56px; font-weight:700; letter-spacing:-.02em;
+  text-align:right }
+.amt b[data-ph] { color:var(--finch-color-fg-placeholder); font-weight:400 }
+.amt span { font-size:var(--finch-font-size-body-1); color:var(--finch-color-fg-neutral-subtle) }
+.amt .lb { flex:none; font-size:var(--finch-font-size-body-2); color:var(--finch-color-fg-neutral-subtle);
+  align-self:center }
+.presets { display:flex; gap:8px }
+.presets button { flex:1; min-height:44px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:600; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+
+/* ── 위험·에러 알림. 모노톤에서 위험은 색이 아니라 잉크 채움·굵기·형태다 (finch-seed §4) ── */
+.alert { display:flex; gap:10px; padding:14px; border-radius:var(--finch-radius-card);
+  background:var(--finch-color-bg-critical-weak); color:var(--finch-color-fg-critical) }
+.alert svg { width:18px; height:18px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+.alert .m { font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+.alert .s { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  font-weight:400; margin-top:3px; color:var(--finch-color-fg-neutral-muted) }
+/* 필드 아래 인라인 에러 — 테두리·굵기·아이콘 셋이 함께 움직인다 */
+.ferr { display:flex; gap:6px; align-items:flex-start; color:var(--finch-color-fg-critical);
+  font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption); font-weight:700 }
+.ferr svg { width:15px; height:15px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* ── 빈 상태 ── */
+.empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:32px 24px; text-align:center }
+.empty .g { width:56px; height:56px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; margin-bottom:6px; color:var(--finch-color-fg-placeholder) }
+.empty .g svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+.empty b { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:600 }
+.empty span { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.empty .btn { width:auto; min-height:44px; padding:0 20px; margin-top:10px }
+
+/* ── 로딩 ── */
+.sk { background:var(--finch-color-bg-skeleton); border-radius:var(--finch-radius-chip); height:14px; display:block }
+.spin { width:20px; height:20px; border-radius:999px; border:2px solid var(--finch-color-bg-skeleton);
+  border-top-color:var(--finch-color-fg-neutral); animation:spin 800ms linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+.loadmore { display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:20px 16px calc(20px + env(safe-area-inset-bottom)); font-size:var(--finch-font-size-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+
+/* ── AI 슬롯 자리. 획 무게 · 깊이 · 반경 셋이 일반 카드와 한꺼번에 달라진다 (finch-seed §3).
+      브랜드 마크를 붙이지 않는다. 내용 설계는 이 캔버스의 범위가 아니다 — 아트보드 0 참고. ── */
+.aislot { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-ai); box-shadow:var(--finch-shadow-ai); padding:16px;
+  display:flex; flex-direction:column; gap:10px }
+.aislot .hd { display:flex; align-items:center; gap:8px; font-size:var(--finch-font-size-label);
+  line-height:var(--finch-line-height-label); font-weight:700 }
+.aislot .hd .spin { width:15px; height:15px; border-width:2px }
+.aislot .hd svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+.aislot .rsv { font-size:11px; line-height:16px; color:var(--finch-color-fg-placeholder); margin-left:auto; font-weight:400 }
+
+/* ── 딤 + 바텀시트 — z-overlay ── */
+.dim { position:absolute; inset:0; background:var(--finch-color-bg-overlay); z-index:var(--finch-z-overlay) }
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:var(--finch-z-overlay);
+  background:var(--finch-color-bg-layer-default); border-radius:var(--finch-radius-sheet) var(--finch-radius-sheet) 0 0;
+  box-shadow:var(--finch-shadow-float); padding:22px 16px calc(16px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:14px }
+.sheet .h { font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3) }
+
+/* ── 완료 화면 ── */
+.done { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px }
+.done .mark { width:64px; height:64px; border-radius:999px; background:var(--finch-color-bg-neutral-solid);
+  display:grid; place-items:center; color:var(--finch-color-fg-neutral-inverted); margin-bottom:8px }
+.done .mark svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round }
+
+/* 진행 단계 표시 */
+.steps { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--finch-color-fg-placeholder); padding:0 2px }
+.steps i { flex:1; height:3px; border-radius:999px; background:var(--finch-color-bg-skeleton) }
+.steps i[data-on] { background:var(--finch-color-bg-neutral-solid) }
+
+/* 표 (범위 문서용) */
+.tb { width:100%; border-collapse:collapse; font-size:12px }
+.tb th, .tb td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); vertical-align:top }
+.tb th { color:var(--finch-color-fg-placeholder); font-weight:600; white-space:nowrap }
+.tb code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px }
+</style>
+</helmet>
+
+
+<!-- ═════════════════ 0 · 범위 ═════════════════ -->
+<section class="ab ab-wide">
+<div class="ab-tag">FINCH · SPRINT 5 · WIREFRAME</div>
+<div class="ab-name">탐색·거래 — 화면 범위</div>
+
+<div class="note" style="border-style:solid">
+<b>ia.md §1 의 17화면 중 6개를 그린다.</b> Sprint 4 가 셋(포트폴리오·매매 내역·충전)을
+<code>sprint-4.dc.html</code> 에 그렸고, 나머지 8개(인증 2 · 마이페이지 · 404 · AI 3종 · 브리핑 전체)는
+<code>account-ai.dc.html</code> 이 그린다. <b>세 캔버스가 겹치지 않게 화면 단위로 나눴다.</b>
+<table class="tb" style="margin-top:12px">
+<tr><th>화면</th><th>라우트</th><th>아트보드</th><th>이 캔버스가 쓰는 계약</th></tr>
+<tr><td>홈</td><td><code>/</code></td><td>1 · 2 · 3 · 4 · 5</td>
+    <td><code>GET /account</code> · <code>/portfolio</code> · <code>/watchlist?sort=</code> · <code>/stocks/prices</code></td></tr>
+<tr><td>종목 검색</td><td><code>/search?q=</code></td><td>8 · 9 · 10</td>
+    <td><code>GET /stocks/search?keyword=&amp;size=</code></td></tr>
+<tr><td>최근 검색어</td><td><code>/search</code> 초기 상태</td><td>6 · 7</td>
+    <td><code>GET</code> · <code>DELETE /stocks/search/recent</code> · <code>DELETE .../{keywordId}</code></td></tr>
+<tr><td>최근 본 종목</td><td><code>/recent</code></td><td>11 · 12 · 13</td>
+    <td><code>GET</code> · <code>DELETE /stocks/recent</code> · <code>DELETE .../{stockCode}</code></td></tr>
+<tr><td>종목 상세</td><td><code>/stocks/:stockCode</code></td><td>14 · 15 · 16 · 17</td>
+    <td><code>GET /stocks/{code}</code> · <code>/candles?period=</code> · <code>/price</code> · <code>POST</code>·<code>DELETE /watchlist</code></td></tr>
+<tr><td>주문</td><td><code>/stocks/:stockCode/order?side=</code></td><td>18 ~ 24</td>
+    <td><code>GET /orders/available?stockCode=&amp;side=</code> · <code>POST /orders</code> (<code>Idempotency-Key</code> 필수)</td></tr>
+</table>
+</div>
+
+<div class="note">
+<b>KIS 앱키가 미발급이라 시세 데이터가 없다. 그래도 화면은 그린다 — 계약(apiSpec §5·§7)은 확정이다.</b>
+데이터가 없는 것과 계약이 없는 것은 다르다. 여기 적힌 숫자는 apiSpec 의 응답 예시를 그대로 옮긴 것이고
+새로 만든 값이 아니다 (<code>005930</code> 73,500원 · <code>-900</code> · <code>-1.21</code>).
+<ul>
+<li><b>등락률은 이미 백분율이다.</b> <code>changeRate: -1.21</code> 이 −1.21% 다. 100을 곱하지 않는다.</li>
+<li><b>종목코드는 6자리 문자열이다.</b> 앞 <code>0</code> 을 살려 적는다 — <code>005930</code>·<code>000660</code>.
+    숫자로 다루면 <code>5930</code> 이 된다.</li>
+<li><b>등락은 상승 적색 · 하락 청색.</b> 국내 관례이고 미국식과 반대다. 색은 값이 아니라
+    <code>fg-up</code>·<code>fg-down</code> 으로만 참조한다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>미확정 둘을 시안에 반영했다</b> (<code>frontend/docs/contracts.md</code>).
+<table class="tb" style="margin-top:8px">
+<tr><th>항목</th><th>그린 것</th><th>안 그린 것</th></tr>
+<tr>
+  <td><b>P10</b> — <code>stale</code> 허용 시간과 주문 차단 기준</td>
+  <td>"시세 지연" 칩의 자리와 형태(아트보드 5·16), 주문 버튼 비활성 상태(아트보드 20)</td>
+  <td><b>임계 수치</b>. "○초 이상 지연" 을 화면에 쓰지 않았다 — 몇 초인지 정하는 것은
+      <code>[S0-3]</code> 이고 이 시안의 일이 아니다. 지금 쓰면 확정될 때 화면 문구를 찾아 고쳐야 한다.</td>
+</tr>
+<tr>
+  <td><b>P11</b> — 분봉 제공 여부</td>
+  <td>차트 기간 탭 <b><code>1M</code> · <code>3M</code> · <code>1Y</code> 셋만</b> (전부 일봉).
+      <code>GET /candles</code> 의 <code>interval: "DAY"</code> 와 일치한다</td>
+  <td><code>1D</code>·<code>1W</code> 분봉 탭. 그리면 <code>[S0-4]</code> 가 "분봉 없음" 으로 확정될 때
+      버려진다. 탭 폭도 셋과 다섯이 다르다.</td>
+</tr>
+</table>
+</div>
+
+<div class="note">
+<b>주문 화면의 위험 지점 셋.</b> 돈이 오가는 화면이라 형태가 잘못되면 중복 주문이 된다.
+<code>sprint-4.dc.html</code> 아트보드 9(충전 <code>IDEMPOTENCY_IN_PROGRESS</code>)가 같은 문제를 다뤘고 그 관례를 따른다.
+<ul>
+<li><b><code>Idempotency-Key</code> 는 결과를 아느냐로 갈린다.</b> 아트보드 22·23 에 나눠 그렸다 —
+    <b>결과를 모르면 같은 키</b>(처리 중 · 응답 유실 · 타임아웃), <b>확실히 거부됐으면 새 키</b>(가격 변동 ·
+    예수금 부족 · 수량 부족). 거부는 주문이 원장에 없다는 뜻이라 새 키가 중복을 만들지 않는다.
+    반대로 처리 중인데 새 키를 쓰면 두 번 나간다.</li>
+<li><b>자동 재시도를 그리지 않았다.</b> 주문 뮤테이션은 자동 재시도하지 않는다 (루트 <code>CLAUDE.md</code>).
+    재시도는 전부 사용자가 누르는 버튼이고, 화면에 스피너만 돌면서 뒤에서 재요청하는 자리는 없다.</li>
+<li><b>수량 임의 축소 체결을 그리지 않았다.</b> 예수금이 모자라면 <b>거절</b>이지 "가능한 만큼" 이 아니다
+    (apiSpec §7.2 4번). 그래서 아트보드 21 의 버튼은 "3주로 줄여 주문" 이 아니라 <b>충전</b>과
+    <b>수량 다시 입력</b> 둘뿐이다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>AI 슬롯은 자리와 형태만 그렸다. 내용은 그리지 않았다.</b>
+이 캔버스가 맡은 계약 목록에 AI 경로가 없다 — 슬롯 내용(브리핑 항목 · 종목 분석 7섹션 · 주문 전 점검
+세 덩어리 · 근거 목록 · 피드백)은 <code>account-ai.dc.html</code> 과 AI 전용 화면의 범위다.
+여기서는 <b>그릇</b>만 확정한다: 위치 · 크기 · 획 무게 · 깊이 · 반경, 그리고 로딩·에러 형태.
+<ul>
+<li>슬롯 표면은 <code>bg-layer-default</code> + <code>stroke-neutral-weak</code> + <code>shadow-ai</code> +
+    <code>radius-ai</code>(18px)다. 일반 카드(<code>stroke-neutral-subtle</code>, 그림자 없음, 16px)와
+    <b>획 무게·깊이·반경 셋이 한꺼번에</b> 달라진다 (finch-seed §3). "AI 색" 은 없다.</li>
+<li><b>슬롯은 위젯 단위 에러 경계다</b> (ia.md §4). AI 가 실패해도 화면의 나머지는 살아 있어야 한다 —
+    아트보드 5 가 그 상태다.</li>
+<li>홈의 슬롯 2(수익률 원인 분석)는 ia.md §4 가 "손익 숫자 바로 아래" 로 정했지만
+    <b><code>GET /account</code> 에는 손익 필드가 없다</b> (예수금·평가금액·총자산·<code>asOf</code> 넷뿐,
+    전체 수익률은 MVP 범위 밖 · apiSpec §3.1). 손익 숫자가 실제로 있는 곳은 <code>GET /portfolio</code> 의
+    <code>holdings[].evaluationProfit</code> 이라 <b>보유 종목 섹션 아래</b>에 뒀다 (아트보드 2).</li>
+<li><b>AI 플로팅 버튼은 종목 상세에만 그렸다.</b> PRD 배치(종목 상세·포트폴리오·브리핑·뉴스 상세)와
+    프로토타입 구현(<code>home</code>·<code>detail</code>·<code>portfolio</code>·<code>briefing</code>)이
+    어긋나 있고 확정되지 않았다 (ia.md §3). <b>둘이 일치하는 화면에만</b> 그렸다 — 홈에는 안 그렸다.
+    주문 화면은 양쪽 모두 제외한다 (제출 버튼을 가린다).</li>
+</ul>
+</div>
+
+<div class="note">
+<b>토큰을 새로 만들지 않았다.</b> 판단이 들어간 자리는 넷이다.
+<ul>
+<li><b>등락을 두 단계로 나눠 썼다.</b> 종목 상세 상단의 28px bold 현재가만 <code>-vivid</code>(600단계)이고
+    목록 행·캡션의 숫자는 전부 <code>fg-up</code>·<code>fg-down</code>(700단계)다. 한 값으로 합치면
+    13px 캡션에서 대비가 깨진다 (finch-seed §4).</li>
+<li><b>"시세 지연" 에 등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크)
+    + 시계 아이콘이다. 적색이면 "떨어졌다" 로 오독된다. 거래정지 뱃지도 같은 이유로 무채색이다.</li>
+<li><b>미읽음 알림을 빨간 점으로 그리지 않았다.</b> PRD 문구는 "메일에 빨간 점" 이지만 모노톤에
+    세 번째 빨강을 들이면 상승 적색·위험과 셋이 섞인다. <b>잉크 점</b> + paper 링(<code>bg-layer-default</code>
+    2px)으로 면 위에서 떨어져 보이게 했다.</li>
+<li><b>관심 종목 담기 실패를 토스트로 그리지 않았다.</b> <code>WATCHLIST_LIMIT_EXCEEDED</code>(409, 50개 초과)는
+    화면 상단 인라인 알림으로 낸다. <b>토스트를 그릴 토큰이 없다</b> — 반전 표면(white-alpha 사다리 ·
+    <code>bg-neutral-inverted</code>)을 만들지 않았고, 그건 앱에 반전 표면이 없기 때문이다 (finch-seed §3).
+    토스트를 도입하려면 토큰이 먼저다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>도달할 수 없는 상태는 그리지 않았다.</b> 그려두면 다음 사람이 도달 경로를 찾다 시간을 버린다
+(<code>sprint-4.dc.html</code> 의 "<code>type=ALL</code> 은 비어 있을 수 없다" 와 같은 방식).
+<ul>
+<li><b>홈의 "관심 종목 없음" 은 단독으로 나오지 않는다.</b> 관심 종목은 <code>count</code>·<code>maxCount</code> 가
+    같이 오므로 0건이 정상이지만, 보유도 0인 <b>첫 사용자 상태와 한 화면에서 만난다</b> — 그래서 아트보드 4 는
+    두 섹션이 같이 빈 하나의 화면이다. 섹션 하나만 빈 화면을 따로 그리지 않았다.</li>
+<li><b>최근 검색어에는 시세가 없다.</b> <code>GET /stocks/search/recent</code> 응답은
+    <code>keywordId</code>·<code>keyword</code>·<code>searchedAt</code> 셋뿐이다 (apiSpec §6.2 —
+    "검색어는 종목이 아니라 문자열이다"). 최근 검색어 행에 가격·등락을 그리면 없는 필드를 그리는 것이다.</li>
+<li><b>최근 본 종목에는 "시세 지연" 자리를 만들지 않았다.</b> <code>GET /stocks/recent</code> 응답에
+    <code>stale</code>·<code>asOf</code>·<code>changeAmount</code>·<code>suspended</code> 가 없다 —
+    <code>stockName</code>·<code>currentPrice</code>·<code>changeRate</code>·<code>viewedAt</code> 뿐이라
+    검색 행보다 얇다. 지연을 판정할 근거가 응답에 없으므로 표시하지 않는다.</li>
+<li><b>종목 상세 첫 렌더에도 "시세 지연" 을 판정할 수 없다.</b> <code>GET /stocks/{code}</code> 응답에
+    <code>stale</code> 이 없다 (<code>asOf</code> 만 있다). <code>stale</code> 은 이후 갱신을 받는
+    <code>GET /stocks/{code}/price</code>(§5.4)에서만 온다 — 그래서 지연 칩은 <b>첫 렌더가 아니라
+    갱신 후</b> 나타난다 (아트보드 16).</li>
+<li><b><code>IDEMPOTENCY_CONFLICT</code>(같은 키 · 다른 본문)에 화면을 그리지 않았다.</b> 클라이언트 버그
+    신호이고 재시도 금지라 사용자가 할 수 있는 일이 없다 — 일반 오류 화면으로 보낸다
+    (<code>sprint-4.dc.html</code> 아트보드 9 와 같은 판단).</li>
+<li><b>지정가·호가창·미체결 관리를 그리지 않았다.</b> MVP 는 시장가 즉시 체결만 존재하고 접수와 체결이
+    분리되지 않는다 (apiSpec §7.1). <b>가격 입력 필드를 만들지 않는다</b> — 만들면 없는 주문 유형이
+    구현 대상으로 읽힌다.</li>
+</ul>
+</div>
+</section>
+
+
+<!-- ═════════════════ 1 · 홈 상단 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 1 · 홈</div>
+<div class="ab-name">홈 — 자산 요약 · 브리핑 슬롯 · 보유 종목</div>
+<div class="ab-api">GET /account · /portfolio · /ai/briefing</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><i class="dot"></i></div>
+  </div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">총자산</div>
+      <div class="hero" style="margin-top:4px">1,985,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 14:30 기준</div>
+
+      <div style="height:14px"></div>
+      <div class="kv">
+        <span class="k">예수금</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <b class="v">1,250,000원</b>
+          <span class="linkrow">충전하기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+        </span>
+      </div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">735,000원</span></div>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>오늘의 브리핑
+        <span class="rsv">데이터 기준 09-04 08:00</span></div>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:88%"></span>
+      <span class="sk" style="width:64%"></span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <span class="spin"></span><span class="cap">불러오는 중</span>
+      </div>
+    </div>
+
+    <div class="sec">보유 종목
+      <span class="more">전체 보기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>10주 · 평균 71,200원</span></span>
+        <span class="r"><b>735,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+23,000 (3.23%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">SK하이닉스</span></b><span>3주 · 평균 198,000원</span></span>
+        <span class="r"><b>573,000원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-21,000 (-3.53%)</span></span>
+      </div>
+    </div>
+    <div class="fold" data-t="관심 종목으로 이어짐 → 아트보드 2"></div>
+  </div>
+
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>홈과 포트폴리오는 데이터 출처가 겹친다.</b> 같은 쿼리 키를 공유해 두 화면이 서로 다른 값을 보여주는 일이
+없게 한다 (ia.md §1). 그래서 총자산·예수금·평가금액 세 숫자는 <code>sprint-4.dc.html</code> 아트보드 1 과
+<b>같은 카드 형태</b>다 — 형태가 다르면 사용자가 두 화면을 다른 계좌로 읽는다.
+<br><br><b>상단은 워드마크다.</b> 브랜드 심볼(<code>prototype/brand/finch-symbol.svg</code>)을 쓰지 않았다 —
+56px 내비에 들어갈 크기가 48px 미만이라 발과 힌지가 뭉개진다.
+<br><br><b>메일 아이콘의 미읽음 점은 잉크다.</b> PRD 문구는 "빨간 점" 이지만 모노톤에 세 번째 빨강을 들이면
+상승 적색·위험과 셋이 섞인다. paper 링 2px 을 둘러 흰 내비 면 위에서 떨어져 보이게 했다.
+<b>미읽음 개수를 숫자로 그리지 않았다</b> — 메일 목록 API 계약이 없다 (ia.md §1 메일, GitLab 이슈 #26 1번).
+메일 화면 자체는 <code>account-ai.dc.html</code> 이 그린다.
+<br><br><b>브리핑 슬롯을 로딩 상태로 그렸다.</b> 자산 요약 아래 첫 블록이라는 위치와 표면 형태
+(<code>radius-ai</code> 18px · <code>shadow-ai</code> · <code>stroke-neutral-weak</code>)가 이 캔버스가 확정할
+것이고, 항목 내용·근거 목록·피드백은 아니다 (아트보드 0). <b>슬롯이 비어 있는 상태와 로딩 상태를
+구분해 표시한다</b> (ia.md §4 슬롯 공통 규약) — 여기 그린 것은 로딩이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 2 · 홈 스크롤 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 2 · 홈</div>
+<div class="ab-name">홈 스크롤 — 원인 분석 슬롯 · 관심 종목</div>
+<div class="ab-api">GET /watchlist?sort=REGISTERED · /stocks/prices</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><i class="dot"></i></div>
+  </div>
+
+  <div class="scroll">
+    <div class="fold" data-t="아트보드 1 에서 이어짐" style="margin-top:0"></div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">카카오</span></b><span>12주 · 평균 41,300원</span></span>
+        <span class="r"><b>484,800원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+9,200 (1.94%)</span></span>
+      </div>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/></svg>수익률 원인 분석
+        <span class="rsv">데이터 기준 09-04 14:30</span></div>
+      <span class="sk" style="width:94%"></span>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:52%"></span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <span class="spin"></span><span class="cap">불러오는 중</span>
+      </div>
+    </div>
+
+    <div class="sec">관심 종목 <span class="badge" data-v="soft">12 / 50</span></div>
+    <div class="chips">
+      <button aria-selected="true">등록순</button><button>이름순</button><button>등락률순</button>
+    </div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span><span class="badge" data-v="soft">보유</span></b><span>005930 · KOSPI</span></span>
+        <span class="r"><b>73,500원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-900 (-1.21%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">LG에너지솔루션</span></b><span>373220 · KOSPI</span></span>
+        <span class="r"><b>412,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+8,500 (2.11%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">에코프로비엠</span></b><span>247540 · KOSDAQ</span></span>
+        <span class="r"><b>121,400원</b>
+          <span class="chg" data-d="flat"><svg viewBox="0 0 10 10"><rect x="1" y="4" width="8" height="2"/></svg>0 (0.00%)</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>관심 종목은 독립 화면을 갖지 않는다</b> (ia.md §1). 홈 안의 섹션으로만 존재하고
+<code>GET</code>·<code>POST</code>·<code>DELETE /watchlist</code> 는 홈이 부른다.
+<code>count</code>·<code>maxCount</code> 를 <b>화면이 계산하지 않고</b> 응답값을 그대로 뱃지에 쓴다 —
+50개 한도를 화면에 상수로 박으면 서버 정책이 바뀔 때 어긋난다.
+<br><br>정렬 칩은 <code>?sort=REGISTERED|NAME|CHANGE_RATE</code> 셋이다 (apiSpec §6.3).
+<b>선택을 면 하나로 알리지 않는다</b> — <code>bg-transparent-selected</code> 는 흰 면 위에서 Lc 0 이라
+물리적으로 안 보인다. 테두리(<code>stroke-neutral-contrast</code> 2px)와 글자 굵기가 함께 움직인다 (finch-seed §4).
+<br><br><b>보합 행을 함께 그렸다.</b> 등락 0 은 <code>fg-flat</code>(gray-700)이고 삼각형이 아니라 가로 막대다.
+up/down 과 <b>형태가 달라야</b> 흑백 인쇄나 색맹 사용자에게도 방향 없음이 전달된다.
+<br><br><b>보유 종목 · 관심 종목의 시세는 <code>GET /stocks/prices</code> 한 번으로 받는다.</b>
+행마다 <code>GET /stocks/{code}/price</code> 를 부르면 N+1 이 된다 (apiSpec §5.5, 최대 50건).
+관심 종목 최대 50개와 이 벌크 한도가 같은 값인 것이 그 이유다.
+<br><br><b>"보유" 뱃지는 <code>held</code> 값에서 온다.</b> 화면이 보유 목록과 관심 목록을 교차 비교해
+계산하지 않는다 — 두 응답의 <code>asOf</code> 가 다르면 결과가 흔들린다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 3 · 홈 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 3 · 홈 · 상태 · 로딩</div>
+<div class="ab-name">홈 — 첫 로드</div>
+<div class="ab-api">GET /account · /portfolio · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <span class="sk" style="width:52px;height:13px"></span>
+      <span class="sk" style="width:196px;height:32px;margin-top:8px;border-radius:var(--finch-radius-control)"></span>
+      <span class="sk" style="width:132px;height:12px;margin-top:10px"></span>
+      <div style="height:16px"></div>
+      <div class="kv"><span class="sk" style="width:54px"></span><span class="sk" style="width:104px"></span></div>
+      <div class="kv"><span class="sk" style="width:66px"></span><span class="sk" style="width:82px"></span></div>
+    </div>
+    <div class="aislot">
+      <div class="hd"><span class="sk" style="width:96px;height:15px"></span></div>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:80%"></span>
+    </div>
+    <div class="sec"><span class="sk" style="width:64px;height:13px"></span></div>
+    <div class="rows inset">
+      <div class="row"><span class="l"><span class="sk" style="width:82px"></span><span class="sk" style="width:118px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:88px"></span><span class="sk" style="width:64px;height:12px;margin-top:6px"></span></span></div>
+      <div class="row"><span class="l"><span class="sk" style="width:98px"></span><span class="sk" style="width:104px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:80px"></span><span class="sk" style="width:70px;height:12px;margin-top:6px"></span></span></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+자리표시자는 <code>bg-skeleton</code>(gray-300) 하나만 쓴다. 첫 로드는 골격, 추가 로드는 스피너다
+(<code>sprint-4.dc.html</code> 아트보드 2·14 와 같은 규칙).
+<br><br><b>미읽음 점을 로딩 중에 그리지 않았다.</b> 계약이 없어 값을 모르는 상태이므로 점이 있다가 사라지면
+사용자가 읽지 않은 메일을 놓쳤다고 읽는다. <b>없다가 생기는 쪽</b>으로 만든다.
+<br><br><b>AI 슬롯의 골격도 그린다.</b> 슬롯이 늦게 도착해 카드가 나중에 밀려 들어오면 사용자가 읽던 줄이
+움직인다 — 자리를 미리 잡아 레이아웃이 뛰지 않게 한다. 슬롯 표면(반경·그림자)은 골격 상태에서도 유지한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 4 · 홈 첫 사용자 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 4 · 홈 · 상태 · 빈</div>
+<div class="ab-name">홈 — 첫 사용자 (보유 0 · 관심 0)</div>
+<div class="ab-api">holdings [] · watchlist count 0 · maxCount 50</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">총자산</div>
+      <div class="hero" style="margin-top:4px">1,000,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 09:00 기준</div>
+      <div style="height:14px"></div>
+      <div class="kv">
+        <span class="k">예수금</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <b class="v">1,000,000원</b>
+          <span class="linkrow">충전하기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+        </span>
+      </div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">0원</span></div>
+    </div>
+
+    <div class="card tight" style="flex:1;display:flex;min-height:0">
+      <div class="empty">
+        <div class="g"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 14l3-3 2.5 2.5L17 9"/></svg></div>
+        <b>아직 보유한 종목이 없습니다</b>
+        <span>종목을 찾아 첫 주문을 해보세요. 관심 종목을 담아두면 여기에서 시세를 함께 볼 수 있습니다</span>
+        <button class="btn" data-v="primary">종목 찾아보기</button>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>예수금 1,000,000원 · 평가금액 0원은 오류가 아니다.</b> 최초 로그인 시 서버가 계좌와 초기 예수금
+1,000,000원을 함께 만든다 (apiSpec §2.1). 총자산 = 예수금 + 평가금액이므로 두 숫자가 같다.
+<br><br><b>보유 0 과 관심 0 을 두 개의 빈 섹션으로 그리지 않았다.</b> 첫 사용자는 둘이 반드시 함께 비고,
+빈 박스 두 개를 쌓으면 화면이 "고장난 화면" 으로 읽힌다. 하나의 빈 상태로 합치고 <b>보조문에서
+관심 종목을 언급</b>해 그 섹션이 존재한다는 것만 남겼다.
+<br><br><b>AI 브리핑 슬롯을 그리지 않았다.</b> 브리핑은 "내 종목 맞춤" 이고 보유가 없으면 개인화할 대상이
+없다. <code>INSUFFICIENT_DATA</code>(409, 재시도 무의미)가 이 상태의 정상 응답일 가능성이 높지만 확인되지
+않았다 — 그 판정은 AI 파트의 것이고, 여기서 빈 카드를 그려두면 확정 시 버려진다.
+<br><br><b>"종목 찾아보기" 는 <code>/search</code> 로 간다.</b> 눌러서 갈 곳이 있는 버튼만 빈 상태에 둔다
+(<code>sprint-4.dc.html</code> 아트보드 12 가 주문 화면이 없어 버튼을 뺀 것과 반대 방향의 같은 규칙).
+</div>
+</section>
+
+
+<!-- ═════════════════ 5 · 홈 시세 지연 · 슬롯 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 5 · 홈 · 상태 · 에러</div>
+<div class="ab-name">홈 — 시세 지연 · 값 없음 · AI 슬롯 에러 경계</div>
+<div class="ab-api">stale true · currentPrice null · 502 RETRIEVAL_FAILED</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><i class="dot"></i></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="cap">총자산</span>
+        <span class="stale"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>시세 지연</span>
+      </div>
+      <div class="hero" style="margin-top:4px">1,985,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 14:12 기준 · 마지막으로 받은 시세입니다</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">예수금</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">735,000원</span></div>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>오늘의 브리핑</div>
+      <div class="ferr">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+        <span>브리핑을 불러오지 못했습니다</span>
+      </div>
+      <button class="btn" data-v="secondary" style="min-height:44px">다시 시도</button>
+    </div>
+
+    <div class="sec">보유 종목
+      <span class="more">전체 보기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>10주 · 평균 71,200원</span></span>
+        <span class="r"><b>735,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+23,000 (3.23%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">SK하이닉스</span></b><span>3주 · 평균 198,000원</span></span>
+        <span class="r"><b class="meta" style="font-weight:400">시세 없음</b>
+          <span class="cap">3주 보유</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>이 한 화면에 서로 다른 세 실패가 겹쳐 있다.</b> 셋이 각각 다른 형태로 나타나야 사용자가 무엇을
+기다리면 되는지 안다.
+<table class="tb" style="margin-top:8px">
+<tr><th>실패</th><th>응답</th><th>화면</th></tr>
+<tr><td>수신 끊김</td><td>가격 3필드 = <b>마지막 수신 값</b>, <code>asOf</code> = 마지막 수신 시각, <code>stale: true</code></td>
+    <td>값을 <b>지우지 않는다</b>. "시세 지연" 칩 + <code>asOf</code> 옆에 "마지막으로 받은 시세입니다"</td></tr>
+<tr><td>값 없음 (캐시 미스)</td><td>가격 3필드와 <code>asOf</code> 가 <b>전부 <code>null</code></b>, <code>stale: true</code></td>
+    <td>가격 영역을 <b>비운다</b> (SK하이닉스 행). 0원으로 그리면 폭락으로 읽힌다. 수량은 원장 값이라 남는다</td></tr>
+<tr><td>AI 슬롯 실패</td><td><code>502 RETRIEVAL_FAILED</code> 등 재시도 가능 코드</td>
+    <td>슬롯 <b>안에서만</b> 에러 + 재시도 버튼. 화면의 나머지는 살아 있다</td></tr>
+</table>
+<b>임계 수치를 화면에 쓰지 않았다.</b> "몇 초 이상 지연" 은 <code>[S0-3]</code>(contracts P10)이고 아직 없다.
+칩은 <code>stale</code> 이 <code>true</code> 인지만 보고 켜진다 — 화면이 <code>asOf</code> 와 현재 시각을
+비교해 스스로 판정하지 않는다. 판정하면 서버와 어긋나 "지연이라는데 값은 최신" 이 된다.
+<br><br><b>지연 칩에 등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크)
++ 시계 아이콘이다. 적색이면 총자산이 떨어진 것으로 읽힌다 (finch-seed §4).
+<br><br><b>다건 조회는 항목별로 판정한다</b> (apiSpec §5.5). 한 종목이 <code>null</code> 이어도 나머지는
+정상 값이므로 목록 전체를 에러로 덮지 않는다. 총자산·평가금액은 <b>서버가 원장에서 계산한 값</b>이라
+행 하나가 비어도 그대로 표시된다 — 화면이 행을 더해 다시 계산하지 않는다.
+<br><br><b>슬롯은 위젯 단위 에러 경계다</b> (ia.md §4, 컨벤션 §8). 재시도 버튼이 <b>주 동작</b>이고 피드백은
+보조로 접는다 — <code>RETRIEVAL_FAILED</code>·<code>LLM_TIMEOUT</code> 은 재시도 가능 분류다 (apiSpec §10.4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 6 · 검색 초기 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 6 · 최근 검색어</div>
+<div class="ab-name">검색 초기 상태 — 최근 검색어</div>
+<div class="ab-api">GET /stocks/search/recent · /search (q 없음)</div>
+<div class="ph">
+  <div class="searchbar">
+    <div class="icon"></div>
+    <div class="field">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      <span class="val plc">종목명 또는 종목코드</span>
+    </div>
+  </div>
+
+  <div class="scroll flush">
+    <div style="padding:14px 16px 6px;display:flex;align-items:center">
+      <span class="sec" style="padding:0">최근 검색어</span>
+      <span class="cap" style="margin-left:auto">전체 삭제</span>
+    </div>
+    <div class="rows">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>09-02</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">000660</span></b><span>09-02</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">2차전지</span></b><span>08-29</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+    </div>
+
+    <div style="height:12px"></div>
+    <div class="rows">
+      <div class="row" style="min-height:56px">
+        <span class="l"><b><span class="nm">최근 본 종목</span></b><span>최근 조회한 30개까지 볼 수 있습니다</span></span>
+        <span class="r"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--finch-color-fg-placeholder);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>최근 검색어는 자기 라우트를 갖지 않는다.</b> 검색어가 비어 있을 때의 <code>/search</code> 초기 상태다 —
+라우트를 따로 두면 뒤로가기가 검색어 입력 사이에 끼어든다 (ia.md §1). 그래서 <b>뒤로가기 화살표가 없고</b>
+하단 탭바의 "탐색" 이 켜져 있다. 이 화면은 탭이지 하위 화면이 아니다.
+<br><br><b>최근 검색어 행에 시세가 없다.</b> 응답이 <code>keywordId</code>·<code>keyword</code>·<code>searchedAt</code>
+셋뿐이다 (apiSpec §6.2 — "검색어는 종목이 아니라 문자열이다"). <code>000660</code> 처럼 종목코드로 검색한
+행도 <b>문자열</b>이라 현재가를 붙이지 않는다. "2차전지" 처럼 종목이 아닌 검색어도 남는다.
+<br><br><b>삭제 두 개는 형태가 다르다.</b> 개별은 행 오른쪽 <code>×</code>(<code>DELETE .../{keywordId}</code>),
+전체는 섹션 헤더의 텍스트 링크(<code>DELETE .../recent</code>)다. 둘 다 <code>204</code> 이고
+<b>없는 대상을 지워도 <code>204</code></b> 다 — 실패 화면을 그리지 않는 이유다 (apiSpec §6.2, §11.2 멱등 규칙).
+<code>×</code> 는 44×44 를 확보하려고 행 패딩을 먹고 들어간다.
+<br><br><b>최근 검색어 전체 삭제에는 확인을 받지 않는다.</b> 다시 검색하면 되살아나는 값이고 원장이 아니다.
+최근 본 종목의 전체 삭제(아트보드 12)와 다른 판단이며, 그쪽은 <b>30건이 한 번에 사라지고
+되살리려면 30번 조회해야 해서</b> 확인을 받는다.
+<br><br><b>최근 본 종목은 미리보기 없이 링크 행 하나다.</b> 여기서 목록을 미리 그리면 이 화면이
+<code>GET /stocks/recent</code> 를 한 번 더 부르게 되고, 두 화면이 같은 목록을 다른 시점의 값으로 보여준다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 7 · 최근 검색어 빈 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 7 · 최근 검색어 · 상태 · 빈</div>
+<div class="ab-name">검색 초기 상태 — 최근 검색어 없음</div>
+<div class="ab-api">GET /stocks/search/recent · items []</div>
+<div class="ph">
+  <div class="searchbar">
+    <div class="icon"></div>
+    <div class="field">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      <span class="val plc">종목명 또는 종목코드</span>
+    </div>
+  </div>
+  <div class="scroll flush">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg></div>
+      <b>최근 검색어가 없습니다</b>
+      <span>종목명이나 6자리 종목코드를 두 글자 이상 입력하면 검색이 시작됩니다</span>
+    </div>
+    <div class="rows">
+      <div class="row" style="min-height:56px">
+        <span class="l"><b><span class="nm">최근 본 종목</span></b><span>최근 조회한 30개까지 볼 수 있습니다</span></span>
+        <span class="r"><svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:none;stroke:var(--finch-color-fg-placeholder);stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>이 상태는 두 경로로 도달한다</b> — 첫 사용자, 그리고 전체 삭제 직후. 둘이 같은 화면이라 따로 그리지 않았다.
+<br><br><b>빈 상태에 "인기 검색어" 같은 대체 목록을 만들지 않았다.</b> 그런 API 가 없다.
+빈 자리를 채우려고 화면을 만들면 없는 엔드포인트가 구현 대상이 된다.
+<br><br><b>보조문이 검색 규칙을 알려준다.</b> "두 글자 이상" 은 <code>GET /stocks/search</code> 의 호출 조건이고
+(apiSpec §5.1) 한 글자만 입력한 상태에서는 요청이 나가지 않는다. 그 상태를 <b>따로 그리지 않았다</b> —
+화면이 이 초기 상태 그대로이고 아무것도 바뀌지 않기 때문이다. 무언가 바뀐 것처럼 그리면 없는 상태가 생긴다.
+<br><br><b>최근 본 종목 링크는 남는다.</b> 검색어가 없어도 조회 기록은 따로 쌓이므로 두 목록은 서로 독립이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 8 · 검색 결과 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 8 · 종목 검색</div>
+<div class="ab-name">검색 결과 — 거래정지 뱃지 포함</div>
+<div class="ab-api">GET /stocks/search?keyword=삼성&amp;size=10</div>
+<div class="ph">
+  <div class="searchbar">
+    <div class="icon"></div>
+    <div class="field">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      <span class="val">삼성</span>
+      <span class="clr"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+    </div>
+  </div>
+  <div class="scroll flush">
+    <div class="rows">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>005930 · KOSPI</span></span>
+        <span class="r"><b>73,500원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-900 (-1.21%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자우</span></b><span>005935 · KOSPI</span></span>
+        <span class="r"><b>61,200원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-400 (-0.65%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성바이오로직스</span></b><span>207940 · KOSPI</span></span>
+        <span class="r"><b>1,024,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+18,000 (1.79%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성중공업</span><span class="badge">거래정지</span></b><span>010140 · KOSPI</span></span>
+        <span class="r"><b>9,850원</b>
+          <span class="chg" data-d="flat"><svg viewBox="0 0 10 10"><rect x="1" y="4" width="8" height="2"/></svg>0 (0.00%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성SDI</span></b><span>006400 · KOSPI</span></span>
+        <span class="r"><b>318,500원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+4,500 (1.43%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성에스디에스</span></b><span>018260 · KOSPI</span></span>
+        <span class="r"><b>142,300원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1,700 (-1.18%)</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>검색어는 URL 에 둔다</b> — <code>/search?q=삼성</code> (ia.md §2). 뒤로가기·새로고침·공유에서 살아 있어야 한다.
+<code>size=10</code> 이라 결과가 열 개를 넘지 않고, <b>페이징이 없다</b> — 커서도 <code>hasNext</code> 도
+이 엔드포인트에는 없다 (apiSpec §5.1). 무한 스크롤을 만들지 않는다.
+<br><br><b>거래정지 뱃지는 무채색이다.</b> 잉크 테두리(<code>stroke-neutral-contrast</code>) + bold 로,
+"보유" 뱃지(<code>stroke-neutral-weak</code> + 보조 잉크)보다 무겁다. 유채색을 쓰면 등락 적색과 섞인다.
+<b>검색 행에는 정지 사유를 쓰지 않는다</b> — <code>suspendedReason</code> 이 검색 응답에 없고
+종목 상세에만 있다 (apiSpec §5.1 vs §5.2). 사유는 아트보드 16 에서 나온다.
+<br><br><b>거래정지 행도 눌린다.</b> 막는 것은 매수·매도이지 조회가 아니다 (기능명세 §4). 행을 눌러 상세로 가면
+거기서 CTA 가 비활성으로 나온다.
+<br><br><b>상장폐지 종목은 응답에 없다</b> (<code>is_active = false</code> 제외, apiSpec §5.1). 구분 필드도
+없으므로 화면에 표시할 것이 없다 — "상장폐지" 뱃지를 만들지 않았다.
+<br><br><b>행을 누르면 서버가 최근 본 종목에 자동 기록한다.</b> <code>GET /stocks/{stockCode}</code> 호출 자체가
+기록이고 별도 등록 API 가 없다 (apiSpec §5.2). 화면이 기록 요청을 따로 보내지 않는다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 9 · 검색 결과 없음 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 9 · 종목 검색 · 상태 · 빈</div>
+<div class="ab-name">검색 — 결과 없음</div>
+<div class="ab-api">GET /stocks/search?keyword=삼전전자 · items []</div>
+<div class="ph">
+  <div class="searchbar">
+    <div class="icon"></div>
+    <div class="field">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      <span class="val">삼전전자</span>
+      <span class="clr"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+    </div>
+  </div>
+  <div class="scroll flush">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/><path d="M8.5 11h5"/></svg></div>
+      <b>'삼전전자' 검색 결과가 없습니다</b>
+      <span>종목명의 앞부분이나 6자리 종목코드로 다시 찾아보세요</span>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>검색어를 문구에 넣는다.</b> "검색 결과가 없습니다" 만 쓰면 사용자가 무엇으로 검색했는지 확인하려고
+입력 필드를 다시 본다. 필드와 빈 상태가 화면 위아래로 떨어져 있어서다.
+<br><br><b>빈 배열은 실패가 아니다.</b> <code>200 OK</code> + <code>items: []</code> 이고 에러 화면으로 다루지 않는다.
+<br><br><b>보조문에 "초성으로도 찾을 수 있습니다" 를 쓰지 않았다.</b> 초성 검색은 확장 범위다 (apiSpec §5.1).
+안내한 방법이 실제로 안 되면 사용자는 앱이 고장난 것으로 읽는다.
+<br><br><b>검색 실패(네트워크·5xx)는 이 화면이 아니다.</b> 같은 자리에 아이콘과 문구를 바꾸고
+<b>다시 시도 버튼</b>을 둔다 — 빈 결과는 사용자가 검색어를 고칠 일이고, 실패는 같은 검색어를 다시 보낼 일이다.
+버튼 하나로 두 상태를 합치면 없는 종목을 계속 다시 검색하게 된다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 10 · 검색 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 10 · 종목 검색 · 상태 · 로딩</div>
+<div class="ab-name">검색 — 입력 중</div>
+<div class="ab-api">GET /stocks/search · pending</div>
+<div class="ph">
+  <div class="searchbar">
+    <div class="icon"></div>
+    <div class="field">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
+      <span class="val">삼성</span>
+      <span class="clr"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+    </div>
+  </div>
+  <div class="scroll flush">
+    <div class="rows">
+      <div class="row"><span class="l"><span class="sk" style="width:88px"></span><span class="sk" style="width:112px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:76px"></span><span class="sk" style="width:92px;height:12px;margin-top:6px"></span></span></div>
+      <div class="row"><span class="l"><span class="sk" style="width:104px"></span><span class="sk" style="width:112px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:68px"></span><span class="sk" style="width:84px;height:12px;margin-top:6px"></span></span></div>
+      <div class="row"><span class="l"><span class="sk" style="width:132px"></span><span class="sk" style="width:112px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:88px"></span><span class="sk" style="width:88px;height:12px;margin-top:6px"></span></span></div>
+      <div class="row"><span class="l"><span class="sk" style="width:96px"></span><span class="sk" style="width:112px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:72px"></span><span class="sk" style="width:80px;height:12px;margin-top:6px"></span></span></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>골격 행의 개수를 결과 개수로 읽히게 하지 않는다.</b> 네 줄은 목록이 온다는 신호일 뿐이고
+<code>size=10</code> 과 맞추지 않았다 — 열 줄을 그리면 열 개가 올 것으로 읽힌다.
+<br><br><b>입력 필드 위에 스피너를 얹지 않았다.</b> 필드 안에서 무언가 돌면 사용자가 타이핑을 멈춘다.
+자동완성은 입력을 막지 않아야 한다.
+<br><br><b>이전 결과를 지우고 골격으로 바꾸는지, 이전 결과를 남기고 그 위에 새 결과를 덮는지는
+프론트의 선택이다.</b> 시안은 지우는 쪽을 그렸다 — 검색어가 바뀌면 이전 결과가 <b>다른 검색어의 답</b>이라
+남겨두면 사용자가 그것을 새 결과로 읽고 누른다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 11 · 최근 본 종목 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 11 · 최근 본 종목</div>
+<div class="ab-name">최근 본 종목 — 목록</div>
+<div class="ab-api">GET /stocks/recent · DELETE .../{stockCode}</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">최근 본 종목</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6.5 7l1 13h9l1-13"/></svg></div>
+  </div>
+  <div class="scroll flush">
+    <div class="rows">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>005930 · 방금 전</span></span>
+        <span class="r" style="margin-right:4px"><b>73,500원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">SK하이닉스</span></b><span>000660 · 1시간 전</span></span>
+        <span class="r" style="margin-right:4px"><b>191,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+2.41%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">카카오</span></b><span>035720 · 어제</span></span>
+        <span class="r" style="margin-right:4px"><b>40,400원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+1.94%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">LG에너지솔루션</span></b><span>373220 · 09-02</span></span>
+        <span class="r" style="margin-right:4px"><b>412,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+2.11%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">에코프로비엠</span></b><span>247540 · 09-01</span></span>
+        <span class="r" style="margin-right:4px"><b>121,400원</b>
+          <span class="chg" data-d="flat"><svg viewBox="0 0 10 10"><rect x="1" y="4" width="8" height="2"/></svg>0.00%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+    </div>
+    <div style="padding:18px 16px;text-align:center;font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-placeholder)">최근 조회한 30개까지 보관됩니다</div>
+  </div>
+</div>
+<div class="note">
+<b>이 행은 검색 행보다 얇다. 응답이 얇아서다.</b> <code>GET /stocks/recent</code> 는
+<code>stockCode</code>·<code>stockName</code>·<code>currentPrice</code>·<code>changeRate</code>·<code>viewedAt</code>
+다섯 개만 준다 (apiSpec §6.1). 검색 응답에 있는 <code>changeAmount</code>·<code>market</code>·<code>suspended</code> 와
+현재가 응답의 <code>stale</code>·<code>asOf</code> 가 <b>전부 없다.</b>
+<ul>
+<li><b>등락 금액을 그리지 않았다</b> — 등락률만 온다. 검색·관심 행의 "<code>-900 (-1.21%)</code>" 와
+    형태가 다른 것은 실수가 아니다.</li>
+<li><b>"시세 지연" 자리를 만들지 않았다</b> — <code>stale</code> 이 없어 판정할 근거가 응답에 없다.
+    화면이 <code>GET /stocks/prices</code> 를 따로 불러 보강할 수는 있지만, 그건 계약이 시키지 않은
+    조립이고 두 응답의 시점이 어긋나면 목록 안에서 값이 섞인다.</li>
+<li><b>거래정지 뱃지를 그리지 않았다</b> — <code>suspended</code> 가 없다. 행을 눌러 상세로 가면 거기서 나온다.</li>
+</ul>
+<b>이 셋이 필요하면 계약을 늘리는 것이 시안을 늘리는 것보다 먼저다.</b>
+<br><br><b>등록 API 가 없다.</b> 종목 상세를 여는 것 자체가 기록이고 최대 30건 FIFO, 같은 종목을 다시 보면
+새 항목이 아니라 최상단으로 올라간다 (apiSpec §6.1). 그래서 <b>같은 종목이 두 번 나오는 행을 그리지 않았다.</b>
+<br><br><b><code>viewedAt</code> 을 상대 시각으로 적었다.</b> "방금 전 · 1시간 전 · 어제" 다음이 날짜다 —
+이 목록에서 중요한 것은 순서이지 정확한 시각이 아니다. 정렬은 최신순 고정이라 화면이 다시 정렬하지 않는다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 12 · 최근 본 종목 전체 삭제 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 12 · 최근 본 종목 · 확인</div>
+<div class="ab-name">전체 삭제 — 확인 시트</div>
+<div class="ab-api">DELETE /stocks/recent · 204</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">최근 본 종목</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2M6.5 7l1 13h9l1-13"/></svg></div>
+  </div>
+  <div class="scroll flush">
+    <div class="rows">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>005930 · 방금 전</span></span>
+        <span class="r" style="margin-right:4px"><b>73,500원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">SK하이닉스</span></b><span>000660 · 1시간 전</span></span>
+        <span class="r" style="margin-right:4px"><b>191,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+2.41%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">카카오</span></b><span>035720 · 어제</span></span>
+        <span class="r" style="margin-right:4px"><b>40,400원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+1.94%</span></span>
+        <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">최근 본 종목을 모두 지울까요?</div>
+    <div class="cap">지운 목록은 되돌릴 수 없습니다. 다시 쌓으려면 종목을 하나씩 열어야 합니다.</div>
+    <button class="btn" data-v="primary">전체 삭제</button>
+    <button class="btn" data-v="secondary">취소</button>
+  </div>
+</div>
+<div class="note">
+<b>파괴적 확인 버튼의 채움도 잉크다.</b> 모노톤에는 <code>bg-critical-solid</code> 가 없다 — 위험을 색으로
+말하면 등락 적색과 섞인다. 구분은 <b>문구</b>가 한다: 버튼 라벨이 "확인" 이 아니라 "전체 삭제" 이고,
+제목이 무엇이 지워지는지 말한다 (finch-seed §3).
+<br><br><b>취소가 아래다.</b> 두 버튼 모두 잉크 계열이라 위치가 위계를 말한다. 시트 안에서 위가 주 동작이고
+아래가 물러나는 동작이다 — <code>sprint-4.dc.html</code> 아트보드 6·8 과 같은 순서다.
+<br><br><b>되돌리기를 만들지 않았다.</b> <code>DELETE</code> 는 <code>204</code> 만 주고 복원 경로가 없다.
+되돌리기 버튼을 그리면 없는 API 를 부르게 된다 — <b>그래서 삭제 전에 확인을 받는다.</b>
+<br><br><b>개별 삭제(<code>×</code>)에는 확인을 받지 않는다.</b> 한 건이고, 그 종목을 다시 열면 목록에 되돌아온다.
+전체 삭제만 30건을 한 번에 지우므로 확인을 받는다.
+<br><br><b>딤과 시트가 같은 <code>z-overlay</code> 층이고 순서는 DOM 이 정한다</b> (finch-seed §6).
+딤은 시각 차단이고, 뒤 목록의 <code>×</code> 버튼도 함께 비활성이어야 키보드·스크린리더로 뚫리지 않는다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 13 · 최근 본 종목 빈 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 13 · 최근 본 종목 · 상태 · 빈</div>
+<div class="ab-name">최근 본 종목 — 없음</div>
+<div class="ab-api">GET /stocks/recent · items []</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">최근 본 종목</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll flush">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg></div>
+      <b>최근 본 종목이 없습니다</b>
+      <span>종목 상세를 열면 자동으로 여기에 쌓입니다. 최대 30개까지 보관됩니다</span>
+      <button class="btn" data-v="primary">종목 검색하기</button>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>전체 삭제 아이콘이 사라진다.</b> 지울 것이 없는데 버튼이 남아 있으면 눌러 보게 되고,
+<code>DELETE</code> 는 없는 대상에도 <code>204</code> 를 주므로 아무 일도 일어나지 않는다 —
+사용자에게는 <b>버튼이 고장난 것</b>으로 보인다.
+<br><br><b>하단 탭바가 없다.</b> <code>/recent</code> 는 탭이 아니라 <code>/search</code> 아래의 화면이고
+뒤로가기로 나간다 (ia.md §3 — 최근 본 종목은 탭에 두지 않고 탐색 안에서 들어간다).
+아트보드 6·7 과 달리 상단에 뒤로가기가 있는 이유다.
+<br><br><b>로딩 상태를 따로 그리지 않았다.</b> 아트보드 10(검색 로딩)과 같은 골격 행이고, 행 형태만
+아트보드 11 을 따른다. 같은 골격을 두 번 그리면 둘이 어긋날 때 어느 쪽이 기준인지 알 수 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 14 · 종목 상세 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 14 · 종목 상세</div>
+<div class="ab-name">종목 상세 — 차트 탭 · 보유 중</div>
+<div class="ab-api">GET /stocks/005930 · /candles?period=1M · tab=chart</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"><svg viewBox="0 0 24 24" style="fill:currentColor"><path d="M12 3.5l2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.8-5.2 2.8 1-6L3.5 9.8l5.9-.8z"/></svg></div>
+  </div>
+
+  <div class="scroll flush">
+    <div style="padding:16px 16px 12px;background:var(--finch-color-bg-layer-default)">
+      <div class="cap">005930 · KOSPI</div>
+      <div class="px-hero" data-d="down" style="margin-top:2px">73,500원</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span class="chg lg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-900 (-1.21%)</span>
+        <span class="cap">전일 74,400원</span>
+      </div>
+      <div class="meta" style="margin-top:6px">14:30 기준</div>
+    </div>
+
+    <div class="tabs">
+      <button aria-selected="true">차트</button><button>기업정보</button><button>AI 분석</button>
+    </div>
+
+    <div style="padding:12px 16px;background:var(--finch-color-bg-layer-default)">
+      <div class="seg">
+        <button aria-selected="true">1개월</button><button>3개월</button><button>1년</button>
+      </div>
+      <svg viewBox="0 0 326 140" style="width:100%;height:auto;display:block;margin-top:10px" aria-label="일봉 캔들 차트">
+        <g stroke="var(--finch-color-stroke-neutral-subtle)" stroke-width="1">
+          <path d="M0 20h326M0 50h326M0 80h326M0 110h326"/>
+        </g>
+        <g fill="var(--finch-color-bg-up-solid)"><rect x="42.5" y="57.7" width="1" height="27.0"/><rect x="38" y="70.6" width="10" height="8.6"/><rect x="57.5" y="28.1" width="1" height="54.0"/><rect x="53" y="45.0" width="10" height="25.6"/><rect x="72.5" y="24.8" width="1" height="26.8"/><rect x="68" y="33.5" width="10" height="11.5"/><rect x="117.5" y="47.8" width="1" height="31.0"/><rect x="113" y="56.4" width="10" height="8.5"/><rect x="177.5" y="81.3" width="1" height="31.9"/><rect x="173" y="93.5" width="10" height="14.2"/><rect x="192.5" y="66.0" width="1" height="38.9"/><rect x="188" y="82.0" width="10" height="11.5"/><rect x="207.5" y="54.1" width="1" height="34.6"/><rect x="203" y="62.1" width="10" height="19.9"/><rect x="222.5" y="30.2" width="1" height="44.5"/><rect x="218" y="42.1" width="10" height="20.0"/><rect x="237.5" y="12.0" width="1" height="37.9"/><rect x="233" y="27.8" width="10" height="14.3"/><rect x="297.5" y="48.9" width="1" height="32.0"/><rect x="293" y="56.4" width="10" height="14.2"/></g>
+        <g fill="var(--finch-color-bg-down-solid)"><rect x="12.5" y="51.2" width="1" height="20.9"/><rect x="8" y="56.4" width="10" height="11.4"/><rect x="27.5" y="58.7" width="1" height="30.8"/><rect x="23" y="67.8" width="10" height="11.4"/><rect x="87.5" y="20.8" width="1" height="42.6"/><rect x="83" y="33.5" width="10" height="17.2"/><rect x="102.5" y="34.1" width="1" height="38.7"/><rect x="98" y="50.7" width="10" height="14.2"/><rect x="132.5" y="43.9" width="1" height="38.7"/><rect x="128" y="56.4" width="10" height="17.1"/><rect x="147.5" y="57.1" width="1" height="48.6"/><rect x="143" y="73.5" width="10" height="17.1"/><rect x="162.5" y="82.3" width="1" height="35.7"/><rect x="158" y="90.6" width="10" height="17.1"/><rect x="252.5" y="20.1" width="1" height="38.7"/><rect x="248" y="27.8" width="10" height="17.2"/><rect x="267.5" y="33.3" width="1" height="37.8"/><rect x="263" y="45.0" width="10" height="17.1"/><rect x="282.5" y="46.5" width="1" height="39.2"/><rect x="278" y="62.1" width="10" height="8.5"/><rect x="312.5" y="45.0" width="1" height="42.5"/><rect x="308" y="56.4" width="10" height="25.6"/></g>
+      </svg>
+      <div style="display:flex;justify-content:space-between;margin-top:4px">
+        <span class="meta">08-05</span><span class="meta">09-04</span>
+      </div>
+    </div>
+
+    <div style="padding:10px 16px 14px">
+      <div class="card" style="padding:14px 16px">
+        <div class="sec" style="padding:0 0 8px">내 보유</div>
+        <div class="kv"><span class="k">보유 수량</span><span class="v">10주</span></div>
+        <div class="kv"><span class="k">평균 매수가</span><span class="v">71,200원</span></div>
+        <div class="kv"><span class="k">평가손익</span>
+          <span class="v" style="display:flex;align-items:center;gap:6px">
+            <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+23,000원 (3.23%)</span>
+          </span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fab" style="bottom:96px"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3.2-6.4"/><path d="M12 8v4l3 2"/></svg></div>
+  <div class="cta pair">
+    <button class="btn" data-v="secondary">매도</button>
+    <button class="btn" data-v="primary">매수</button>
+  </div>
+</div>
+<div class="note">
+<b>차트 기간은 일봉 셋뿐이다 — <code>1M</code>·<code>3M</code>·<code>1Y</code>.</b> 분봉 도입 여부가
+<code>[S0-4]</code>(contracts P11)로 미정이라 <code>1D</code>·<code>1W</code> 탭을 그리지 않았다.
+응답의 <code>interval: "DAY"</code> 와 일치한다 (apiSpec §5.3). 값은 <code>?period=</code> 쿼리로 URL 에 둔다 —
+뒤로가기가 기간 전환 사이에 살아야 한다 (ia.md §2).
+<br><br><b>큰 가격만 <code>-vivid</code> 다.</b> 28px bold 현재가는 <code>fg-down-vivid</code>(600단계),
+그 아래 등락과 보유 카드의 평가손익은 <code>fg-down</code>·<code>fg-up</code>(700단계)이다.
+한 값으로 합치면 13px 캡션에서 대비가 깨진다 (finch-seed §4).
+<br><br><b>캔들은 <code>bg-up-solid</code>·<code>bg-down-solid</code>(600 원색) 몸통이다.</b> 심지도 같은 색이다 —
+<code>stroke-up-*</code> 을 만들지 않았고 필요하지도 않다 (finch-seed §3). 격자선은
+<code>stroke-neutral-subtle</code> 이고 값 축 눈금을 그리지 않았다. MVP 차트 사양이 캔들 1종이고
+크로스헤어·보조지표는 확장 범위다 (기능명세 §7.2).
+<br><br><b>관심 토글은 채운 별 하나로 표현한다.</b> <code>watched: true</code> 가 초기 상태이고
+<code>POST</code>·<code>DELETE /watchlist</code> 가 토글한다. <b>실패는 토스트가 아니라 화면 상단 인라인
+알림이다</b> — <code>WATCHLIST_LIMIT_EXCEEDED</code>(409, "관심 종목은 최대 50개까지 등록할 수 있어요").
+토스트를 그릴 반전 표면 토큰이 없다 (아트보드 0).
+<br><br><b>AI 플로팅 버튼이 하단 CTA 위에 뜬다</b> (<code>bottom</code> 96px). CTA 를 가리면 안 되고
+CTA 아래로 내리면 안전영역에 걸린다. <code>z-floating</code> 이라 <code>z-sticky</code> 인 CTA 위에 온다.
+<b>브랜드 마크를 붙이지 않았다</b> (finch-seed §3).
+<br><br><b>"AI 분석" 탭의 내용은 이 캔버스가 그리지 않는다.</b> 탭이 세 개라는 것과
+<code>?tab=chart|info|ai</code> 가 URL 상태라는 것까지가 여기 범위다 — 7개 섹션 구성은
+AI 슬롯 3번이고 계약이 이 캔버스 밖이다 (아트보드 0).
+</div>
+</section>
+
+
+<!-- ═════════════════ 15 · 종목 상세 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 15 · 종목 상세 · 상태 · 로딩</div>
+<div class="ab-name">종목 상세 — 첫 로드</div>
+<div class="ab-api">GET /stocks/005930 · /candles · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t"><span class="sk" style="width:88px;height:18px"></span></div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll flush">
+    <div style="padding:16px 16px 12px;background:var(--finch-color-bg-layer-default)">
+      <span class="sk" style="width:104px;height:12px"></span>
+      <span class="sk" style="width:168px;height:32px;margin-top:8px;border-radius:var(--finch-radius-control)"></span>
+      <span class="sk" style="width:140px;height:14px;margin-top:10px"></span>
+    </div>
+    <div class="tabs">
+      <button aria-selected="true">차트</button><button>기업정보</button><button>AI 분석</button>
+    </div>
+    <div style="padding:12px 16px;background:var(--finch-color-bg-layer-default)">
+      <div class="seg">
+        <button aria-selected="true">1개월</button><button>3개월</button><button>1년</button>
+      </div>
+      <span class="sk" style="height:180px;margin-top:10px;border-radius:var(--finch-radius-card)"></span>
+    </div>
+    <div style="padding:12px 16px 20px">
+      <div class="card">
+        <span class="sk" style="width:56px;height:13px"></span>
+        <div style="height:12px"></div>
+        <div class="kv"><span class="sk" style="width:62px"></span><span class="sk" style="width:44px"></span></div>
+        <div class="kv"><span class="sk" style="width:74px"></span><span class="sk" style="width:72px"></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cta pair">
+    <button class="btn" data-v="disabled">매도</button>
+    <button class="btn" data-v="disabled">매수</button>
+  </div>
+</div>
+<div class="note">
+<b>로딩 중에는 CTA 를 비활성으로 둔다.</b> 종목·가격을 모르는 상태에서 매수를 누르면 주문 화면이
+빈 값으로 열린다. <code>bg-disabled</code>(gray-400) 면 + <code>fg-disabled</code>(gray-600) 라벨이고
+<code>opacity</code> 로 흐리지 않는다 — 겹친 자식 아이콘까지 사라진다 (finch-seed §4).
+<br><br><b>기간 세그먼트는 골격이 아니다.</b> 값이 URL 에 있어 응답 전에도 확정돼 있다 —
+골격으로 그리면 도착 후 선택이 튀어 보인다.
+<br><br><b>차트는 한 덩어리 골격이다.</b> 캔들 모양의 자리표시자를 그리지 않았다 — 개수와 방향이
+실제 데이터로 읽히고, <code>bg-skeleton</code>(gray-300)으로 그린 가짜 캔들은 무채색 사다리 안에서
+"보합 캔들" 로도 읽힌다.
+<br><br><b>관심 토글(별)도 그리지 않았다.</b> <code>watched</code> 를 모르는 상태에서 빈 별을 그리면
+도착 후 채워지면서 사용자가 방금 자기가 누른 것으로 읽는다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 16 · 거래정지 + 시세 지연 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 16 · 종목 상세 · 상태 · 에러</div>
+<div class="ab-name">종목 상세 — 거래정지 · 시세 지연</div>
+<div class="ab-api">suspended true · suspendedReason · GET /price stale true</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성중공업</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.5 5.9.8-4.3 4.2 1 6-5.2-2.8-5.2 2.8 1-6L3.5 9.8l5.9-.8z"/></svg></div>
+  </div>
+  <div class="scroll flush">
+    <div style="padding:16px 16px 12px;background:var(--finch-color-bg-layer-default)">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="cap">010140 · KOSPI</span>
+        <span class="badge">거래정지</span>
+      </div>
+      <div class="px-hero" data-d="flat" style="margin-top:2px">9,850원</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <span class="chg lg" data-d="flat"><svg viewBox="0 0 10 10"><rect x="1" y="4" width="8" height="2"/></svg>0 (0.00%)</span>
+        <span class="stale"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>시세 지연</span>
+      </div>
+      <div class="meta" style="margin-top:6px">14:02 기준 · 마지막으로 받은 시세입니다</div>
+    </div>
+
+    <div style="padding:12px 16px 0">
+      <div class="alert">
+        <svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17v.01"/></svg>
+        <div><div class="m">거래정지 종목입니다</div>
+        <div class="s">불성실공시법인 지정 예고 (2026-09-01 ~)</div></div>
+      </div>
+    </div>
+
+    <div class="tabs" style="margin-top:12px">
+      <button aria-selected="true">차트</button><button>기업정보</button><button>AI 분석</button>
+    </div>
+    <div style="padding:12px 16px;background:var(--finch-color-bg-layer-default)">
+      <div class="seg">
+        <button aria-selected="true">1개월</button><button>3개월</button><button>1년</button>
+      </div>
+      <svg viewBox="0 0 326 120" style="width:100%;height:auto;display:block;margin-top:10px" aria-label="일봉 캔들 차트">
+        <g stroke="var(--finch-color-stroke-neutral-subtle)" stroke-width="1"><path d="M0 20h326M0 60h326M0 100h326"/></g>
+        <g fill="var(--finch-color-bg-down-solid)"><rect x="12.5" y="40" width="1" height="26"/><rect x="8" y="46" width="10" height="14"/><rect x="42.5" y="48" width="1" height="30"/><rect x="38" y="56" width="10" height="16"/><rect x="72.5" y="58" width="1" height="28"/><rect x="68" y="64" width="10" height="16"/></g>
+        <g fill="var(--finch-color-bg-up-solid)"><rect x="27.5" y="42" width="1" height="24"/><rect x="23" y="48" width="10" height="12"/><rect x="57.5" y="52" width="1" height="26"/><rect x="53" y="58" width="10" height="14"/></g>
+        <g><rect x="86" y="18" width="236" height="86" fill="var(--finch-color-bg-transparent-selected)"/>
+          <text x="204" y="66" text-anchor="middle" font-size="12" fill="var(--finch-color-fg-placeholder)"
+            style="font-family:var(--finch-font-family-sans)">정지 이후 시세 없음</text></g>
+      </svg>
+    </div>
+  </div>
+  <div class="cta pair">
+    <button class="btn" data-v="disabled">매도</button>
+    <button class="btn" data-v="disabled">매수</button>
+  </div>
+</div>
+<div class="note">
+<b>두 개의 다른 실패가 겹쳐 있고 원인이 다르다.</b>
+<ul>
+<li><b>거래정지</b>는 종목의 상태다 (<code>suspended</code>·<code>suspendedReason</code>, <code>GET /stocks/{code}</code>).
+    시간이 지나도 저절로 풀리지 않으므로 <b>재시도 버튼을 두지 않는다.</b></li>
+<li><b>시세 지연</b>은 수신의 상태다 (<code>stale</code>, <code>GET /stocks/{code}/price</code>).
+    저절로 회복되므로 역시 사용자가 할 일이 없다. <b>첫 렌더에는 이 칩이 없다</b> —
+    <code>GET /stocks/{code}</code> 응답에 <code>stale</code> 이 없어서 판정할 근거가 <b>갱신 후에야</b> 생긴다.</li>
+</ul>
+<b>정지 사유를 뱃지가 아니라 알림 블록으로 낸다.</b> 사유 문장이 길고 뱃지에 들어가지 않는다.
+뱃지는 헤더에서 상태를 말하고, 알림이 이유를 말한다 — 둘이 중복이 아니라 역할이 다르다.
+<br><br><b>CTA 를 숨기지 않고 비활성으로 남긴다.</b> 버튼이 사라지면 사용자가 "이 종목은 원래 못 사는가,
+지금만 못 사는가" 를 구분하지 못한다. 판정은 화면이 하지 않고 <code>GET /orders/available</code> 의
+<code>tradable</code>·<code>reason</code> 을 따른다 (ia.md §1) — 화면이 자체 판정하면 "눌리는데 거부되는" 상태가 생긴다.
+<br><br><b>"시세 지연" 에 임계 수치를 쓰지 않았다.</b> <code>[S0-3]</code>(contracts P10)이 정해지지 않았다.
+<code>stale: true</code> 하나만 보고 켠다.
+<br><br><b>차트의 빈 구간을 알파 면으로 덮었다.</b> 정지 이후 캔들이 없는 것을 "가격이 0" 이나
+"보합" 으로 그리면 안 된다. 불투명 회색은 흰 면 위에서 Lc 0 이라 <code>bg-transparent-selected</code>(알파)를 썼다 —
+알파라야 어떤 면 위에서도 아래를 같은 양만큼 눌러 살아남는다 (finch-seed §3).
+</div>
+</section>
+
+
+<!-- ═════════════════ 17 · 종목 없음 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 17 · 종목 상세 · 상태 · 에러</div>
+<div class="ab-name">종목 상세 — 없는 종목코드</div>
+<div class="ab-api">404 STOCK_NOT_FOUND</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t"></div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll flush">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V13M12 16.5v.01"/></svg></div>
+      <b>찾을 수 없는 종목입니다</b>
+      <span>종목코드 099999 에 해당하는 종목이 없습니다. 상장폐지되었거나 코드가 잘못됐을 수 있습니다</span>
+      <button class="btn" data-v="primary">종목 검색하기</button>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>404 는 화면 전체를 덮는다.</b> 종목 상세는 <b>허브</b>라 거의 모든 화면에서 여기로 들어오고
+(ia.md §3), 진입 경로와 무관하게 혼자 성립해야 한다. 헤더에 종목명 자리를 남긴 채 본문만 에러로
+바꾸면 이름 없는 종목 화면이 된다.
+<br><br><b>이 화면은 앱의 404(<code>*</code> 라우트)가 아니다.</b> 경로는 유효하고 종목이 없는 것이다 —
+전역 404 로 보내면 뒤로가기가 검색 결과가 아니라 앱 밖으로 나간다. 전역 404 화면은
+<code>account-ai.dc.html</code> 이 그린다.
+<br><br><b>도달 경로가 둘이다.</b> 사용자가 URL 을 직접 고친 경우, 그리고 브리핑의 <code>deeplink</code> 가
+가리키는 종목이 사라진 경우다. 두 번째가 실제로 일어난다 — <code>deeplink</code> 는 AI 서버가 만든
+경로 문자열이고 프론트가 검증하지 않는다 (ia.md §2).
+<br><br><b>상장폐지를 단정하지 않는다.</b> 응답에 구분 필드가 없어 화면이 이유를 알 수 없다
+(apiSpec §5.1 — 상장폐지 종목은 검색에서 제외되고 구분 필드는 두지 않는다). 그래서 문구가
+"상장폐지되었거나 코드가 잘못됐을 수 있습니다" 로 두 가능성을 남긴다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 18 · 주문 입력 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 18 · 주문 1/2</div>
+<div class="ab-name">매수 — 수량 입력 (시장가 전용)</div>
+<div class="ab-api">GET /orders/available?stockCode=005930&amp;side=BUY</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="seg">
+      <button aria-selected="true">매수</button><button>매도</button>
+    </div>
+
+    <div class="card">
+      <div class="kv" style="min-height:0">
+        <span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">73,500원
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+      </div>
+      <div class="meta" style="margin-top:8px">14:30 기준 · 시장가로 즉시 체결됩니다</div>
+    </div>
+
+    <div class="sec">주문 수량</div>
+    <div class="amt"><span class="lb">수량</span><b>10</b><span>주</span></div>
+    <div class="presets">
+      <button>10%</button><button>25%</button><button>50%</button><button>최대</button>
+    </div>
+
+    <div class="card" style="margin-top:2px">
+      <div class="kv"><span class="k">주문 가능 금액</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">주문 가능 수량</span><span class="v">17주</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="primary">매수 확인</button></div>
+</div>
+<div class="note">
+<b>시장가 전용이라 가격 입력 필드가 없다.</b> MVP 에 지정가·미체결 관리·호가창이 없고 접수와 체결이
+분리되지 않는다 (apiSpec §7.1, ia.md §1). 필드를 만들면 없는 주문 유형이 구현 대상으로 읽힌다.
+<br><br><b>비율 버튼의 분모를 화면이 계산하지 않는다.</b> 매수는 <code>maxQuantity</code>(17), 매도는
+<code>holdingQuantity</code> 를 쓴다 (apiSpec §7.3). <code>availableCash ÷ currentPrice</code> 로 다시
+계산하면 수수료·호가단위 같은 서버 규칙이 빠져 <b>서버가 거부하는 수량이 화면에서 최대로 보인다.</b>
+<br><br><b>매수/매도 세그먼트는 <code>?side=buy|sell</code> 로 URL 에 있다</b> (ia.md §2).
+전환하면 <code>GET /orders/available</code> 을 <code>side</code> 를 바꿔 다시 부른다 — 두 방향의
+<code>tradable</code>·<code>reason</code> 이 다를 수 있다 (보유가 없으면 매도만 막힌다).
+<b>수량은 URL 에 두지 않는다</b> — 공유되면 남의 주문 화면이 채워진 채 열린다.
+<br><br><b>"예상" 이라고 적는다.</b> 체결가는 접수 시점의 최신 시세로 다시 계산되므로 확인 화면의
+숫자와 다를 수 있다 (apiSpec §7.2). 이 단어가 없으면 아트보드 23(가격 변동 거부)이 버그로 읽힌다.
+<br><br><b>AI 플로팅 버튼이 없다.</b> 주문 화면은 PRD·프로토타입 양쪽에서 제외다 — 제출 버튼을 가린다 (ia.md §3).
+</div>
+</section>
+
+
+<!-- ═════════════════ 19 · 주문 확인 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 19 · 주문 2/2</div>
+<div class="ab-name">매수 확인 — 주문 전 점검 슬롯 · 제출</div>
+<div class="ab-api">POST /ai/orders/preview · POST /orders (Idempotency-Key)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">주문 확인</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">삼성전자 · 005930</div>
+      <div class="hero" style="margin-top:4px">10주 매수</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">예상 체결가</span><span class="v">73,500원</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+      <div class="kv"><span class="k">주문 후 예수금</span><span class="v">515,000원</span></div>
+    </div>
+
+    <div class="ferr" style="padding:0 2px">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <span>체결가는 접수 시점 시세로 정해져 위 금액과 다를 수 있습니다</span>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M12 3.5 3.5 7v6c0 4.4 3.5 6.9 8.5 8.5 5-1.6 8.5-4.1 8.5-8.5V7z"/></svg>주문 전 점검
+        <span class="rsv">데이터 기준 09-04 14:30</span></div>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:92%"></span>
+      <span class="sk" style="width:70%"></span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <span class="spin"></span><span class="cap">불러오는 중</span>
+      </div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="primary">10주 매수하기</button></div>
+</div>
+<div class="note">
+<b>제출 버튼에 수량을 다시 적는다.</b> 사용자가 마지막으로 보는 숫자와 실제로 나가는 숫자가 같은 줄에
+있어야 한다 (<code>sprint-4.dc.html</code> 아트보드 5 와 같은 규칙). 금액이 아니라 <b>수량</b>인 것은
+시장가라 금액이 확정값이 아니어서다.
+<br><br><b><code>Idempotency-Key</code>(UUID v4)는 이 버튼을 처음 누를 때 한 번 만든다.</b>
+<b>같은 클릭의 재시도는 같은 키, 새 클릭은 새 키</b>다 (apiSpec §1.4). 이 화면에서 갈리는 규칙은
+아트보드 22·23 에 그렸다.
+<br><br><b>주문 전 점검 슬롯이 제출 버튼 <b>위쪽 영역 안</b>에 있고 붙어 있지 않다.</b> 슬롯 하단의
+피드백(엄지)과 제출 버튼 사이에 CTA 영역 경계가 들어간다 — 확인 단계에서 오탭하면 주문이 나간다 (ia.md §4).
+<br><br><b>점검 결과가 주문을 막지 않는다.</b> AI 명세 §7 이 "판단은 하지 않는다" 로 못박았고 경고가 있어도
+버튼은 살아 있다. 버튼을 막는 것은 <code>GET /orders/available</code> 뿐이다 (아트보드 20).
+그래서 이 슬롯이 로딩 중이어도 <b>제출 버튼은 비활성이 아니다</b> — AI 응답을 기다리게 만들면
+장중에 가격이 흘러간다.
+<br><br><b>슬롯 내용은 이 캔버스가 그리지 않는다</b> (아트보드 0). 자리·크기·표면·로딩 형태까지가 여기 범위이고,
+쏠림 <code>before</code>/<code>after</code>·<code>warnings[]</code>·<code>thesis_conflicts[]</code> 세 덩어리와
+근거 목록·피드백은 AI 슬롯 4번의 계약이다.
+<br><br><b>캐릭터(핀치·블루치)를 제출 버튼 주변에 넣지 않는다.</b> 캐릭터가 허용되는 범위는 점검 블록
+안까지이고 그 바깥은 매매 영역이다 (ia.md §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 20 · 주문 불가 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 20 · 주문 · 상태 · 비활성</div>
+<div class="ab-name">매수 — 주문 불가 (tradable false)</div>
+<div class="ab-api">GET /orders/available · tradable false · reason ORDER_MARKET_CLOSED</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="seg">
+      <button aria-selected="true">매수</button><button>매도</button>
+    </div>
+
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+      <div><div class="m">지금은 주문할 수 없어요 (거래 시간 09:00~15:30)</div>
+      <div class="s">거래 시간이 되면 주문할 수 있습니다. 수량은 그대로 유지됩니다.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="kv" style="min-height:0">
+        <span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">73,500원
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+      </div>
+      <div class="meta" style="margin-top:8px">15:30 종가</div>
+    </div>
+
+    <div class="sec">주문 수량</div>
+    <div class="amt"><span class="lb">수량</span><b>10</b><span>주</span></div>
+    <div class="presets">
+      <button>10%</button><button>25%</button><button>50%</button><button>최대</button>
+    </div>
+    <div class="card" style="margin-top:2px">
+      <div class="kv"><span class="k">주문 가능 금액</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="disabled">매수 확인</button></div>
+</div>
+<div class="note">
+<b>비활성 판정을 화면의 시계로 하지 않는다.</b> <code>GET /orders/available</code> 의
+<code>tradable</code>·<code>reason</code> 을 그대로 따른다 (ia.md §1). 화면이 <code>09:00~15:30</code> 을
+자체 판정하면 휴장일·시스템 점검에서 서버와 어긋나 <b>눌리는데 거부되는</b> 상태가 생긴다.
+<br><br><b>문구를 새로 만들지 않았다.</b> <code>reason</code> 이 담는 에러 코드의 <code>message</code> 를
+그대로 쓴다 (apiSpec §1.3 — "서버가 문구를 완성해서 내려준다"). 이 자리를 쓰는 코드는 넷이다.
+<ul>
+<li><code>ORDER_MARKET_CLOSED</code> · 409 — 지금은 주문할 수 없어요 (거래 시간 09:00~15:30)
+    <span style="color:var(--finch-color-fg-placeholder)">(그림)</span></li>
+<li><code>ORDER_STOCK_SUSPENDED</code> · 409 — 거래정지 사유 포함</li>
+<li><code>ORDER_PRICE_UNAVAILABLE</code> · 503 — 시세를 불러올 수 없어 주문이 제한됩니다</li>
+<li><code>ORDER_INSUFFICIENT_QUANTITY</code> · 409 — 보유 수량이 부족합니다 <span style="color:var(--finch-color-fg-placeholder)">(<code>side=SELL</code> · 보유 0)</span></li>
+</ul>
+<b><code>ORDER_PRICE_UNAVAILABLE</code> 이 P10 이 걸린 자리다.</b> 시세 수신이 <b>허용 시간</b>을 넘으면
+주문이 막히는데 그 시간이 <code>[S0-3]</code> 로 미정이다. <b>화면은 비활성 상태만 갖추고 임계 수치를
+쓰지 않는다</b> — 몇 초인지는 서버가 <code>tradable: false</code> 로 알려주고 화면은 <code>reason</code> 의
+문구를 띄운다. 지금 "○초 이상 지연 시" 를 적으면 확정될 때 찾아 고쳐야 한다.
+<br><br><b>수량 입력은 살아 있다.</b> 주문할 수 없는 시간에도 수량을 미리 정해 둘 수 있어야 한다 —
+막는 것은 제출이지 준비가 아니다. 그래서 비율 버튼도 비활성이 아니다.
+<br><br><b>비활성 CTA 는 <code>bg-disabled</code>(gray-400) 면 + <code>fg-disabled</code>(gray-600) 라벨이다.</b>
+paper 위 Lc 22.8 로 버튼 모양이 남는다. <code>opacity</code> 를 쓰지 않는다 (finch-seed §6).
+</div>
+</section>
+
+
+<!-- ═════════════════ 21 · 수량 초과 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 21 · 주문 · 상태 · 에러</div>
+<div class="ab-name">매수 — 주문 가능 수량 초과 (수량을 줄여 체결하지 않는다)</div>
+<div class="ab-api">maxQuantity 17 · 409 ORDER_INSUFFICIENT_CASH</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="seg">
+      <button aria-selected="true">매수</button><button>매도</button>
+    </div>
+    <div class="card">
+      <div class="kv" style="min-height:0">
+        <span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">73,500원
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+      </div>
+      <div class="meta" style="margin-top:8px">14:30 기준 · 시장가로 즉시 체결됩니다</div>
+    </div>
+
+    <div class="sec">주문 수량</div>
+    <div class="amt" data-err><span class="lb">수량</span><b>20</b><span>주</span></div>
+    <div class="ferr">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <span>예수금이 부족합니다. 지금 주문할 수 있는 수량은 17주입니다</span>
+    </div>
+    <div class="presets">
+      <button>10%</button><button>25%</button><button>50%</button><button>최대</button>
+    </div>
+    <div class="card" style="margin-top:2px">
+      <div class="kv"><span class="k">주문 가능 금액</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">주문 가능 수량</span><span class="v">17주</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">1,470,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="disabled">매수 확인</button>
+    <button class="btn" data-v="secondary">충전하고 이어서 주문하기</button>
+  </div>
+</div>
+<div class="note">
+<b>수량을 임의로 줄여 체결하지 않는다.</b> 예수금이 모자라면 <b>거절</b>이지 "가능한 만큼" 이 아니다
+(apiSpec §7.2 4번, 기능명세 §7.3). 그래서 이 화면에 <b>"17주로 줄여 주문" 버튼이 없다.</b>
+있으면 사용자가 20주를 주문했는데 17주가 나가는 경로가 생긴다 — 화면이 대신 판단한 것이다.
+줄이려면 사용자가 <b>수량 필드를 직접 고치거나 "최대" 를 누른다.</b>
+<br><br><b>서버 왕복 없이 막는 것이 정상 경로다.</b> <code>maxQuantity</code> 를 이미 받았으므로 20 &gt; 17 은
+클라이언트가 안다. <code>ORDER_INSUFFICIENT_CASH</code>(409)는 그 판단이 어긋났을 때
+— 다른 탭에서 주문·충전이 일어나 <code>availableCash</code> 가 낡았을 때 — 서버 문구가 도착하는 자리이고,
+<b>같은 필드 아래</b>를 쓴다. 확인 화면까지 갔다가 되돌아오면 같은 값을 두 번 입력하게 된다.
+<br><br><b>셋이 함께 움직인다</b> — 입력 테두리 <code>stroke-critical-solid</code>(2px), 메시지
+<code>fg-critical</code> + bold, 아이콘. <b>색만으로 알리지 않는다</b>. 등락 적색을 쓰면
+"떨어졌다" 로 오독된다 (finch-seed §4).
+<br><br><b>충전 버튼은 <code>/deposit</code> 으로 가고 돌아온다.</b> ia.md §3 의 "주문 → 예수금 부족 → 충전 →
+주문으로 복귀" 흐름이 여기서 시작된다. 주문·충전이 각각 라우트를 갖는 이유가 이 왕복이다 (ia.md §3).
+<b>부족 금액을 화면이 계산해 넘기지 않았다</b> — 그 값(<code>shortfall</code>)은 주문 전 점검 슬롯이
+<code>feasible: false</code> 와 함께 주는 것이고 (ia.md §4), 이 화면이
+<code>예상 금액 − 예수금</code> 으로 만들면 두 숫자가 서로 다른 시점의 값이라 어긋난다.
+<br><br><b>매도 쪽 짝은 <code>ORDER_INSUFFICIENT_QUANTITY</code> 다.</b> 같은 형태이고 분모만
+<code>holdingQuantity</code> 로 바뀐다 — 별도 아트보드를 그리지 않았다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 22 · 처리 중 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 22 · 주문 · 상태 · 에러</div>
+<div class="ab-name">주문 확인 — 처리 중 (같은 키로 재시도)</div>
+<div class="ab-api">409 IDEMPOTENCY_IN_PROGRESS · 동일 Idempotency-Key</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"></div><div class="t">주문 확인</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">삼성전자 · 005930</div>
+      <div class="hero" style="margin-top:4px">10주 매수</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">예상 체결가</span><span class="v">73,500원</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="disabled">처리 중…</button></div>
+
+  <div class="dim"></div>
+  <div class="sheet">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div class="spin" style="margin-top:3px"></div>
+      <div>
+        <div class="h">같은 요청을 처리하고 있습니다</div>
+        <div class="cap" style="margin-top:6px">잠시 후 다시 시도해 주세요. 주문은 <b style="color:var(--finch-color-fg-neutral);font-weight:700">한 번만</b> 체결됩니다.</div>
+      </div>
+    </div>
+    <button class="btn" data-v="primary">다시 시도</button>
+  </div>
+</div>
+<div class="note">
+<b>이 화면이 중복 주문을 만드는 자리다.</b> 서버 문구는 "잠시 후 다시 시도해 주세요" 인데 화면에 재시도
+버튼이 없으면 사용자는 원래 매수 버튼을 다시 누른다. 그건 <b>새 멱등성 키</b>가 되어 <b>두 번째 주문</b>이 된다.
+충전과 달리 주문은 <b>보유 수량과 평균 매수가까지 어긋난다.</b>
+<br><br><b>재시도는 같은 <code>Idempotency-Key</code> 다.</b> 결과를 <b>모르는</b> 상태이기 때문이다 —
+처리가 이미 끝났다면 서버가 최초 결과를 그대로 돌려주고, 아직 진행 중이면 다시
+<code>IDEMPOTENCY_IN_PROGRESS</code> 를 준다. 어느 쪽이든 주문은 한 번만 나간다 (apiSpec §1.4).
+<br><br><b>같은 규칙이 응답 유실·네트워크 타임아웃에도 적용된다.</b> 요청은 나갔는데 응답을 못 받은 상태도
+"결과를 모른다" 이므로 <b>같은 키</b>로 재시도한다. 이 경우 시트 문구만 바뀌고 형태는 같다.
+<br><br><b>자동 재시도가 아니다.</b> 주문 뮤테이션은 자동 재시도하지 않는다 (루트 <code>CLAUDE.md</code>) —
+버튼은 사용자가 누른다. 시트가 뜬 채로 뒤에서 재요청을 반복하면 사용자가 상태를 모르는 동안 요청이 쌓인다.
+<br><br>셋을 함께 건다 (<code>sprint-4.dc.html</code> 아트보드 9 와 같은 형태).
+<ul>
+<li><b>재시도 버튼을 시트 안에 둔다</b> — 원래 CTA 가 아니라 이 버튼이 같은 키를 들고 있다.</li>
+<li><b>딤으로 원래 CTA 를 덮는다</b> (<code>bg-overlay</code> + <code>z-overlay</code>). 덮지 않으면 뒤 버튼이 눌린다.</li>
+<li><b>뒤의 CTA 자체도 비활성으로 바꾼다.</b> 딤은 시각 차단이고 이건 입력 차단이다.
+    둘 중 하나만 하면 키보드·스크린리더로 뚫린다.</li>
+</ul>
+<b>뒤로가기를 막는다.</b> 처리 중에 빠져나가면 결과를 확인할 화면이 사라지고, 사용자가 매매 내역에서
+찾아 확인해야 한다. 그래서 상단 뒤로가기 아이콘 자리가 비어 있다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 23 · 가격 변동 거부 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 23 · 주문 · 상태 · 에러</div>
+<div class="ab-name">주문 거부 — 가격 변동 (새 키로 다시 주문)</div>
+<div class="ab-api">409 ORDER_PRICE_CHANGED · 새 Idempotency-Key</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">주문 확인</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <div><div class="m">가격이 변동되어 주문할 수 없어요. 다시 시도해 주세요</div>
+      <div class="s">주문은 체결되지 않았고 예수금도 그대로입니다.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="cap">삼성전자 · 005930</div>
+      <div class="hero" style="margin-top:4px">10주 매수</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">확인할 때 본 가격</span><span class="v" style="color:var(--finch-color-fg-neutral-subtle)">73,500원</span></div>
+      <div class="kv"><span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">76,200원
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+2,700</span></span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">762,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">762,000원으로 다시 주문</button>
+    <button class="btn" data-v="secondary">수량 다시 입력</button>
+  </div>
+</div>
+<div class="note">
+<b>이 버튼은 <b>새</b> <code>Idempotency-Key</code> 를 쓴다.</b> 아트보드 22 와 정반대다.
+주문이 <b>확실히 거부됐고</b> 원장에 아무것도 남지 않았으므로 새 키가 중복을 만들지 않는다.
+같은 키를 재사용하면 서버가 "이미 처리된 키" 로 보고 <b>같은 거부를 그대로 돌려준다</b> — 영원히 못 산다.
+<br><br><b>같은 키 / 새 키를 가르는 기준은 "결과를 아는가" 하나다.</b>
+<table class="tb" style="margin-top:8px">
+<tr><th>상황</th><th>결과</th><th>키</th></tr>
+<tr><td><code>IDEMPOTENCY_IN_PROGRESS</code> · 응답 유실 · 타임아웃</td><td><b>모른다</b></td><td><b>같은 키</b> (아트보드 22)</td></tr>
+<tr><td><code>ORDER_PRICE_CHANGED</code> · <code>ORDER_INSUFFICIENT_CASH</code> · <code>ORDER_INSUFFICIENT_QUANTITY</code></td>
+    <td><b>거부됐다</b></td><td><b>새 키</b> (이 화면)</td></tr>
+<tr><td><code>IDEMPOTENCY_CONFLICT</code> (같은 키 · 다른 본문)</td><td>클라이언트 버그</td>
+    <td><b>재시도 금지</b> — 일반 오류 화면</td></tr>
+</table>
+<b>apiSpec §1.4 가 4xx 결과를 키와 함께 저장하는지 명시하지 않았다.</b> 저장한다면 같은 키 재시도가
+영원히 거부되고, 저장하지 않는다면 통과한다 — <b>새 키는 어느 쪽에서도 동작한다.</b> 그래서 화면을
+새 키 쪽으로 맞췄다. 백엔드가 이 규칙을 명시하면 노트가 아니라 계약이 된다.
+<br><br><b>두 가격을 나란히 보여준다.</b> "다시 시도해 주세요" 만 띄우면 사용자는 무엇이 달라졌는지 모른 채
+같은 버튼을 다시 누르고 또 거부된다. <b>확인할 때 본 가격은 보조 잉크로 물러나고 현재가가 앞에 온다.</b>
+<br><br><b>버튼 라벨에 새 금액을 적는다.</b> 화면 위쪽 금액과 실제로 나가는 금액이 달라지는 자리라
+라벨이 "다시 주문" 뿐이면 735,000원이 나갈 것으로 읽힌다 (<code>sprint-4.dc.html</code> 아트보드 8 과 같은 규칙).
+<br><br><b>"주문은 체결되지 않았고 예수금도 그대로입니다" 를 반드시 쓴다.</b> 409 를 받은 사용자가
+가장 먼저 하는 일은 매매 내역을 확인하는 것이다. 이 한 줄이 그 왕복을 없앤다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 24 · 체결 완료 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 24 · 주문 완료</div>
+<div class="ab-name">체결 완료</div>
+<div class="ab-api">201 Created · executedPrice · cashBalanceAfter</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t"></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+  </div>
+  <div class="done">
+    <div class="mark"><svg viewBox="0 0 24 24"><path d="M5 13l4.5 4.5L19 7"/></svg></div>
+    <div style="font-size:var(--finch-font-size-title-2);line-height:var(--finch-line-height-title-2);font-weight:700;letter-spacing:-.02em;text-align:center">삼성전자 10주를<br>매수했습니다</div>
+    <div class="cap" style="margin-top:2px">2026-09-04 14:31</div>
+    <div class="card" style="width:100%;box-sizing:border-box;margin-top:18px;text-align:left">
+      <div class="kv"><span class="k">체결가</span><span class="v">73,500원</span></div>
+      <div class="kv"><span class="k">체결 금액</span><span class="v">735,000원</span></div>
+      <div class="kv"><span class="k">주문 후 예수금</span><span class="v">515,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">확인</button>
+    <button class="btn" data-v="secondary">매매 내역 보기</button>
+  </div>
+</div>
+<div class="note">
+<b>응답값을 그대로 보여준다</b> — <code>executedPrice</code>·<code>executedAmount</code>·<code>executedAt</code>·
+<code>cashBalanceAfter</code> (apiSpec §7.1). <b>"예상" 이 사라지고 "체결" 이 된다.</b> 확인 화면(아트보드 19)의
+단어와 다른 것이 의도다 — 여기 숫자는 확정값이다. <code>orderId</code> 는 화면에 쓰지 않는다 (사용자가
+지목할 대상이 아니다).
+<br><br><b>매도면 실현손익 행이 하나 더 붙는다.</b> <code>realizedProfit</code> 은 매도일 때만 값이 있다.
+그 숫자는 <code>fg-up</code>·<code>fg-down</code>(700단계)이고 <code>-vivid</code> 가 아니다 — 카드 안 행은
+18px 미만이다 (finch-seed §4). <b>별도 아트보드를 그리지 않았다</b> — 행 하나가 늘 뿐이고,
+그 행 형태는 <code>sprint-4.dc.html</code> 아트보드 13 의 노트가 이미 정했다.
+<br><br><b>뒤로가기로 확인 화면에 돌아가지 못하게 한다.</b> 돌아갈 수 있으면 같은 화면에서 버튼을 다시 눌러
+<b>새 멱등성 키로 두 번째 주문</b>이 된다 (<code>sprint-4.dc.html</code> 아트보드 6 과 같은 이유이고,
+주문은 보유 수량과 평균 매수가까지 어긋나므로 더 나쁘다). 상단은 <code>×</code> 하나뿐이다.
+<br><br><b>"확인" 은 종목 상세로 돌아간다.</b> 방금 산 종목의 보유 카드가 갱신된 것을 그 자리에서 본다 —
+ia.md §3 의 "홈 → 보유 종목 → 종목 상세 → 주문 → 체결 → 매매 내역" 흐름에서 체결 직후 지점이다.
+"매매 내역 보기" 는 <code>/transactions?type=BUY</code> 로 간다.
+<br><br><b>체결 직후 메일에 "매수 이유 기록 요청" 이 쌓인다</b> (ia.md §4 3번 슬롯 흐름).
+<b>이 화면에서 이유를 묻지 않는다</b> — 논지는 폼이 아니라 대화에서만 기록되고, 체결 직후는
+사용자가 결과를 확인하는 순간이다. 메일 화면은 <code>account-ai.dc.html</code> 이 그린다.
+</div>
+</section>
+</x-dc>
+</body>
+</html>
