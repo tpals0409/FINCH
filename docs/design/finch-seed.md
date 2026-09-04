@@ -309,7 +309,21 @@ CSS 가 한 줄도 안 나오는데(프론트 실측: `.z-overlay{` 규칙 0건)
 | **탭바 화면 간 라우트 전환** | 페이지 트랜지션 없음. 애니메이션하려면 나가는 트리를 붙잡아야 하고 `Suspense` 폴백과 겹친다 |
 | **포커스 링 등장** | 트랜지션 없음. 키보드 이동에 늦게 따라오는 링은 고장으로 느껴진다 |
 | **FAB 등장** | scale-in 없음. 라우트가 맞으면 나타나는 요소라 이동마다 튀면 노이즈다. 눌림 피드백만 |
-| **비활성 전환** | 트랜지션 없음. `disabled` 는 상태가 아니라 사실이다. 흐려지는 중인 버튼은 아직 누를 수 있는 것처럼 보인다 |
+| **비활성 전환** | 트랜지션 없음. `disabled` 는 상태가 아니라 사실이다. 흐려지는 중인 버튼은 아직 누를 수 있는 것처럼 보인다. **`disabled:duration-0` 으로 적는다 — `not-disabled:` 로 적지 않는다**(아래) |
+
+**비활성 전이를 끄는 방법은 `disabled:duration-0` 이다. `not-disabled:` 로 적지 않는다.**
+직관적으로는 `not-disabled:transition-[…]` 이 맞아 보이는데, 재 보면 **금지한 `transition-all` 이
+그걸 지키려다 만들어진다.** `transition-[…]` 유틸리티는 property·timing·duration 셋을 함께
+내보내므로 변형을 씌우면 비활성일 때 **`transition-property` 선언이 통째로 빠지고 CSS 초기값
+`all` 로 되돌아간다.** 그런데 `duration` 은 따로 붙어 있어 그대로 살아남는다.
+
+| 적는 방식 | 비활성 상태의 computed (프론트 실측) |
+|---|---|
+| `not-disabled:transition-[background-color,border-color]` | `all` @ `0.14s` ← §8.2 위반 |
+| **`transition-[…] disabled:duration-0`** | `background-color, border-color` @ `0s` |
+
+`transition` 은 변화 **후** 스타일을 기준으로 하므로 활성 → 비활성이 즉시가 된다. 결과는 같고
+`property` 는 늘 좁혀진 채로 남는다.
 
 ### 8.3 호버 — `-hover` 상태를 만들지 않는다
 
@@ -471,7 +485,11 @@ FAB 이 448px 열의 맨 오른쪽 끝에 붙어 본문 여백과 어긋난다. 
 
 | 미결 | 상태 |
 |---|---|
-| `disabled` 로 넘어갈 때 전이하지 않는 기전 | §8.2 는 "비활성 전환 없음" 이고, `transition-[background-color,border-color]` 로 좁혀도 `disabled:` 의 면 색은 여전히 전이한다. `not-disabled:` 로 되는지는 프론트가 판단한다. 안 되면 §8.2 에서 그 줄을 뺀다 |
-| view transition 채택 여부 | §8.1 은 닫힘 0 을 어휘로 확정했다. view transition 을 쓸지는 프론트 결정이고, 쓰면 §8.5 의 `::view-transition-*` 구멍을 먼저 막는다 |
-| `z-40` · 죽은 `z-` 클래스를 누가 고치나 | 원인은 `AiFloatingOverlay` 의 컨테이너지 FAB 자체가 아니다(§8.6). 프론트와 fab 작업자 사이에서 정한다 |
+| `InProgressDialog` 의 죽은 `z-overlay` 두 줄 | `feat/sprint-5-screens` 에 있어 그 브랜치 담당이 고친다. `AiFloatingOverlay` 의 `z-40` 은 프론트가 `z-(--z-floating)` 로 고쳤다 |
 | 목록 행의 탭 가능 여부 | 지금 `<li>` 다. 탭 가능해지면 §8.3 의 `transparent-pressed` 를 쓴다 — 새 토큰을 만들지 않는다 |
+
+**닫힌 것 둘.** 회의 중에 프론트가 브라우저에서 재서 답이 나왔다.
+
+- **`disabled` 전이 기전** → `disabled:duration-0`. §8.2 를 본다
+- **view transition** → 채택하지 않는다. 닫힘을 0 으로 정했으니 얻는 것이 없고
+  §8.5 의 `::view-transition-*` 구멍만 남는다
