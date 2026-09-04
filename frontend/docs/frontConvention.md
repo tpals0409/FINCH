@@ -598,8 +598,21 @@ AI로 들어가는 진입점은 탭이 아니라 전역 오버레이 레이어�
 
 ### 12.2 트랜지션을 걸 수 있는 속성
 
-허용은 `color` · `background-color` · `border-color` · `opacity` · `transform` 다섯뿐이다.
-`transition-colors` 가 앞의 셋을 덮으므로 대부분 그것 하나로 끝난다.
+허용은 `background-color` · `border-color` · `opacity` · `transform` 넷뿐이다.
+면과 테두리에는 `transition-[background-color,border-color]` 를 쓴다.
+
+**`transition-colors` 를 쓰지 않는다.** 이름과 달리 `color` 와 `outline-color` 까지 전이시킨다.
+
+```css
+.transition-colors {
+  transition-property: color, background-color, border-color, outline-color, …;
+}
+```
+
+- `outline-color` → **전역 포커스 링이 그 시간만큼 페이드인한다.** 늦게 따라오는 링은 고장으로
+  느껴진다. `Button` 이 실제로 그 상태였다 — 링이 140ms 에 걸쳐 나타나고 있었다
+- `color` → 시세를 **자기 자신에** 갖는 요소를 그렇게 만들면 12.3 의 금지가 그대로 새어 나온다
+  (`transition-property` 는 상속되지 않으므로 자식 `<span>` 은 안전하다)
 
 - **`transition-all` 을 쓰지 않는다.** 무엇이 움직일지 코드가 말하지 못한다
 - **레이아웃 속성을 전이하지 않는다** (`width`·`height`·`top`·`left`·`margin`·`padding`).
@@ -636,6 +649,11 @@ AI로 들어가는 진입점은 탭이 아니라 전역 오버레이 레이어�
   목록 행이 떠오르면 그 옆 숫자가 흔들려 보인다
 - 붙이는 대상은 버튼 · 탭 가능한 행 · 칩과 세그먼트뿐이다. 카드 자체·AI 박스·본문 텍스트에는
   붙이지 않는다
+
+탭·세그먼트의 선택 표시는 **칸별 면 색 교체**가 기본이다. 미끄러지는 인디케이터를 하나 두는
+방식을 쓰려면 칸이 `flex-1` 균등 분할이어야 한다. 폭이 라벨에서 나오면 서체가 도착하는 순간
+(`font-display: swap`) 라벨 폭이 바뀌어 인디케이터만 혼자 움직인다.
+균등 분할이면 폭이 백분율에서 나와 `ResizeObserver` 도 필요 없다.
 
 ### 12.5 포커스 — 컴포넌트가 링을 못 바꾼다
 
@@ -675,6 +693,13 @@ AI로 들어가는 진입점은 탭이 아니라 전역 오버레이 레이어�
 가지로 보인다. 그게 애니메이션이 없는 것보다 나쁘다.
 
 라우트가 아닌 시트(상태로 여닫는 radix `Dialog`)는 radix 가 exit 를 처리하므로 이 제약이 없다.
+**단 radix 의 `usePresence` 는 `animationend` 로 판정한다.** exit 를 `transition` 으로 쓰면
+언마운트가 안 온다. `data-[state=closed]:animate-*` 처럼 `@keyframes` 로 쓴다.
+
+**View Transition API 를 쓰지 않는다.** `react-router-dom` 이 `navigate(path, { viewTransition:
+true })` 를 이미 싣고 있어 나가는 트리를 붙잡지 않고 exit 를 만들 수 있지만, 위에서 그 exit 를
+안 하기로 정했으므로 얻는 게 없다. 대신 `::view-transition-*` 의사요소가 reduced-motion 블록의
+`*` 셀렉터에 안 걸려 구멍이 생긴다. 채택하려면 그 블록부터 designer 와 고친다.
 
 ### 12.7 `fixed` 층도 본문과 같은 열에 둔다
 
@@ -687,9 +712,21 @@ AI로 들어가는 진입점은 탭이 아니라 전역 오버레이 레이어�
 딤(오버레이 배경)만 예외로 전체 뷰포트를 덮는다.
 열 폭에 토큰을 두지 않는다. `max-w-md` 한 문자열이 양쪽에서 같이 grep 되면 충분하다.
 
-`z` 는 사다리 토큰으로만 쓴다 — `z-(--z-sticky)` · `z-(--z-floating)` · `z-(--z-overlay)`.
-**Tailwind 기본 `z-40` 같은 값을 쓰지 않는다.** 사다리 밖 숫자는 다른 층과의 순서를 말하지
-못한다. 실제로 AI 플로팅 슬롯이 `z-40` 이라 오버레이(30)보다 위였다 — 시트를 가리는 값이었다.
+`z` 는 **반드시 `z-(--z-sticky)` · `z-(--z-floating)` · `z-(--z-overlay)` 꼴로 쓴다.**
+괄호 문법이 아니면 안 된다.
+
+**`z-overlay` · `z-sticky` 는 클래스처럼 생겼지만 CSS 가 한 줄도 안 나온다.**
+`--z-*` 는 `@theme` 이 아니라 `:root` 에 있어 Tailwind 에 `z-*` 테마 네임스페이스가 없다.
+빌드 산출물에 `.z-overlay{` 규칙 0건, `.z-\(--z-overlay\){z-index:var(--z-overlay)}` 만 나온다.
+**이름이 그럴듯해 리뷰를 통과하는데 z-index 가 안 붙는다.** 실제로 충전 진행중 시트의 딤과
+시트가 둘 다 `z-overlay` 라 z-index 가 없었고, 포털이 `body` 끝에 붙어 우연히 작동하고 있었다.
+
+**Tailwind 기본 `z-40` 같은 숫자도 쓰지 않는다.** 이쪽은 반대로 진짜 적용되는데 사다리 밖이라
+다른 층과의 순서를 말하지 못한다. AI 플로팅 슬롯이 `z-40` 이라 오버레이(30)보다 위였다 —
+버튼이 들어오면 시트를 가리는 값이었다.
+
+바꾼 뒤에는 `grep -rn 'z-[a-z0-9]' src --include='*.tsx'` 로 남은 것을 훑는다.
+죽은 클래스는 빌드도 타입체크도 통과하므로 검증 절차가 잡아 주지 않는다.
 
 ### 12.8 reduced-motion 은 base CSS 한 곳에서 끈다
 
@@ -706,6 +743,11 @@ AI로 들어가는 진입점은 탭이 아니라 전역 오버레이 레이어�
 비활성은 상태 변화가 아니라 사실이다. 흐려지는 중인 제출 버튼은 **아직 누를 수 있는 것처럼
 보인다.** 충전·주문 화면에서 그 프레임에 한 번 더 눌리는 것이 중복 요청이다.
 
-`not-disabled:transition-colors` 로 적는다. Tailwind v4.3.3 이 `:not(:disabled)` 로 컴파일한다.
-CSS 트랜지션은 **변화 후 스타일**의 `transition-property` 를 보므로, 활성 → 비활성에서는
-전이가 사라져 즉시 바뀌고 비활성 → 활성에서는 전이가 걸린다. 필요한 방향이 앞쪽이다.
+**`disabled:duration-0` 으로 적는다.** CSS 트랜지션은 **변화 후 스타일**의 값을 쓰므로
+활성 → 비활성에서 0ms 가 적용되어 즉시 바뀌고, 비활성 → 활성에서는 전이가 걸린다.
+
+**`not-disabled:transition-*` 으로 풀지 않는다.** 비활성일 때 `transition-property` 선언이
+통째로 빠져 CSS 초기값 `all` 로 되돌아가는데 `duration` 은 남아 있다. 결과가 140ms
+`transition-all` 이라 12.2 가 금지한 그것이 실수로 만들어진다.
+브라우저 실측 — `not-disabled:` 판은 비활성 상태에서 `transition-property: all`,
+`disabled:duration-0` 판은 `background-color, border-color` @ `0s` 였다.
