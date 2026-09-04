@@ -190,7 +190,7 @@ body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
 .seg button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
   background:var(--finch-color-bg-layer-default); border-color:var(--finch-color-stroke-neutral-contrast) }
 .chips { display:flex; gap:6px; flex-wrap:wrap }
-.chips button { min-height:36px; padding:0 12px; border-radius:var(--finch-radius-chip); font-family:inherit;
+.chips button { min-height:44px; padding:0 12px; border-radius:var(--finch-radius-chip); font-family:inherit;
   font-size:var(--finch-font-size-caption); font-weight:400; color:var(--finch-color-fg-neutral-subtle);
   background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
 .chips button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
@@ -217,10 +217,12 @@ body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
   stroke-linecap:round; stroke-linejoin:round; color:var(--finch-color-fg-neutral-subtle) }
 .field input, .field .val { flex:1; min-width:0; border:0; background:transparent; font-family:inherit;
   font-size:var(--finch-font-size-body-1); color:var(--finch-color-fg-neutral); outline:none }
-.field .ph { color:var(--finch-color-fg-placeholder) }
-.field .clr { width:20px; height:20px; flex:none; border-radius:999px; display:grid; place-items:center;
-  background:var(--finch-color-bg-transparent-selected); color:var(--finch-color-fg-neutral-subtle) }
-.field .clr svg { width:11px; height:11px; stroke-width:2.4 }
+.field .plc { color:var(--finch-color-fg-placeholder) }
+/* 지우기 — 보이는 원은 20px 이지만 터치 대상은 44×44 다. 필드 오른쪽 패딩을 먹고 들어간다 */
+.field .clr { width:44px; height:44px; flex:none; margin:0 -12px 0 0; display:grid; place-items:center;
+  color:var(--finch-color-fg-neutral-subtle) }
+.field .clr svg { width:20px; height:20px; padding:4.5px; box-sizing:border-box; border-radius:999px;
+  background:var(--finch-color-bg-transparent-selected); stroke-width:3 }
 
 /* ── 수량 입력 (주문) ── */
 .amt { display:flex; align-items:baseline; gap:6px; min-height:56px; padding:0 14px; box-sizing:border-box;
@@ -813,7 +815,7 @@ up/down 과 <b>형태가 달라야</b> 흑백 인쇄나 색맹 사용자에게�
     <div class="icon"></div>
     <div class="field">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
-      <span class="val ph">종목명 또는 종목코드</span>
+      <span class="val plc">종목명 또는 종목코드</span>
     </div>
   </div>
 
@@ -883,7 +885,7 @@ up/down 과 <b>형태가 달라야</b> 흑백 인쇄나 색맹 사용자에게�
     <div class="icon"></div>
     <div class="field">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>
-      <span class="val ph">종목명 또는 종목코드</span>
+      <span class="val plc">종목명 또는 종목코드</span>
     </div>
   </div>
   <div class="scroll flush">
@@ -1121,7 +1123,7 @@ up/down 과 <b>형태가 달라야</b> 흑백 인쇄나 색맹 사용자에게�
         <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
       </div>
     </div>
-    <div class="listend" style="padding:18px 16px;text-align:center;font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-placeholder)">최근 조회한 30개까지 보관됩니다</div>
+    <div style="padding:18px 16px;text-align:center;font-size:var(--finch-font-size-caption);color:var(--finch-color-fg-placeholder)">최근 조회한 30개까지 보관됩니다</div>
   </div>
 </div>
 <div class="note">
@@ -1491,6 +1493,420 @@ AI 슬롯 3번이고 계약이 이 캔버스 밖이다 (아트보드 0).
 <br><br><b>상장폐지를 단정하지 않는다.</b> 응답에 구분 필드가 없어 화면이 이유를 알 수 없다
 (apiSpec §5.1 — 상장폐지 종목은 검색에서 제외되고 구분 필드는 두지 않는다). 그래서 문구가
 "상장폐지되었거나 코드가 잘못됐을 수 있습니다" 로 두 가능성을 남긴다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 18 · 주문 입력 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 18 · 주문 1/2</div>
+<div class="ab-name">매수 — 수량 입력 (시장가 전용)</div>
+<div class="ab-api">GET /orders/available?stockCode=005930&amp;side=BUY</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="seg">
+      <button aria-selected="true">매수</button><button>매도</button>
+    </div>
+
+    <div class="card">
+      <div class="kv" style="min-height:0">
+        <span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">73,500원
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+      </div>
+      <div class="meta" style="margin-top:8px">14:30 기준 · 시장가로 즉시 체결됩니다</div>
+    </div>
+
+    <div class="sec">주문 수량</div>
+    <div class="amt"><span class="lb">수량</span><b>10</b><span>주</span></div>
+    <div class="presets">
+      <button>10%</button><button>25%</button><button>50%</button><button>최대</button>
+    </div>
+
+    <div class="card" style="margin-top:2px">
+      <div class="kv"><span class="k">주문 가능 금액</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">주문 가능 수량</span><span class="v">17주</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="primary">매수 확인</button></div>
+</div>
+<div class="note">
+<b>시장가 전용이라 가격 입력 필드가 없다.</b> MVP 에 지정가·미체결 관리·호가창이 없고 접수와 체결이
+분리되지 않는다 (apiSpec §7.1, ia.md §1). 필드를 만들면 없는 주문 유형이 구현 대상으로 읽힌다.
+<br><br><b>비율 버튼의 분모를 화면이 계산하지 않는다.</b> 매수는 <code>maxQuantity</code>(17), 매도는
+<code>holdingQuantity</code> 를 쓴다 (apiSpec §7.3). <code>availableCash ÷ currentPrice</code> 로 다시
+계산하면 수수료·호가단위 같은 서버 규칙이 빠져 <b>서버가 거부하는 수량이 화면에서 최대로 보인다.</b>
+<br><br><b>매수/매도 세그먼트는 <code>?side=buy|sell</code> 로 URL 에 있다</b> (ia.md §2).
+전환하면 <code>GET /orders/available</code> 을 <code>side</code> 를 바꿔 다시 부른다 — 두 방향의
+<code>tradable</code>·<code>reason</code> 이 다를 수 있다 (보유가 없으면 매도만 막힌다).
+<b>수량은 URL 에 두지 않는다</b> — 공유되면 남의 주문 화면이 채워진 채 열린다.
+<br><br><b>"예상" 이라고 적는다.</b> 체결가는 접수 시점의 최신 시세로 다시 계산되므로 확인 화면의
+숫자와 다를 수 있다 (apiSpec §7.2). 이 단어가 없으면 아트보드 23(가격 변동 거부)이 버그로 읽힌다.
+<br><br><b>AI 플로팅 버튼이 없다.</b> 주문 화면은 PRD·프로토타입 양쪽에서 제외다 — 제출 버튼을 가린다 (ia.md §3).
+</div>
+</section>
+
+
+<!-- ═════════════════ 19 · 주문 확인 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 19 · 주문 2/2</div>
+<div class="ab-name">매수 확인 — 주문 전 점검 슬롯 · 제출</div>
+<div class="ab-api">POST /ai/orders/preview · POST /orders (Idempotency-Key)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">주문 확인</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">삼성전자 · 005930</div>
+      <div class="hero" style="margin-top:4px">10주 매수</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">예상 체결가</span><span class="v">73,500원</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+      <div class="kv"><span class="k">주문 후 예수금</span><span class="v">515,000원</span></div>
+    </div>
+
+    <div class="ferr" style="padding:0 2px">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <span>체결가는 접수 시점 시세로 정해져 위 금액과 다를 수 있습니다</span>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M12 3.5 3.5 7v6c0 4.4 3.5 6.9 8.5 8.5 5-1.6 8.5-4.1 8.5-8.5V7z"/></svg>주문 전 점검
+        <span class="rsv">데이터 기준 09-04 14:30</span></div>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:92%"></span>
+      <span class="sk" style="width:70%"></span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <span class="spin"></span><span class="cap">불러오는 중</span>
+      </div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="primary">10주 매수하기</button></div>
+</div>
+<div class="note">
+<b>제출 버튼에 수량을 다시 적는다.</b> 사용자가 마지막으로 보는 숫자와 실제로 나가는 숫자가 같은 줄에
+있어야 한다 (<code>sprint-4.dc.html</code> 아트보드 5 와 같은 규칙). 금액이 아니라 <b>수량</b>인 것은
+시장가라 금액이 확정값이 아니어서다.
+<br><br><b><code>Idempotency-Key</code>(UUID v4)는 이 버튼을 처음 누를 때 한 번 만든다.</b>
+<b>같은 클릭의 재시도는 같은 키, 새 클릭은 새 키</b>다 (apiSpec §1.4). 이 화면에서 갈리는 규칙은
+아트보드 22·23 에 그렸다.
+<br><br><b>주문 전 점검 슬롯이 제출 버튼 <b>위쪽 영역 안</b>에 있고 붙어 있지 않다.</b> 슬롯 하단의
+피드백(엄지)과 제출 버튼 사이에 CTA 영역 경계가 들어간다 — 확인 단계에서 오탭하면 주문이 나간다 (ia.md §4).
+<br><br><b>점검 결과가 주문을 막지 않는다.</b> AI 명세 §7 이 "판단은 하지 않는다" 로 못박았고 경고가 있어도
+버튼은 살아 있다. 버튼을 막는 것은 <code>GET /orders/available</code> 뿐이다 (아트보드 20).
+그래서 이 슬롯이 로딩 중이어도 <b>제출 버튼은 비활성이 아니다</b> — AI 응답을 기다리게 만들면
+장중에 가격이 흘러간다.
+<br><br><b>슬롯 내용은 이 캔버스가 그리지 않는다</b> (아트보드 0). 자리·크기·표면·로딩 형태까지가 여기 범위이고,
+쏠림 <code>before</code>/<code>after</code>·<code>warnings[]</code>·<code>thesis_conflicts[]</code> 세 덩어리와
+근거 목록·피드백은 AI 슬롯 4번의 계약이다.
+<br><br><b>캐릭터(핀치·블루치)를 제출 버튼 주변에 넣지 않는다.</b> 캐릭터가 허용되는 범위는 점검 블록
+안까지이고 그 바깥은 매매 영역이다 (ia.md §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 20 · 주문 불가 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 20 · 주문 · 상태 · 비활성</div>
+<div class="ab-name">매수 — 주문 불가 (tradable false)</div>
+<div class="ab-api">GET /orders/available · tradable false · reason ORDER_MARKET_CLOSED</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="seg">
+      <button aria-selected="true">매수</button><button>매도</button>
+    </div>
+
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>
+      <div><div class="m">지금은 주문할 수 없어요 (거래 시간 09:00~15:30)</div>
+      <div class="s">거래 시간이 되면 주문할 수 있습니다. 수량은 그대로 유지됩니다.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="kv" style="min-height:0">
+        <span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">73,500원
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+      </div>
+      <div class="meta" style="margin-top:8px">15:30 종가</div>
+    </div>
+
+    <div class="sec">주문 수량</div>
+    <div class="amt"><span class="lb">수량</span><b>10</b><span>주</span></div>
+    <div class="presets">
+      <button>10%</button><button>25%</button><button>50%</button><button>최대</button>
+    </div>
+    <div class="card" style="margin-top:2px">
+      <div class="kv"><span class="k">주문 가능 금액</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="disabled">매수 확인</button></div>
+</div>
+<div class="note">
+<b>비활성 판정을 화면의 시계로 하지 않는다.</b> <code>GET /orders/available</code> 의
+<code>tradable</code>·<code>reason</code> 을 그대로 따른다 (ia.md §1). 화면이 <code>09:00~15:30</code> 을
+자체 판정하면 휴장일·시스템 점검에서 서버와 어긋나 <b>눌리는데 거부되는</b> 상태가 생긴다.
+<br><br><b>문구를 새로 만들지 않았다.</b> <code>reason</code> 이 담는 에러 코드의 <code>message</code> 를
+그대로 쓴다 (apiSpec §1.3 — "서버가 문구를 완성해서 내려준다"). 이 자리를 쓰는 코드는 넷이다.
+<ul>
+<li><code>ORDER_MARKET_CLOSED</code> · 409 — 지금은 주문할 수 없어요 (거래 시간 09:00~15:30)
+    <span style="color:var(--finch-color-fg-placeholder)">(그림)</span></li>
+<li><code>ORDER_STOCK_SUSPENDED</code> · 409 — 거래정지 사유 포함</li>
+<li><code>ORDER_PRICE_UNAVAILABLE</code> · 503 — 시세를 불러올 수 없어 주문이 제한됩니다</li>
+<li><code>ORDER_INSUFFICIENT_QUANTITY</code> · 409 — 보유 수량이 부족합니다 <span style="color:var(--finch-color-fg-placeholder)">(<code>side=SELL</code> · 보유 0)</span></li>
+</ul>
+<b><code>ORDER_PRICE_UNAVAILABLE</code> 이 P10 이 걸린 자리다.</b> 시세 수신이 <b>허용 시간</b>을 넘으면
+주문이 막히는데 그 시간이 <code>[S0-3]</code> 로 미정이다. <b>화면은 비활성 상태만 갖추고 임계 수치를
+쓰지 않는다</b> — 몇 초인지는 서버가 <code>tradable: false</code> 로 알려주고 화면은 <code>reason</code> 의
+문구를 띄운다. 지금 "○초 이상 지연 시" 를 적으면 확정될 때 찾아 고쳐야 한다.
+<br><br><b>수량 입력은 살아 있다.</b> 주문할 수 없는 시간에도 수량을 미리 정해 둘 수 있어야 한다 —
+막는 것은 제출이지 준비가 아니다. 그래서 비율 버튼도 비활성이 아니다.
+<br><br><b>비활성 CTA 는 <code>bg-disabled</code>(gray-400) 면 + <code>fg-disabled</code>(gray-600) 라벨이다.</b>
+paper 위 Lc 22.8 로 버튼 모양이 남는다. <code>opacity</code> 를 쓰지 않는다 (finch-seed §6).
+</div>
+</section>
+
+
+<!-- ═════════════════ 21 · 수량 초과 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 21 · 주문 · 상태 · 에러</div>
+<div class="ab-name">매수 — 주문 가능 수량 초과 (수량을 줄여 체결하지 않는다)</div>
+<div class="ab-api">maxQuantity 17 · 409 ORDER_INSUFFICIENT_CASH</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">삼성전자</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="seg">
+      <button aria-selected="true">매수</button><button>매도</button>
+    </div>
+    <div class="card">
+      <div class="kv" style="min-height:0">
+        <span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">73,500원
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-1.21%</span></span>
+      </div>
+      <div class="meta" style="margin-top:8px">14:30 기준 · 시장가로 즉시 체결됩니다</div>
+    </div>
+
+    <div class="sec">주문 수량</div>
+    <div class="amt" data-err><span class="lb">수량</span><b>20</b><span>주</span></div>
+    <div class="ferr">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <span>예수금이 부족합니다. 지금 주문할 수 있는 수량은 17주입니다</span>
+    </div>
+    <div class="presets">
+      <button>10%</button><button>25%</button><button>50%</button><button>최대</button>
+    </div>
+    <div class="card" style="margin-top:2px">
+      <div class="kv"><span class="k">주문 가능 금액</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">주문 가능 수량</span><span class="v">17주</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">1,470,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="disabled">매수 확인</button>
+    <button class="btn" data-v="secondary">충전하고 이어서 주문하기</button>
+  </div>
+</div>
+<div class="note">
+<b>수량을 임의로 줄여 체결하지 않는다.</b> 예수금이 모자라면 <b>거절</b>이지 "가능한 만큼" 이 아니다
+(apiSpec §7.2 4번, 기능명세 §7.3). 그래서 이 화면에 <b>"17주로 줄여 주문" 버튼이 없다.</b>
+있으면 사용자가 20주를 주문했는데 17주가 나가는 경로가 생긴다 — 화면이 대신 판단한 것이다.
+줄이려면 사용자가 <b>수량 필드를 직접 고치거나 "최대" 를 누른다.</b>
+<br><br><b>서버 왕복 없이 막는 것이 정상 경로다.</b> <code>maxQuantity</code> 를 이미 받았으므로 20 &gt; 17 은
+클라이언트가 안다. <code>ORDER_INSUFFICIENT_CASH</code>(409)는 그 판단이 어긋났을 때
+— 다른 탭에서 주문·충전이 일어나 <code>availableCash</code> 가 낡았을 때 — 서버 문구가 도착하는 자리이고,
+<b>같은 필드 아래</b>를 쓴다. 확인 화면까지 갔다가 되돌아오면 같은 값을 두 번 입력하게 된다.
+<br><br><b>셋이 함께 움직인다</b> — 입력 테두리 <code>stroke-critical-solid</code>(2px), 메시지
+<code>fg-critical</code> + bold, 아이콘. <b>색만으로 알리지 않는다</b>. 등락 적색을 쓰면
+"떨어졌다" 로 오독된다 (finch-seed §4).
+<br><br><b>충전 버튼은 <code>/deposit</code> 으로 가고 돌아온다.</b> ia.md §3 의 "주문 → 예수금 부족 → 충전 →
+주문으로 복귀" 흐름이 여기서 시작된다. 주문·충전이 각각 라우트를 갖는 이유가 이 왕복이다 (ia.md §3).
+<b>부족 금액을 화면이 계산해 넘기지 않았다</b> — 그 값(<code>shortfall</code>)은 주문 전 점검 슬롯이
+<code>feasible: false</code> 와 함께 주는 것이고 (ia.md §4), 이 화면이
+<code>예상 금액 − 예수금</code> 으로 만들면 두 숫자가 서로 다른 시점의 값이라 어긋난다.
+<br><br><b>매도 쪽 짝은 <code>ORDER_INSUFFICIENT_QUANTITY</code> 다.</b> 같은 형태이고 분모만
+<code>holdingQuantity</code> 로 바뀐다 — 별도 아트보드를 그리지 않았다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 22 · 처리 중 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 22 · 주문 · 상태 · 에러</div>
+<div class="ab-name">주문 확인 — 처리 중 (같은 키로 재시도)</div>
+<div class="ab-api">409 IDEMPOTENCY_IN_PROGRESS · 동일 Idempotency-Key</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"></div><div class="t">주문 확인</div><div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">삼성전자 · 005930</div>
+      <div class="hero" style="margin-top:4px">10주 매수</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">예상 체결가</span><span class="v">73,500원</span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">735,000원</span></div>
+    </div>
+  </div>
+  <div class="cta"><button class="btn" data-v="disabled">처리 중…</button></div>
+
+  <div class="dim"></div>
+  <div class="sheet">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div class="spin" style="margin-top:3px"></div>
+      <div>
+        <div class="h">같은 요청을 처리하고 있습니다</div>
+        <div class="cap" style="margin-top:6px">잠시 후 다시 시도해 주세요. 주문은 <b style="color:var(--finch-color-fg-neutral);font-weight:700">한 번만</b> 체결됩니다.</div>
+      </div>
+    </div>
+    <button class="btn" data-v="primary">다시 시도</button>
+  </div>
+</div>
+<div class="note">
+<b>이 화면이 중복 주문을 만드는 자리다.</b> 서버 문구는 "잠시 후 다시 시도해 주세요" 인데 화면에 재시도
+버튼이 없으면 사용자는 원래 매수 버튼을 다시 누른다. 그건 <b>새 멱등성 키</b>가 되어 <b>두 번째 주문</b>이 된다.
+충전과 달리 주문은 <b>보유 수량과 평균 매수가까지 어긋난다.</b>
+<br><br><b>재시도는 같은 <code>Idempotency-Key</code> 다.</b> 결과를 <b>모르는</b> 상태이기 때문이다 —
+처리가 이미 끝났다면 서버가 최초 결과를 그대로 돌려주고, 아직 진행 중이면 다시
+<code>IDEMPOTENCY_IN_PROGRESS</code> 를 준다. 어느 쪽이든 주문은 한 번만 나간다 (apiSpec §1.4).
+<br><br><b>같은 규칙이 응답 유실·네트워크 타임아웃에도 적용된다.</b> 요청은 나갔는데 응답을 못 받은 상태도
+"결과를 모른다" 이므로 <b>같은 키</b>로 재시도한다. 이 경우 시트 문구만 바뀌고 형태는 같다.
+<br><br><b>자동 재시도가 아니다.</b> 주문 뮤테이션은 자동 재시도하지 않는다 (루트 <code>CLAUDE.md</code>) —
+버튼은 사용자가 누른다. 시트가 뜬 채로 뒤에서 재요청을 반복하면 사용자가 상태를 모르는 동안 요청이 쌓인다.
+<br><br>셋을 함께 건다 (<code>sprint-4.dc.html</code> 아트보드 9 와 같은 형태).
+<ul>
+<li><b>재시도 버튼을 시트 안에 둔다</b> — 원래 CTA 가 아니라 이 버튼이 같은 키를 들고 있다.</li>
+<li><b>딤으로 원래 CTA 를 덮는다</b> (<code>bg-overlay</code> + <code>z-overlay</code>). 덮지 않으면 뒤 버튼이 눌린다.</li>
+<li><b>뒤의 CTA 자체도 비활성으로 바꾼다.</b> 딤은 시각 차단이고 이건 입력 차단이다.
+    둘 중 하나만 하면 키보드·스크린리더로 뚫린다.</li>
+</ul>
+<b>뒤로가기를 막는다.</b> 처리 중에 빠져나가면 결과를 확인할 화면이 사라지고, 사용자가 매매 내역에서
+찾아 확인해야 한다. 그래서 상단 뒤로가기 아이콘 자리가 비어 있다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 23 · 가격 변동 거부 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 23 · 주문 · 상태 · 에러</div>
+<div class="ab-name">주문 거부 — 가격 변동 (새 키로 다시 주문)</div>
+<div class="ab-api">409 ORDER_PRICE_CHANGED · 새 Idempotency-Key</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">주문 확인</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+      <div><div class="m">가격이 변동되어 주문할 수 없어요. 다시 시도해 주세요</div>
+      <div class="s">주문은 체결되지 않았고 예수금도 그대로입니다.</div></div>
+    </div>
+
+    <div class="card">
+      <div class="cap">삼성전자 · 005930</div>
+      <div class="hero" style="margin-top:4px">10주 매수</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">확인할 때 본 가격</span><span class="v" style="color:var(--finch-color-fg-neutral-subtle)">73,500원</span></div>
+      <div class="kv"><span class="k">현재가</span>
+        <span class="v" style="display:flex;align-items:center;gap:8px">76,200원
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+2,700</span></span></div>
+      <div class="kv"><span class="k">예상 주문 금액</span><span class="v">762,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">762,000원으로 다시 주문</button>
+    <button class="btn" data-v="secondary">수량 다시 입력</button>
+  </div>
+</div>
+<div class="note">
+<b>이 버튼은 <b>새</b> <code>Idempotency-Key</code> 를 쓴다.</b> 아트보드 22 와 정반대다.
+주문이 <b>확실히 거부됐고</b> 원장에 아무것도 남지 않았으므로 새 키가 중복을 만들지 않는다.
+같은 키를 재사용하면 서버가 "이미 처리된 키" 로 보고 <b>같은 거부를 그대로 돌려준다</b> — 영원히 못 산다.
+<br><br><b>같은 키 / 새 키를 가르는 기준은 "결과를 아는가" 하나다.</b>
+<table class="tb" style="margin-top:8px">
+<tr><th>상황</th><th>결과</th><th>키</th></tr>
+<tr><td><code>IDEMPOTENCY_IN_PROGRESS</code> · 응답 유실 · 타임아웃</td><td><b>모른다</b></td><td><b>같은 키</b> (아트보드 22)</td></tr>
+<tr><td><code>ORDER_PRICE_CHANGED</code> · <code>ORDER_INSUFFICIENT_CASH</code> · <code>ORDER_INSUFFICIENT_QUANTITY</code></td>
+    <td><b>거부됐다</b></td><td><b>새 키</b> (이 화면)</td></tr>
+<tr><td><code>IDEMPOTENCY_CONFLICT</code> (같은 키 · 다른 본문)</td><td>클라이언트 버그</td>
+    <td><b>재시도 금지</b> — 일반 오류 화면</td></tr>
+</table>
+<b>apiSpec §1.4 가 4xx 결과를 키와 함께 저장하는지 명시하지 않았다.</b> 저장한다면 같은 키 재시도가
+영원히 거부되고, 저장하지 않는다면 통과한다 — <b>새 키는 어느 쪽에서도 동작한다.</b> 그래서 화면을
+새 키 쪽으로 맞췄다. 백엔드가 이 규칙을 명시하면 노트가 아니라 계약이 된다.
+<br><br><b>두 가격을 나란히 보여준다.</b> "다시 시도해 주세요" 만 띄우면 사용자는 무엇이 달라졌는지 모른 채
+같은 버튼을 다시 누르고 또 거부된다. <b>확인할 때 본 가격은 보조 잉크로 물러나고 현재가가 앞에 온다.</b>
+<br><br><b>버튼 라벨에 새 금액을 적는다.</b> 화면 위쪽 금액과 실제로 나가는 금액이 달라지는 자리라
+라벨이 "다시 주문" 뿐이면 735,000원이 나갈 것으로 읽힌다 (<code>sprint-4.dc.html</code> 아트보드 8 과 같은 규칙).
+<br><br><b>"주문은 체결되지 않았고 예수금도 그대로입니다" 를 반드시 쓴다.</b> 409 를 받은 사용자가
+가장 먼저 하는 일은 매매 내역을 확인하는 것이다. 이 한 줄이 그 왕복을 없앤다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 24 · 체결 완료 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 24 · 주문 완료</div>
+<div class="ab-name">체결 완료</div>
+<div class="ab-api">201 Created · executedPrice · cashBalanceAfter</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t"></div>
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+  </div>
+  <div class="done">
+    <div class="mark"><svg viewBox="0 0 24 24"><path d="M5 13l4.5 4.5L19 7"/></svg></div>
+    <div style="font-size:var(--finch-font-size-title-2);line-height:var(--finch-line-height-title-2);font-weight:700;letter-spacing:-.02em;text-align:center">삼성전자 10주를<br>매수했습니다</div>
+    <div class="cap" style="margin-top:2px">2026-09-04 14:31</div>
+    <div class="card" style="width:100%;box-sizing:border-box;margin-top:18px;text-align:left">
+      <div class="kv"><span class="k">체결가</span><span class="v">73,500원</span></div>
+      <div class="kv"><span class="k">체결 금액</span><span class="v">735,000원</span></div>
+      <div class="kv"><span class="k">주문 후 예수금</span><span class="v">515,000원</span></div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">확인</button>
+    <button class="btn" data-v="secondary">매매 내역 보기</button>
+  </div>
+</div>
+<div class="note">
+<b>응답값을 그대로 보여준다</b> — <code>executedPrice</code>·<code>executedAmount</code>·<code>executedAt</code>·
+<code>cashBalanceAfter</code> (apiSpec §7.1). <b>"예상" 이 사라지고 "체결" 이 된다.</b> 확인 화면(아트보드 19)의
+단어와 다른 것이 의도다 — 여기 숫자는 확정값이다. <code>orderId</code> 는 화면에 쓰지 않는다 (사용자가
+지목할 대상이 아니다).
+<br><br><b>매도면 실현손익 행이 하나 더 붙는다.</b> <code>realizedProfit</code> 은 매도일 때만 값이 있다.
+그 숫자는 <code>fg-up</code>·<code>fg-down</code>(700단계)이고 <code>-vivid</code> 가 아니다 — 카드 안 행은
+18px 미만이다 (finch-seed §4). <b>별도 아트보드를 그리지 않았다</b> — 행 하나가 늘 뿐이고,
+그 행 형태는 <code>sprint-4.dc.html</code> 아트보드 13 의 노트가 이미 정했다.
+<br><br><b>뒤로가기로 확인 화면에 돌아가지 못하게 한다.</b> 돌아갈 수 있으면 같은 화면에서 버튼을 다시 눌러
+<b>새 멱등성 키로 두 번째 주문</b>이 된다 (<code>sprint-4.dc.html</code> 아트보드 6 과 같은 이유이고,
+주문은 보유 수량과 평균 매수가까지 어긋나므로 더 나쁘다). 상단은 <code>×</code> 하나뿐이다.
+<br><br><b>"확인" 은 종목 상세로 돌아간다.</b> 방금 산 종목의 보유 카드가 갱신된 것을 그 자리에서 본다 —
+ia.md §3 의 "홈 → 보유 종목 → 종목 상세 → 주문 → 체결 → 매매 내역" 흐름에서 체결 직후 지점이다.
+"매매 내역 보기" 는 <code>/transactions?type=BUY</code> 로 간다.
+<br><br><b>체결 직후 메일에 "매수 이유 기록 요청" 이 쌓인다</b> (ia.md §4 3번 슬롯 흐름).
+<b>이 화면에서 이유를 묻지 않는다</b> — 논지는 폼이 아니라 대화에서만 기록되고, 체결 직후는
+사용자가 결과를 확인하는 순간이다. 메일 화면은 <code>account-ai.dc.html</code> 이 그린다.
 </div>
 </section>
 </x-dc>
