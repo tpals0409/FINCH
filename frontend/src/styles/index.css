@@ -69,6 +69,10 @@
   --color-bg-neutral-solid: var(--finch-color-bg-neutral-solid);
   --color-bg-disabled: var(--finch-color-bg-disabled);
   --color-bg-skeleton: var(--finch-color-bg-skeleton);
+  /* 딤. SEED 에 이미 있던 토큰을 유틸리티로 연 것이고 새로 만든 값이 아니다
+     (finch-seed.md — SEED 확정은 디자이너, 별칭 등록은 프론트).
+     충전의 IDEMPOTENCY_IN_PROGRESS 시트가 첫 사용처다. */
+  --color-bg-overlay: var(--finch-color-bg-overlay);
 
   /* ── 선 ──────────────────────────────────────────────────────────── */
   --color-stroke-neutral-subtle: var(--finch-color-stroke-neutral-subtle);

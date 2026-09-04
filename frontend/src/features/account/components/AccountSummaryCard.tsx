@@ -36,9 +36,14 @@ export function AccountSummaryCard({ summary }: Props) {
             <span className="text-body-1 text-fg-neutral">
               {formatKrw(summary.cashBalance)}
             </span>
+            {/*
+              밑줄 텍스트 링크지만 터치 영역은 44px 를 채운다. 글자 높이(20px)만큼만
+              누를 수 있으면 손가락으로는 빗나가고, 그 자리는 화면에서 가장 자주 눌리는
+              진입점이다. `-my-3` 로 바깥 여백을 되돌려 카드 안 간격은 그대로 둔다.
+            */}
             <Link
               to={ROUTES.deposit}
-              className="text-label text-fg-neutral underline underline-offset-4"
+              className="-my-3 flex min-h-[44px] items-center text-label text-fg-neutral underline underline-offset-4"
             >
               충전하기
             </Link>

@@ -38,7 +38,7 @@ export function TransactionFilterTabs({ value, onChange }: Props) {
           <Tabs.Trigger
             key={option.value}
             value={option.value}
-            className="flex-1 rounded-sm py-2 text-label text-fg-neutral-subtle data-[state=active]:bg-bg-layer-default data-[state=active]:text-fg-neutral"
+            className="min-h-[44px] flex-1 rounded-sm text-label text-fg-neutral-subtle data-[state=active]:bg-bg-layer-default data-[state=active]:text-fg-neutral"
           >
             {option.label}
           </Tabs.Trigger>

@@ -69,6 +69,10 @@ const TransactionsPage = lazyPage(
   () => import('@/pages/TransactionsPage'),
   'TransactionsPage',
 );
+const DepositPage = lazyPage(
+  () => import('@/pages/DepositPage'),
+  'DepositPage',
+);
 
 export const router = createBrowserRouter([
   {
@@ -119,7 +123,7 @@ export const router = createBrowserRouter([
           },
           {
             path: ROUTES.deposit,
-            element: <RoutePlaceholder screen="충전" />,
+            element: <DepositPage />,
           },
           {
             // 경로 미확정. `ROUTES.inbox` 주석과 ia.md §7 을 본다.
