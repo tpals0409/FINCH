@@ -70,6 +70,17 @@
   --color-bg-disabled: var(--finch-color-bg-disabled);
   --color-bg-skeleton: var(--finch-color-bg-skeleton);
 
+  /* 눌림 면. hover 와 active 가 이 둘을 같이 쓴다 — -hover 상태를 따로 만들지 않는다
+     (finch-seed.md §8). 소비처가 정해져 있어서 여는 것이다.
+       neutral-solid-pressed  → Button.tsx primary 의 hover:/active:
+       transparent-pressed    → 칩 · 금액 프리셋 · 결제수단 · 필터 탭
+     목록 행은 아직 아니다 — TransactionRow 는 <li> 로 클릭 대상이 아니다(프론트 실측).
+     행이 탭 가능해지면 새 토큰을 만들지 말고 transparent-pressed 를 쓴다.
+     bg-layer-default-pressed(카드 눌림)와 bg-transparent-selected(선택 상태)는 열지 않는다.
+     탭 가능한 카드와 세그먼티드 컨트롤을 만드는 사람이 그때 한 줄씩 연다. */
+  --color-bg-neutral-solid-pressed: var(--finch-color-bg-neutral-solid-pressed);
+  --color-bg-transparent-pressed: var(--finch-color-bg-transparent-pressed);
+
   /* ── 선 ──────────────────────────────────────────────────────────── */
   --color-stroke-neutral-subtle: var(--finch-color-stroke-neutral-subtle);
   --color-stroke-neutral-weak: var(--finch-color-stroke-neutral-weak);
@@ -171,4 +182,26 @@ body {
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--finch-color-stroke-focus-ring);
   outline-offset: 2px;
+}
+
+/* 모션을 줄여 달라고 한 사용자에게는 전부 끈다 (finch-seed.md §8).
+   토큰 값을 0ms 로 덮어쓰는 방식은 택하지 않았다 — 토큰을 읽지 않는 것이 샌다.
+   animate-pulse 는 Tailwind 기본값(2s)이고, 앞으로 누군가 duration-200 을 직접 적을 수도 있다.
+   선언 세 줄로 그 전부를 한 번에 덮는 쪽이 규율에 의존하지 않는다.
+
+   animate-pulse 는 opacity 1 → .5 → 1 이라 iteration-count 1 + 0.01ms 면
+   마지막 키프레임 opacity: 1 에 멈춘다. 스켈레톤이 정지한 불투명 블록으로 남는다 — 의도한 결과다.
+   0 이 아니라 0.01ms 인 이유는 0 이면 transitionend·animationend 가 아예 안 오고
+   그걸 기다리는 코드(시트 닫힘 정리 따위)가 멈추기 때문이다.
+
+   화면이 나타나고 사라지는 것 자체는 그대로 남는다. 없어지는 건 그 사이 시간뿐이다. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
