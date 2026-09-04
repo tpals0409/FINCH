@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+
+<!-- 계정·AI 축 와이어프레임.
+     ia.md §1 의 화면 17개 중 8개 — 로그인 · 카카오 콜백 · 마이페이지 · 404 ·
+     AI 채팅 · AI가 이해한 나 · 알림함(메일) · 브리핑 전체.
+     나머지 6개(홈·검색·최근·종목 상세·주문)는 다른 캔버스가 그린다.
+
+     이 축에는 계약이 없는 화면이 있다. 아트보드 0 의 표를 먼저 본다 —
+     계약 없는 자리를 확정된 것으로 읽으면 없는 API 를 부르는 코드가 나온다.
+
+     토큰은 여기서 손으로 적지 않는다. 앱이 쓰는 파일을 그대로 불러온다.
+     tokens.css 를 고치면 이 페이지도 같이 바뀐다 (prototype/README.md).
+     상대 경로라 저장소 안에서 열 때만 해석된다. -->
+<link rel="stylesheet" href="../../frontend/src/styles/tokens.css">
+
+<style>
+/* 앱이 서빙하는 서브셋 woff2 를 그대로 쓴다. index.css 의 @font-face 와 같은 굵기 범위. */
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-light.woff2') format('woff2'); font-weight:100 399; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-medium.woff2') format('woff2'); font-weight:400 599; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-bold.woff2') format('woff2'); font-weight:600 900; font-display:swap }
+
+/* 캔버스 바닥색만 여기 적는다 — 앱 색이 아니라 시트 배경이다 (sprint-4.dc.html 과 같은 값).
+   앱에 쓰이는 색·크기·반경·그림자는 전부 토큰에서 온다. */
+body { margin:0; background:#EDEFF3; font-family:var(--finch-font-family-sans);
+  color:var(--finch-color-fg-neutral); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; padding:44px }
+/* 캔버스 런타임 없이 브라우저로 열었을 때의 배치. 런타임이 있으면 런타임 스타일이 이긴다. */
+body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
+
+/* ── 아트보드 ── */
+.ab { width:var(--w,390px); display:flex; flex-direction:column; gap:12px; box-sizing:content-box }
+.ab-wide { width:1240px }
+.ab-tag { font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--finch-color-fg-placeholder) }
+.ab-name { font-size:17px; font-weight:700; letter-spacing:-.015em; margin-top:-4px }
+.ab-api { font-size:12px; line-height:17px; color:var(--finch-color-fg-neutral-subtle); font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+
+/* 아트보드 밖 주석. 화면 안에 개발 얘기를 쓰지 않기 위한 자리다. */
+.note { background:var(--finch-color-bg-layer-default); border:1px dashed var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:14px 16px; font-size:12px; line-height:1.7;
+  color:var(--finch-color-fg-neutral-subtle) }
+.note b { color:var(--finch-color-fg-neutral) }
+.note code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--finch-color-fg-neutral) }
+.note ul { margin:6px 0 0; padding-left:16px }
+
+/* ── 390×844 프레임 ── */
+.ph { width:var(--w,390px); height:844px; box-sizing:border-box; background:var(--finch-color-bg-layer-basement);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:20px; overflow:hidden;
+  display:flex; flex-direction:column; position:relative;
+  font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+
+/* 상단 내비 — z-sticky */
+.nav { flex:none; min-height:56px; display:flex; align-items:center; gap:4px; padding:0 8px 0 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.nav .t { flex:1; min-width:0; font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3); letter-spacing:-.015em }
+/* 터치 대상 44×44 (frontConvention 9) */
+.icon { width:44px; height:44px; flex:none; display:grid; place-items:center; color:var(--finch-color-fg-neutral) }
+.icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+/* 내비 우측 텍스트 링크 — 44 높이를 유지한다 */
+.navlink { min-height:44px; display:flex; align-items:center; padding:0 10px; flex:none;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:600;
+  color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected) }
+
+.scroll { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 20px }
+.scroll.flush { padding:0 }
+
+/* ── 카드 ── */
+.card { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:18px 16px }
+.sec { font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label);
+  font-weight:var(--finch-font-weight-label); color:var(--finch-color-fg-neutral-muted); padding:0 2px;
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px }
+.sec i { font-style:normal; font-weight:400; font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-placeholder) }
+
+.hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.cap { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.meta { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder) }
+
+/* ── 버튼 ── */
+.btn { display:flex; min-height:54px; width:100%; box-sizing:border-box; align-items:center; justify-content:center;
+  gap:8px; border-radius:var(--finch-radius-control); padding:0 16px; border:0; font-family:inherit;
+  font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label); font-weight:600 }
+.btn[data-v="primary"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.btn[data-v="secondary"] { background:var(--finch-color-bg-layer-default); color:var(--finch-color-fg-neutral);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.btn[data-v="disabled"] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+/* 카카오 로그인 버튼만 브랜드 가이드가 색을 강제한다 — Button.tsx 의 bg-[#FEE500] 과 같은 예외다.
+   토큰화하지 않는 이유는 우리 팔레트 값이 아니기 때문이다 (designer 브리핑 "유일한 예외"). */
+.btn[data-v="kakao"] { background:#FEE500; color:#191600 }
+.btn svg { width:19px; height:19px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+/* 작은 보조 버튼 — 44 를 지킨다 */
+.sbtn { min-height:44px; display:flex; align-items:center; justify-content:center; gap:6px; padding:0 14px;
+  box-sizing:border-box; border-radius:var(--finch-radius-control); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:600; background:var(--finch-color-bg-layer-default);
+  color:var(--finch-color-fg-neutral); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.sbtn[data-v="ink"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted); border:0 }
+.sbtn svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+/* 하단 고정 CTA — z-sticky. 노치에서 잘리지 않게 safe-area 를 더한다 */
+.cta { flex:none; background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:8px;
+  position:relative; z-index:var(--finch-z-sticky); box-shadow:var(--finch-shadow-float) }
+
+/* ── 하단 탭바 ── */
+.tabbar { flex:none; display:flex; background:var(--finch-color-bg-layer-default);
+  border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-bottom:env(safe-area-inset-bottom);
+  position:relative; z-index:var(--finch-z-sticky) }
+.tabbar a { flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-size:11px; color:var(--finch-color-fg-placeholder); text-decoration:none }
+.tabbar a[aria-current] { color:var(--finch-color-fg-neutral); font-weight:600 }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 진입 행 목록 (마이페이지 · 알림함) ── */
+.rows { display:flex; flex-direction:column; background:var(--finch-color-bg-layer-default);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-card); overflow:hidden }
+.rows.flush { border:0; border-radius:0 }
+.row { display:flex; align-items:center; gap:12px; padding:13px 16px; min-height:44px; box-sizing:border-box }
+.row + .row { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.row .l { flex:1; min-width:0 }
+.row .l b { display:block; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:600 }
+.row .l span { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle); margin-top:2px }
+.row .r { flex:none; display:flex; align-items:center; gap:8px; color:var(--finch-color-fg-placeholder) }
+.row .r svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+/* 미읽음 — 점 하나로 알리지 않는다. 개수 뱃지가 같이 온다 */
+.unread { min-width:20px; height:20px; padding:0 6px; box-sizing:border-box; border-radius:999px;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  font-size:11px; font-weight:700; display:grid; place-items:center }
+
+/* ── 프로필 ── */
+.prof { display:flex; align-items:center; gap:14px }
+.avatar { width:60px; height:60px; flex:none; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; color:var(--finch-color-fg-placeholder) }
+.avatar svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 위험·에러 알림. 모노톤에서 위험은 색이 아니라 잉크 채움·굵기·형태다 (finch-seed 4) ── */
+.alert { display:flex; gap:10px; padding:14px; border-radius:var(--finch-radius-card);
+  background:var(--finch-color-bg-critical-weak); color:var(--finch-color-fg-critical) }
+.alert svg { width:18px; height:18px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+.alert .m { font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+.alert .s { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  font-weight:400; margin-top:3px; color:var(--finch-color-fg-neutral-muted) }
+
+/* ── 빈 상태 ── */
+.empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:32px 24px; text-align:center }
+.empty .g { width:56px; height:56px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; margin-bottom:6px; color:var(--finch-color-fg-placeholder) }
+.empty .g svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+.empty b { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:600 }
+.empty span { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+
+/* ── 로딩 ── */
+.sk { background:var(--finch-color-bg-skeleton); border-radius:var(--finch-radius-chip); height:14px }
+.spin { width:20px; height:20px; border-radius:999px; border:2px solid var(--finch-color-bg-skeleton);
+  border-top-color:var(--finch-color-fg-neutral); animation:spin 800ms linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+.center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:32px 24px; text-align:center }
+
+/* ── 딤 + 바텀시트 — z-overlay ── */
+.dim { position:absolute; inset:0; background:var(--finch-color-bg-overlay); z-index:var(--finch-z-overlay) }
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:var(--finch-z-overlay);
+  background:var(--finch-color-bg-layer-default); border-radius:var(--finch-radius-sheet) var(--finch-radius-sheet) 0 0;
+  box-shadow:var(--finch-shadow-float); padding:22px 16px calc(16px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:14px }
+.sheet .h { font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3) }
+.sheet .row2 { display:flex; gap:8px }
+.sheet .row2 .btn { flex:1 }
+
+/* ── AI 표면 — 색이 아니라 깊이로 구분한다 (tokens.css 5. Shadow 주석) ──
+   일반 카드: stroke-subtle · 그림자 없음 · radius-card
+   AI 카드 : stroke-weak  · shadow-ai  · radius-ai   → 획 무게·깊이·반경 셋이 함께 달라진다 */
+.ai { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-ai); box-shadow:var(--finch-shadow-ai); padding:16px }
+/* 근거·계약이 확정되지 않은 자리. 토큰이 아니라 형태로 알린다 — dashed + 그림자 없음 */
+.ai[data-unspec] { border-style:dashed; box-shadow:none }
+.ai .ttl { font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label);
+  font-weight:700; color:var(--finch-color-fg-neutral-muted); margin-bottom:6px }
+.ai p { margin:0; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.ai p + p { margin-top:8px }
+.up { color:var(--finch-color-fg-up); font-weight:700 }
+.down { color:var(--finch-color-fg-down); font-weight:700 }
+/* 본문 각주 — 눌러서 근거 목록으로 보내는 것까지만 한다 (ia.md 4 근거 표시) */
+.cit { font-size:11px; font-weight:700; vertical-align:super; color:var(--finch-color-fg-neutral-subtle) }
+
+/* 기준 시각 · 면책. 응답에 없으면 그 표기만 생략한다 */
+.disc { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  margin-top:12px; padding-top:10px }
+
+/* ── 근거 목록 (citations) ── */
+.cites { margin-top:12px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:10px;
+  display:flex; flex-direction:column; gap:2px }
+.cites .hd { font-size:var(--finch-font-size-caption); font-weight:700; color:var(--finch-color-fg-neutral-muted);
+  min-height:24px; display:flex; align-items:center; gap:6px }
+.cite { display:flex; align-items:flex-start; gap:8px; min-height:44px; padding:6px 0; box-sizing:border-box }
+.cite .b { flex:none; margin-top:2px; height:20px; padding:0 7px; box-sizing:border-box; border-radius:var(--finch-radius-chip);
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  font-size:11px; font-weight:700; display:grid; place-items:center }
+/* engine · wiki 는 외부 URL 이 없다. 채움 뱃지와 같은 모양이면 "출처가 있는 척" 이 된다 —
+   테두리만 남기고 링크 화살표를 뺀다 (ia.md 4 근거 표시) */
+.cite .b[data-self] { background:transparent; color:var(--finch-color-fg-neutral-subtle);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.cite .x { flex:1; min-width:0 }
+.cite .x b { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption); font-weight:600 }
+.cite .x span { display:block; font-size:11px; line-height:16px; color:var(--finch-color-fg-placeholder); margin-top:1px }
+.cite .a { flex:none; margin-top:3px; color:var(--finch-color-fg-placeholder) }
+.cite .a svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 피드백 슬롯 — requestId 하나 = 슬롯 하나 (ia.md 4) ── */
+.fb { margin-top:10px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:8px;
+  display:flex; align-items:center; gap:6px }
+.fb .q { flex:1; font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle) }
+.thumb { width:44px; height:44px; flex:none; display:grid; place-items:center; border-radius:var(--finch-radius-chip);
+  color:var(--finch-color-fg-neutral-subtle); background:transparent; border:1px solid transparent }
+.thumb[aria-pressed="true"] { color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected);
+  border-color:var(--finch-color-stroke-neutral-contrast) }
+.thumb svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+.fb-sent { margin-top:10px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:10px;
+  font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle); display:flex; align-items:center; gap:6px }
+.fb-sent svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }
+/* 사유 6종 복수 선택. down 을 누른 뒤에만 펼친다 */
+.reasons { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
+.chip { min-height:44px; display:flex; align-items:center; padding:0 12px; box-sizing:border-box;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:400;
+  color:var(--finch-color-fg-neutral-subtle); background:var(--finch-color-bg-layer-default);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.chip[aria-pressed="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-transparent-selected); border-color:var(--finch-color-stroke-neutral-contrast); border-width:2px; padding:0 11px }
+.ta { border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-control);
+  padding:10px 12px; min-height:64px; box-sizing:border-box; font-size:var(--finch-font-size-caption);
+  color:var(--finch-color-fg-placeholder); margin-top:8px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px }
+
+/* ── 채팅 ── */
+.chat { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 8px }
+.me { align-self:flex-end; max-width:80%; background:var(--finch-color-bg-neutral-solid);
+  color:var(--finch-color-fg-neutral-inverted); border-radius:var(--finch-radius-ai) var(--finch-radius-ai) 6px var(--finch-radius-ai);
+  padding:11px 14px; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.qchips { display:flex; flex-direction:column; gap:8px; width:100% }
+.qchips .q { min-height:48px; display:flex; align-items:center; padding:0 14px; box-sizing:border-box; text-align:left;
+  border-radius:var(--finch-radius-control); background:var(--finch-color-bg-layer-default);
+  border:1px solid var(--finch-color-stroke-neutral-weak); font-size:var(--finch-font-size-body-2) }
+/* 입력바 — 하단 고정. safe-area 를 더한다 */
+.composer { flex:none; display:flex; align-items:flex-end; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.composer .f { flex:1; min-height:44px; box-sizing:border-box; display:flex; align-items:center; padding:0 14px;
+  border-radius:var(--finch-radius-control); border:1px solid var(--finch-color-stroke-neutral-weak);
+  color:var(--finch-color-fg-placeholder); font-size:var(--finch-font-size-body-2) }
+.composer .send { width:44px; height:44px; flex:none; border-radius:var(--finch-radius-control); display:grid; place-items:center;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.composer .send[data-off] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+.composer svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 위키 행 ── */
+.wrow { padding:14px 16px; display:flex; gap:12px; align-items:flex-start }
+.wrow + .wrow { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.wrow .x { flex:1; min-width:0 }
+.wrow .x p { margin:0; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.wrow .x .src { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px;
+  font-size:11px; line-height:16px; color:var(--finch-color-fg-placeholder) }
+.tag { height:20px; padding:0 7px; box-sizing:border-box; border-radius:var(--finch-radius-chip);
+  border:1px solid var(--finch-color-stroke-neutral-weak); color:var(--finch-color-fg-neutral-subtle);
+  font-size:11px; font-weight:600; display:inline-grid; place-items:center }
+/* ai_inferred 는 단정형으로 렌더하지 않는다. 형태로도 구분한다 — 점선 테두리 (AI 명세 9 source 표) */
+.tag[data-guess] { border-style:dashed }
+.wrow .act { flex:none; display:flex; gap:2px }
+.wact { width:44px; height:44px; display:grid; place-items:center; border-radius:var(--finch-radius-chip);
+  color:var(--finch-color-fg-neutral-subtle) }
+.wact svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 브리핑 항목 ── */
+.bitem { padding:14px 0; display:flex; flex-direction:column; gap:6px }
+.bitem + .bitem { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.bitem .hd { display:flex; align-items:center; gap:8px }
+.bitem .hd b { flex:1; min-width:0; font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:700 }
+.bitem .rk { flex:none; width:20px; height:20px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  font-size:11px; font-weight:700; display:grid; place-items:center; color:var(--finch-color-fg-neutral-subtle) }
+.bitem p { margin:0; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.tickers { display:flex; flex-wrap:wrap; gap:6px; margin-top:2px }
+.tickers a { min-height:44px; display:flex; align-items:center; gap:5px; padding:0 12px; box-sizing:border-box;
+  border-radius:var(--finch-radius-chip); border:1px solid var(--finch-color-stroke-neutral-weak);
+  font-size:var(--finch-font-size-caption); font-weight:600; color:var(--finch-color-fg-neutral); text-decoration:none }
+.tickers a svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── AI 플로팅 버튼 — z-floating ── */
+.fab { position:absolute; right:16px; bottom:calc(20px + env(safe-area-inset-bottom)); z-index:var(--finch-z-floating);
+  min-width:44px; height:44px; padding:0 14px; box-sizing:border-box; border-radius:999px; display:flex; align-items:center; gap:7px;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  box-shadow:var(--finch-shadow-float); font-size:var(--finch-font-size-caption); font-weight:700 }
+.fab svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* 표 (범위 시트용) */
+.tb { width:100%; border-collapse:collapse; font-size:12px }
+.tb th, .tb td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); vertical-align:top }
+.tb th { color:var(--finch-color-fg-placeholder); font-weight:600; white-space:nowrap }
+.tb code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px }
+</style>
+</helmet>
+
+
+<!-- ═════════════════ 0 · 범위 ═════════════════ -->
+<section class="ab ab-wide">
+<div class="ab-tag">FINCH · SPRINT 5 · WIREFRAME</div>
+<div class="ab-name">계정 · AI 축 — 화면 범위</div>
+
+<div class="note" style="border-style:solid">
+<b>ia.md §1 의 화면 17개 중 8개를 그린다.</b> 나머지 6개(홈 · 종목 검색 · 최근 본 종목 · 종목 상세 · 주문)와
+Sprint 4 가 이미 그린 3개(포트폴리오 · 매매 내역 · 충전, <code>sprint-4.dc.html</code>)는 이 캔버스에 없다.
+<table class="tb" style="margin-top:12px">
+<tr><th>화면</th><th>라우트</th><th>계약</th><th>아트보드</th></tr>
+<tr><td>로그인</td><td><code>/login</code></td><td><b>확정</b> — API 없음. 카카오 인가 URL 로 이동만 한다</td><td>1 · 2</td></tr>
+<tr><td>카카오 콜백</td><td><code>/oauth/kakao</code></td><td><b>확정</b> — <code>POST /auth/kakao</code> · <code>GET /users/me</code> (apiSpec §2.1·§2.4)</td><td>3 · 4</td></tr>
+<tr><td>마이페이지</td><td><code>/my</code></td><td><b>확정</b> — <code>GET /users/me</code> · <code>POST /auth/logout</code></td><td>5 · 6 · 7</td></tr>
+<tr><td>404</td><td><code>*</code></td><td><b>확정</b> — API 없음</td><td>8</td></tr>
+<tr><td>AI 채팅</td><td><code>/chat</code></td><td><b>확정</b> — <code>POST /ai/chat</code> (apiSpec §10.1)</td><td>9~15</td></tr>
+<tr><td>AI가 이해한 나</td><td><code>/my/wiki</code> <b>(진입 경로 잠정)</b></td><td><b>부분</b> — 위키 3종 경로는 확정(C80). <b>"맞아요" 승격 API 가 없다</b> (P24)</td><td>16~21</td></tr>
+<tr><td>알림함(메일)</td><td><code>/inbox</code> <b>(경로 미확정)</b></td><td><b>없음</b> — 엔드포인트가 아예 없다 (P23)</td><td>22~24</td></tr>
+<tr><td>브리핑 전체</td><td><code>/briefing</code> <b>(경로 미확정)</b></td><td><b>잠정</b> — <code>GET /ai/briefing</code> 은 있고 화면 자체가 잠정이다</td><td>25~28</td></tr>
+</table>
+</div>
+
+<div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
+<b>⚠ 이 캔버스에는 계약이 없는 자리가 셋 있다. 시안은 요청 사항이지 계약이 아니다.</b>
+백엔드·AI 회신 전까지 구현하지 않는다. <b>화면 안에서도 형태로 구분했다</b> — 근거가 확정되지 않은 블록은
+점선 테두리에 그림자를 뺐다(<code>tokens.css</code> §5 주석). 색 토큰을 새로 만들지 않은 이유다.
+<ul>
+<li><b>알림함(메일) 전체 — <code>contracts.md</code> P23.</b> 목록 조회도 읽음 처리도 엔드포인트가 없다.
+    아트보드 22~24 의 항목 종류·요약·미읽음 개수는 <b>PRD 문구에서 옮긴 요청 사항</b>이고 응답 스키마가 아니다.
+    GitLab 이슈 #26 ①번 회신 대기.</li>
+<li><b>위키의 "맞아요" 승격 — <code>contracts.md</code> P24.</b> <code>ai_inferred</code> 항목을 사실로 승격하는 경로가 없다.
+    <b>그래서 아트보드 16 에 "맞아요" 버튼을 그리지 않았다</b> — 그리면 눌러도 아무 일도 안 일어나는 죽은 버튼이 된다.
+    반대쪽("아니에요")만 <code>DELETE /ai/wiki/facts/{factId}</code> 로 성립하는데, 한쪽만 있는 맞다/아니다는
+    "아니오만 고를 수 있는 질문" 으로 읽히므로 <b>확인 UI 를 짝으로 만들지 않고 기존 삭제 컨트롤 하나로 뒀다.</b>
+    GitLab 이슈 #26 ②번 회신 대기.</li>
+<li><b>브리핑 전체 화면의 존재 자체 — ia.md §1.</b> PRD v1.0 §06 의 화면 집계에 독립 항목으로 없다.
+    <code>GET /ai/briefing</code> 은 확정 계약이지만 <b>그 응답을 전체 화면으로 펼칠지가 잠정</b>이다.
+    홈의 브리핑 블록만으로 끝날 수도 있다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>라우트 이름이 두 문서에서 어긋난다 — 코드를 따랐다.</b>
+<code>ia.md</code> §1 은 화면 이름을 "메일", 라우트를 <code>/mail</code> 로 적었지만
+<code>frontend/src/shared/config/routes.ts</code> 는 <code>inbox: '/inbox'</code> 이고
+"프로토타입을 보고 <code>/mail</code> 로 되돌리지 않는다" 를 주석으로 못박았다.
+<code>contracts.md</code> P23 도 "알림함(<code>/inbox</code>)" 으로 등재돼 있다.
+<b>둘 다 미확정이므로 이 캔버스는 코드 쪽(<code>/inbox</code>)을 쓰고 화면 제목은 "알림함" 으로 적는다.</b>
+확정이 오면 고칠 자리는 <code>routes.ts</code> 한 줄과 이 캔버스의 아트보드 22~24 다.
+</div>
+
+<div class="note">
+<b>AI 슬롯 배치를 새로 정하지 않았다.</b> <code>ia.md</code> §4 가 이미 정한 것을 화면으로 옮겼을 뿐이다.
+이 축에 들어오는 슬롯은 <b>2종</b>이다 — 6번(Ask My Portfolio, AI 채팅 화면 전체)과 1번(데일리 브리핑)이다.
+나머지 4종(수익률 원인 분석 · 종목 분석 · 주문 전 점검 · 포트폴리오 진단)은 다른 축의 화면에 들어간다.
+<ul>
+<li><b>6종 전부 일반 요청/응답이다. SSE 는 폐기됐다</b> (ia.md 개정 전제 1). 아트보드 11 의 대기 상태는
+    타이핑 연출이 아니라 <b>단발 응답을 기다리는 로딩</b>이다. 글자가 한 자씩 나오는 화면을 그리지 않았다.</li>
+<li><b>근거 목록(<code>citations</code>)은 접거나 생략하지 않는다.</b> 응답 봉투의 최상위 키라 슬롯 6종 전부에 실린다.
+    <code>engine</code>·<code>wiki</code> 는 외부 URL 이 없어 <b>테두리 뱃지 + 화살표 없음</b>으로 구분했다 — 채움 뱃지와
+    같은 모양이면 "출처가 있는 척" 이 된다 (ia.md §4 근거 표시).</li>
+<li><b>피드백 슬롯은 <code>requestId</code> 하나 = 슬롯 하나.</b> 채팅은 답변 말풍선마다, 브리핑은 블록 하단에 하나다.
+    브리핑 <code>items[]</code> 마다 붙이지 않는다. <b>붙는 자리 수 자체는 회신 대기(6 vs 3 vs 8)</b>이고
+    이 캔버스는 ia.md §4 표를 따랐다.</li>
+<li><b>캐릭터(핀치·블루치)는 AI 슬롯과 그 빈 상태·에러 자리에만 올 수 있다.</b> 이 캔버스에서 해당하는 자리는
+    아트보드 9(채팅 빈 상태) · 13·14(채팅 에러) · 17(위키 빈 상태) · 27(브리핑 빈 상태) 다섯이다.
+    <b>와이어프레임 단계라 에셋을 넣지 않고 자리만 비웠다</b> — 자산 요약 숫자·주문·충전 확인에는 넣지 않는다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>AI 는 판단을 대신하지 않는다.</b> 이 캔버스의 AI 문구에는 매수·매도 권유, 목표주가, 투자의견, "좋다/나쁘다" 판정이 없다.
+"긍정 요인 / 부정 요인" 같은 표현도 쓰지 않는다 — AI 명세 §2 가 출처 귀속형("시장이 주목하는 요인",
+"공시·실적에서 확인된 위험 요인")으로 고정했고 규제 대응이라 화면에서 되돌리면 안 된다.
+<code>disclaimer</code> 는 모든 AI 응답 자리에 노출한다 (apiSpec §10.3 보존 4종).
+</div>
+
+<div class="note">
+<b>응답은 백엔드 형식으로 온다.</b> 백엔드가 AI 의 <code>snake_case</code> + 봉투를 벗겨
+<code>camelCase</code> + 봉투 없음으로 재포장한다 (apiSpec §10.3). 그래서 이 캔버스의
+<code>ab-api</code> 줄은 <code>requestId</code>·<code>dataAsOf</code>·<code>relatedTickers</code> 로 적혀 있다 —
+AI 명세의 <code>request_id</code>·<code>data_as_of</code>·<code>related_tickers</code> 를 그대로 옮기지 않았다.
+<b>필드 이름 자체는 바뀌지 않는다</b> — <code>ticker</code> 를 <code>stockCode</code> 로 바꾸지 않는다(경로 파라미터만 그렇다).
+</div>
+
+<div class="note">
+<b>토큰을 새로 만들지 않았다.</b> 이 캔버스의 모든 색·반경·그림자·타이포는 기존 역할 토큰으로 해결된다.
+판단이 들어간 자리는 넷이다.
+<ul>
+<li><b>AI 표면에 "AI 색" 을 쓰지 않는다.</b> <code>bg-layer-default</code> + <code>stroke-neutral-weak</code> +
+    <code>shadow-ai</code> + <code>radius-ai</code>(18px). 일반 카드는 <code>stroke-neutral-subtle</code> · 그림자 없음 ·
+    <code>radius-card</code>(16px) 이라 <b>획 무게 · 깊이 · 반경 셋이 한꺼번에 달라진다</b>. AI 카드에 브랜드 마크를 붙이지 않는다.</li>
+<li><b>계약·근거가 없는 블록은 점선 + 그림자 없음.</b> 새 토큰이 아니라 형태다 (<code>tokens.css</code> §5 주석).
+    <code>ai_inferred</code> 태그도 같은 이유로 점선이다 — 단정형이 아님을 색이 아니라 형태로 말한다.</li>
+<li><b>에러에 등락 적색을 쓰지 않는다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크) bold + 아이콘.
+    적색이면 "떨어졌다" 로 오독된다 (finch-seed §4).</li>
+<li><b>등락은 브리핑 항목 본문에만 나온다.</b> <code>segments[].direction</code> 이 <code>up</code>·<code>down</code> 인 조각만
+    <code>fg-up</code>·<code>fg-down</code>(700 단계) 로 칠하고 <b>부호가 반드시 같이 온다</b>. 13~15px 본문이라
+    <code>-vivid</code>(600)를 쓰지 않는다 — 18px 이상 굵은 가격에만 쓴다. 숫자를 정규식으로 찾아 칠하지 않는다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>카카오 로그인 버튼의 <code>#FEE500</code> 이 이 캔버스의 유일한 토큰 밖 색이다.</b>
+카카오 브랜드 가이드가 강제하는 색이라 토큰화하지 않는다 — <code>Button.tsx</code> 의
+<code>bg-[#FEE500]</code> 과 같은 예외이고 팔레트 유출 검사에서도 이것만 통과시킨다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 1 · 로그인 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 1 · 로그인</div>
+<div class="ab-name">로그인 — 기본</div>
+<div class="ab-api">API 없음 · 카카오 인가 URL 로 이동만 한다</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center; gap:0; background:var(--finch-color-bg-layer-basement)">
+    <div style="flex:1"></div>
+    <div style="text-align:center">
+      <div class="hero" style="font-size:var(--finch-font-size-display); line-height:var(--finch-line-height-display)">Finch</div>
+      <div style="margin-top:14px; font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); color:var(--finch-color-fg-neutral-muted)">
+        판단은 당신이,<br>근거 정리는 Finch 가.
+      </div>
+      <div class="meta" style="margin-top:12px">모의투자 서비스입니다. 실제 매매가 일어나지 않습니다.</div>
+    </div>
+    <div style="flex:1.2"></div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="kakao">
+      <svg viewBox="0 0 24 24"><path d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 5.9l-.8 3 3.4-1.9c.7.1 1.4.2 2.2.2 5 0 9-3.1 9-7s-4-7-9-7z" fill="currentColor" stroke="none"/></svg>
+      카카오로 시작하기
+    </button>
+    <div class="meta" style="text-align:center">최초 로그인 시 계좌와 초기 예수금 1,000,000원이 함께 만들어집니다</div>
+  </div>
+</div>
+<div class="note">
+<b>자체 회원가입 폼이 없다.</b> 인증 수단은 카카오 OAuth 2.0 단일이고 서버가 최초 로그인 시 계정·계좌·초기
+예수금을 함께 만든다 (apiSpec §2.1). 이전 판의 <code>/signup</code> 화면은 ia.md 에서 삭제됐다 — 되살리지 않는다.
+<br><br><b>이 화면에는 에러 상태가 없다.</b> 부를 API 가 없기 때문이다. 인가 실패는 카카오 화면에서 일어나거나
+콜백(<code>/oauth/kakao</code>)으로 돌아온 뒤에 드러난다 — 아트보드 4 가 그 자리다.
+<b>빈 상태도 없다</b> — 표시할 데이터가 없는 화면이다.
+<br><br><b>미인증 접근이 <code>?redirect=</code> 를 들고 여기로 온다</b> (ia.md §1). 화면에는 아무 표시도 하지 않는다 —
+"로그인이 필요합니다" 를 띄우면 처음 방문한 사람에게 실패로 읽힌다. 세션 복구 실패 코드 두 가지 중
+<code>AUTH_REFRESH_TOKEN_MISSING</code>(쿠키 없음)은 <b>조용히 비로그인</b>으로 다루는 것이 계약이다 (apiSpec §2.2).
+</div>
+</section>
+
+
+<!-- ═════════════════ 2 · 로그인 · 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 2 · 로그인 · 상태</div>
+<div class="ab-name">인가 화면으로 이동 중</div>
+<div class="ab-api">location.assign(kauth.kakao.com/oauth/authorize)</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center; gap:0; background:var(--finch-color-bg-layer-basement)">
+    <div style="flex:1"></div>
+    <div style="text-align:center">
+      <div class="hero" style="font-size:var(--finch-font-size-display); line-height:var(--finch-line-height-display)">Finch</div>
+      <div style="margin-top:14px; font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); color:var(--finch-color-fg-neutral-muted)">
+        판단은 당신이,<br>근거 정리는 Finch 가.
+      </div>
+      <div class="meta" style="margin-top:12px">모의투자 서비스입니다. 실제 매매가 일어나지 않습니다.</div>
+    </div>
+    <div style="flex:1.2"></div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="disabled"><span class="spin" style="border-top-color:var(--finch-color-fg-disabled)"></span>카카오로 이동 중</button>
+    <div class="meta" style="text-align:center">최초 로그인 시 계좌와 초기 예수금 1,000,000원이 함께 만들어집니다</div>
+  </div>
+</div>
+<div class="note">
+<b>버튼을 잠그는 것이 이 상태의 목적이다.</b> 이동은 브라우저가 하므로 화면은 곧 사라지지만, 그 사이 두 번 누르면
+인가 요청이 두 번 나간다. 누른 뒤 <code>disabled</code> 로 바꾸고 스피너를 얹는다.
+<br><br><b>비활성 면은 <code>bg-disabled</code>(gray-400) 이고 글자는 <code>fg-disabled</code>(gray-600) 다.</b>
+<code>opacity</code> 로 흐리면 안에 있는 스피너까지 같이 사라진다 (finch-seed §4).
+카카오 노란 면을 흐리는 방식도 쓰지 않는다 — 브랜드 색을 반투명으로 만드는 것은 가이드 위반이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 3 · 콜백 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 3 · 카카오 콜백</div>
+<div class="ab-name">토큰 교환 중 — 이 화면의 정상 상태</div>
+<div class="ab-api">POST /auth/kakao → GET /users/me → 홈</div>
+<div class="ph">
+  <div class="center">
+    <span class="spin" style="width:28px; height:28px"></span>
+    <b style="font-size:var(--finch-font-size-body-1); font-weight:600">로그인 중입니다</b>
+    <span class="cap">잠시만 기다려 주세요</span>
+  </div>
+</div>
+<div class="note">
+<b>이 화면은 로딩 상태가 곧 기본 상태다.</b> 성공하면 홈으로 떠나므로 사용자가 머무는 정상 화면이 아니다.
+그래서 <b>내비도 탭바도 그리지 않았다</b> — 뒤로 갈 곳이 없고, 탭을 누를 시간도 없다.
+<br><br><b>빈 상태가 없다.</b> 인가 코드가 없으면 그건 빈 상태가 아니라 에러다(아트보드 4).
+<br><br><b>성공 시 화면에 "성공" 을 그리지 않는다.</b> 완료 화면을 만들면 사용자가 한 번 더 눌러야 홈에 간다.
+<code>Set-Cookie: refreshToken</code> 은 헤더로만 오고 <code>accessToken</code> 은 메모리에 둔다 (apiSpec §1.2·§2.1) —
+화면에 표시할 것이 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 4 · 콜백 · 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 4 · 카카오 콜백 · 에러</div>
+<div class="ab-name">인가 실패 — AUTH_KAKAO_FAILED</div>
+<div class="ab-api">POST /auth/kakao → 401 AUTH_KAKAO_FAILED</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+      <div>
+        <div class="m">로그인에 실패했습니다</div>
+        <div class="s">인가 정보가 만료되었거나 유효하지 않습니다. 다시 시도해 주세요.</div>
+      </div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">로그인 화면으로</button>
+  </div>
+</div>
+<div class="note">
+<b>문구는 서버가 완성해서 내려준다</b> (apiSpec §1.3). 화면이 코드별 문구를 다시 만들지 않는다.
+이 화면이 다룰 코드는 <b><code>AUTH_KAKAO_FAILED</code>(401) 하나</b>다 — apiSpec §2.1 의 에러 표에 그것만 있다.
+<br><br><b>재시도 버튼을 두지 않고 로그인 화면으로 보낸다.</b> 인가 코드는 일회용이라 같은 코드로 다시 부르면
+반드시 또 실패한다. "다시 시도" 버튼은 눌러도 안 되는 버튼이 된다.
+<br><br><b>등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code>(gray-300) 면 + <code>fg-critical</code>(잉크) bold +
+아이콘 + 문구. 색만으로 알리지 않는다 (finch-seed §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 5 · 마이페이지 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 5 · 마이페이지</div>
+<div class="ab-name">내 정보 — 기본</div>
+<div class="ab-api">GET /users/me · POST /auth/logout</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">내 정보</div><div class="icon"></div></div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="prof">
+        <div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+        <div style="flex:1; min-width:0">
+          <div style="font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3); font-weight:var(--finch-font-weight-title-3)">홍길동</div>
+          <div class="meta" style="margin-top:3px">2026.08.25 가입</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rows">
+      <div class="row">
+        <span class="l"><b>알림함</b><span>Finch 가 물어다 놓은 것</span></span>
+        <span class="r"><span class="unread">3</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b>AI가 이해한 나</b><span>사실 4 · 논지 2</span></span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b>매매 내역</b></span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b>충전</b></span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+
+    <div class="rows">
+      <div class="row"><span class="l"><b>로그아웃</b></span><span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    </div>
+
+    <div class="meta" style="text-align:center; margin-top:auto; padding-top:16px">
+      모의투자 서비스입니다. 실제 매매가 일어나지 않습니다.
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-6 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>설정 화면을 흡수한 자리다</b> (ia.md §1 기타). 테마·로그아웃만 있는 화면을 따로 두면 사용자가 어느 쪽에
+무엇이 있는지 외워야 한다. <b>계좌 초기화 진입점은 없다</b> — GitLab 이슈 #27 로 기능 자체가 빠졌고
+<code>POST /account/reset</code> 은 apiSpec v0.7 에서 삭제됐다. 되살리지 않는다.
+<br><br><b><code>profileImageUrl</code> 은 <code>null</code> 일 수 있다</b> (apiSpec §2.4). 카카오의 선택 동의 항목이라
+동의하지 않으면 값이 없고, 빈 문자열이 아니라 <code>null</code> 이다. <b>이 아트보드가 그 기본 아바타 상태다</b> —
+<code>&lt;img src=""&gt;</code> 는 브라우저가 현재 페이지를 다시 요청하게 만든다.
+<br><br><b>로그아웃을 다른 진입 행과 같은 무게로 두지 않았다.</b> 목록을 끊어 별도 블록으로 뒀다 — 오탭하면
+세션이 날아간다. 색으로 위험을 알리지 않고 <b>블록 분리</b>로 알린다(확인은 아트보드 7).
+<br><br><b>미읽음을 점 하나로 알리지 않는다.</b> 개수 뱃지(<code>3</code>)를 함께 둔다 — 점만 있으면 몇 건인지 알 수 없어
+사용자가 매번 열어 확인한다. <b>다만 이 개수의 출처가 없다</b> — 알림함 계약이 없어서다(P23, 아트보드 22).
+<br><br><b>AI 플로팅 버튼이 없다.</b> PRD 가 정한 배치(종목 상세 · 포트폴리오 · 브리핑 · 뉴스 상세)와
+프로토타입의 실제 배치(홈 · 종목 상세 · 포트폴리오 · 브리핑) <b>어느 쪽에도 마이페이지가 없다</b> (ia.md §3).
+</div>
+</section>
+
+
+<!-- ═════════════════ 6 · 마이페이지 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 6 · 마이페이지 · 상태</div>
+<div class="ab-name">내 정보 — 로딩</div>
+<div class="ab-api">GET /users/me · pending</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">내 정보</div><div class="icon"></div></div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="prof">
+        <div class="avatar" style="background:var(--finch-color-bg-skeleton)"></div>
+        <div style="flex:1">
+          <div class="sk" style="width:92px; height:18px"></div>
+          <div class="sk" style="width:120px; height:13px; margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rows">
+      <div class="row"><span class="l"><div class="sk" style="width:64px"></div><div class="sk" style="width:148px; height:12px; margin-top:6px"></div></span></div>
+      <div class="row"><span class="l"><div class="sk" style="width:104px"></div><div class="sk" style="width:88px; height:12px; margin-top:6px"></div></span></div>
+      <div class="row"><span class="l"><div class="sk" style="width:74px"></div></span></div>
+      <div class="row"><span class="l"><div class="sk" style="width:44px"></div></span></div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-6 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>탭바와 내비는 골격으로 만들지 않는다.</b> 이미 아는 값이고, 골격으로 바꾸면 탭이 눌리지 않는 것처럼 보인다.
+<b>로그아웃 행도 골격으로 둔다</b> — 프로필이 아직 안 온 상태에서 로그아웃만 눌리게 하면 어느 계정을
+로그아웃하는지 모르는 채로 누른다.
+<br><br><b>이 화면의 에러 상태는 그리지 않았다 — 도달할 수 없다.</b>
+<code>GET /users/me</code> 는 앱 부팅 시 세션 복구에 이미 한 번 쓰이고(apiSpec §2.4), 실패하면
+그 단계에서 <code>/login</code> 으로 보내진다. 마이페이지에 들어온 시점에는 값이 캐시에 있다.
+<b>도달 가능한 실패는 <code>POST /auth/logout</code> 쪽</b>이고, 로그아웃은 실패해도 클라이언트 토큰을 버려
+비로그인으로 떨어지므로 에러 화면 대신 로그인 화면이 결과다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 7 · 마이페이지 · 로그아웃 확인 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 7 · 마이페이지 · 확인</div>
+<div class="ab-name">로그아웃 확인 시트</div>
+<div class="ab-api">POST /auth/logout → 204</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">내 정보</div><div class="icon"></div></div>
+  <div class="scroll">
+    <div class="card">
+      <div class="prof">
+        <div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+        <div style="flex:1; min-width:0">
+          <div style="font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3); font-weight:var(--finch-font-weight-title-3)">홍길동</div>
+          <div class="meta" style="margin-top:3px">2026.08.25 가입</div>
+        </div>
+      </div>
+    </div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>알림함</b><span>Finch 가 물어다 놓은 것</span></span><span class="r"><span class="unread">3</span></span></div>
+      <div class="row"><span class="l"><b>AI가 이해한 나</b><span>사실 4 · 논지 2</span></span><span class="r"></span></div>
+      <div class="row"><span class="l"><b>매매 내역</b></span><span class="r"></span></div>
+      <div class="row"><span class="l"><b>충전</b></span><span class="r"></span></div>
+    </div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">로그아웃할까요?</div>
+    <div class="cap">보유 종목과 예수금은 그대로 남습니다. 다시 카카오로 로그인하면 이어서 볼 수 있습니다.</div>
+    <div class="row2">
+      <button class="btn" data-v="secondary">취소</button>
+      <button class="btn" data-v="primary">로그아웃</button>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>파괴적 확인 버튼의 채움도 주요 버튼과 같은 잉크다.</b> 모노톤에 위험 solid 면을 두지 않았기 때문이다
+(<code>tokens.css</code> §3 주석 — <code>bg-critical-solid</code> 를 만들지 않은 이유). <b>구분은 문구가 한다.</b>
+<br><br><b>"데이터가 지워집니다" 로 쓰지 않는다.</b> 로그아웃은 원장을 건드리지 않는다 —
+<code>POST /auth/logout</code> 은 Refresh Token 만 무효화한다(apiSpec §2.3). 지워지지 않는 것을
+지워진다고 적으면 사용자가 로그아웃을 못 한다.
+<br><br><b>확인 자체는 필요하다.</b> Access Token 이 메모리에만 있어 로그아웃하면 그 자리에서 세션이 끊긴다
+— 되돌리려면 카카오 인가를 다시 통과해야 한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 8 · 404 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 8 · 404</div>
+<div class="ab-name">없는 경로</div>
+<div class="ab-api">라우트 * · API 없음</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center">
+    <div class="empty" style="flex:none">
+      <div class="g"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21M11 8v3.5M11 14h.01"/></svg></div>
+      <b>페이지를 찾을 수 없습니다</b>
+      <span>주소가 바뀌었거나 없는 화면입니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">홈으로</button>
+    <button class="btn" data-v="secondary">이전 화면으로</button>
+  </div>
+</div>
+<div class="note">
+<b>브리핑의 <code>deeplink</code> 가 조용히 404 가 되는 자리다.</b>
+<code>deeplink</code> 는 AI 서버가 만든 프론트 경로 문자열이고(예: <code>/stocks/000660?tab=ai</code>),
+라우트를 바꾸면 화면에 에러도 안 뜨고 그냥 이 페이지로 온다 (ia.md §2).
+<b>그래서 "이전 화면으로" 를 함께 둔다</b> — 브리핑에서 눌러 왔다면 목록으로 돌아갈 길이 있어야 한다.
+<br><br><b>404 에 검색창을 넣지 않는다.</b> 탐색 탭이 이미 그것이고, 여기서 검색시키면 잘못된 링크를
+사용자가 스스로 고치게 만드는 화면이 된다.
+<br><br><b>탭바를 그리지 않았다.</b> 없는 경로는 어느 탭에도 속하지 않는다 — 탭을 그리면 어느 탭이
+현재인지 정할 수 없고, 아무 탭도 켜지지 않은 탭바는 고장으로 읽힌다.
+<br><br><b>로딩·에러·빈 상태가 없다.</b> 이 화면 자체가 다른 화면들의 최종 에러 상태다.
+</div>
+</section>
+
+</x-dc>
+</body>
+</html>
