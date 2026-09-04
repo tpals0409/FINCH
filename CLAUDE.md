@@ -97,6 +97,10 @@ Oracle 같은 중앙 위임자를 두지 않는다. 필요할 때 세민이 직�
 | `infra` | `infra/**`, `.github/workflows/**`, finch-gitops | CI/CD, 컨테이너 이미지, k8s 배포(ArgoCD·Helm), 관측 스택. 배포 SSOT 는 이 저장소가 아니다 |
 | `librarian` | `docs/wiki/**`, ADR 색인, 문서 간 링크 | 문서끼리 어긋나거나 없어진 것을 가리킬 때. "이거 어디 적혀 있어?" 에 답한다 |
 
+서버에는 **Pico** 가 상주한다. `.claude/agents/` 의 에이전트들은 클러스터에 닿지 못하므로
+`kubectl` 이 필요한 일은 전부 Pico 를 거친다. 배포 자체는 ArgoCD 가 하고 Pico 는 부트스트랩과
+진단만 맡는다. 브리핑은 `docs/ops/pico.md` 이고, 서버 구성이 바뀌면 그 문서를 같이 고친다.
+
 토큰은 **디자이너 확정 → 프론트 등록** 순서다. 프론트가 임의로 토큰을 만들지 않는다.
 토큰은 2계층이다 — `frontend/src/styles/tokens.css` 가 SEED 토큰(`--finch-*`)을 담는 값의 출처이고,
 `index.css` 의 `@theme static` 별칭 층이 그중 유틸리티로 열 것만 Tailwind 네임스페이스로 옮겨 적는다.
