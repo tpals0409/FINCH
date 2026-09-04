@@ -61,6 +61,18 @@ function lazyPage<Key extends string>(
 
 const HealthPage = lazyPage(() => import('@/pages/HealthPage'), 'HealthPage');
 const MyPage = lazyPage(() => import('@/pages/MyPage'), 'MyPage');
+const PortfolioPage = lazyPage(
+  () => import('@/pages/PortfolioPage'),
+  'PortfolioPage',
+);
+const TransactionsPage = lazyPage(
+  () => import('@/pages/TransactionsPage'),
+  'TransactionsPage',
+);
+const DepositPage = lazyPage(
+  () => import('@/pages/DepositPage'),
+  'DepositPage',
+);
 
 export const router = createBrowserRouter([
   {
@@ -89,7 +101,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: ROUTES.portfolio,
-                element: <RoutePlaceholder screen="포트폴리오" />,
+                element: <PortfolioPage />,
               },
               { path: ROUTES.my, element: <MyPage /> },
             ],
@@ -102,7 +114,7 @@ export const router = createBrowserRouter([
           },
           {
             path: ROUTES.transactions,
-            element: <RoutePlaceholder screen="매매 내역" />,
+            element: <TransactionsPage />,
           },
           {
             // 경로 미확정. `ROUTES.briefing` 주석과 ia.md §7 을 본다.
@@ -111,7 +123,7 @@ export const router = createBrowserRouter([
           },
           {
             path: ROUTES.deposit,
-            element: <RoutePlaceholder screen="충전" />,
+            element: <DepositPage />,
           },
           {
             // 경로 미확정. `ROUTES.inbox` 주석과 ia.md §7 을 본다.

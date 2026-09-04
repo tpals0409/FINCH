@@ -1,9 +1,13 @@
 import { type z } from 'zod';
 
-import { API_BASE_PATH } from '@/shared/config/apiContract';
+import {
+  API_BASE_PATH,
+  IDEMPOTENCY_KEY_HEADER,
+} from '@/shared/config/apiContract';
 import { API_BASE_URL } from '@/shared/config/env';
 import { parseErrorResponse } from '@/shared/types/error';
 import { AUTH_ERROR_CODES } from '@/shared/types/errorCodes';
+import type { IdempotencyKey } from '@/shared/types/primitives';
 
 import { getAuthBridge } from './authBridge';
 import { HttpError, SchemaError, parseRetryAfterMs } from './errors';
@@ -18,6 +22,17 @@ type RequestOptions = {
    * 부르는 무한 루프가 된다 (컨벤션 §5).
    */
   shouldAttachSession?: boolean;
+  /**
+   * 멱등성 키 (apiSpec §1.4). 충전·주문만 쓴다.
+   *
+   * **범용 `headers` 맵 대신 이름 붙인 옵션인 이유** — 맵을 열면 호출부가 `Authorization` 을
+   * 덮어쓸 수 있고, 그러면 세션 관리가 이 파일 한 곳이라는 전제가 깨진다. 계약이 요구하는
+   * 헤더는 이것 하나뿐이므로 그것만 연다.
+   *
+   * **키는 호출부가 만들어 넘긴다.** 여기서 만들면 같은 클릭의 재시도마다 새 키가 되어
+   * 멱등성이 무의미해진다 — 재시도가 곧 중복 충전이다.
+   */
+  idempotencyKey?: IdempotencyKey;
 };
 
 /** 응답 본문을 검증할 Zod 스키마. 검증을 통과한 값만 밖으로 나간다. */
@@ -89,11 +104,20 @@ async function sendRequest(
   path: string,
   options: RequestOptions,
 ): Promise<SentRequest> {
-  const { method = 'GET', body, signal, shouldAttachSession = true } = options;
+  const {
+    method = 'GET',
+    body,
+    signal,
+    shouldAttachSession = true,
+    idempotencyKey,
+  } = options;
 
   const headers: Record<string, string> = {};
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
+  }
+  if (idempotencyKey !== undefined) {
+    headers[IDEMPOTENCY_KEY_HEADER] = idempotencyKey;
   }
 
   let sentAccessToken: string | null = null;

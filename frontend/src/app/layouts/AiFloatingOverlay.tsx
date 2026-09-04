@@ -84,7 +84,7 @@ export function AiFloatingOverlay() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-end"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-(--z-floating) flex justify-end"
       data-testid="ai-floating-slot"
     >
       {/* 여기에 AI 플로팅 버튼이 들어온다. 공통 컴포넌트 티켓 범위다. */}
