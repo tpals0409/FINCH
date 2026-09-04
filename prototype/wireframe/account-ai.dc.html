@@ -224,16 +224,25 @@ body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
 /* ── 피드백 슬롯 — requestId 하나 = 슬롯 하나 (ia.md 4) ── */
 .fb { margin-top:10px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:8px;
   display:flex; align-items:center; gap:6px }
-.fb .q { flex:1; font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle) }
+.fb .lb { flex:1; font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle) }
 .thumb { width:44px; height:44px; flex:none; display:grid; place-items:center; border-radius:var(--finch-radius-chip);
   color:var(--finch-color-fg-neutral-subtle); background:transparent; border:1px solid transparent }
 .thumb[aria-pressed="true"] { color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected);
   border-color:var(--finch-color-stroke-neutral-contrast) }
 .thumb svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
 .fb-sent { margin-top:10px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:10px;
-  font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle); display:flex; align-items:center; gap:6px }
+  font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle);
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px }
+/* 코드·requestId 는 감고, 접힌 피드백 버튼이 좁은 폭에서 다음 줄로 내려간다.
+   자르면(ellipsis) 장애 추적에 쓸 requestId 를 잃는다 */
+.fb-sent > span { flex:1; min-width:0; overflow-wrap:anywhere }
 .fb-sent svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }
 /* 사유 6종 복수 선택. down 을 누른 뒤에만 펼친다 */
+/* 재시도가 주 동작인 에러 자리의 접힌 피드백. 엄지를 펼치지 않지만 44 는 지킨다 */
+.fbmin { min-height:44px; flex:none; display:flex; align-items:center; padding:0 12px; box-sizing:border-box;
+  margin:-11px 0; border:0; background:transparent; font-family:inherit;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:600;
+  color:var(--finch-color-fg-neutral) }
 .reasons { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
 .chip { min-height:44px; display:flex; align-items:center; padding:0 12px; box-sizing:border-box;
   border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:400;
@@ -328,10 +337,16 @@ Sprint 4 가 이미 그린 3개(포트폴리오 · 매매 내역 · 충전, <cod
 <tr><td>마이페이지</td><td><code>/my</code></td><td><b>확정</b> — <code>GET /users/me</code> · <code>POST /auth/logout</code></td><td>5 · 6 · 7</td></tr>
 <tr><td>404</td><td><code>*</code></td><td><b>확정</b> — API 없음</td><td>8</td></tr>
 <tr><td>AI 채팅</td><td><code>/chat</code></td><td><b>확정</b> — <code>POST /ai/chat</code> (apiSpec §10.1)</td><td>9~15</td></tr>
-<tr><td>AI가 이해한 나</td><td><code>/my/wiki</code> <b>(진입 경로 잠정)</b></td><td><b>부분</b> — 위키 3종 경로는 확정(C80). <b>"맞아요" 승격 API 가 없다</b> (P24)</td><td>16~21</td></tr>
-<tr><td>알림함(메일)</td><td><code>/inbox</code> <b>(경로 미확정)</b></td><td><b>없음</b> — 엔드포인트가 아예 없다 (P23)</td><td>22~24</td></tr>
-<tr><td>브리핑 전체</td><td><code>/briefing</code> <b>(경로 미확정)</b></td><td><b>잠정</b> — <code>GET /ai/briefing</code> 은 있고 화면 자체가 잠정이다</td><td>25~28</td></tr>
+<tr><td>AI가 이해한 나</td><td><code>/my/wiki</code> <b>(진입 경로 잠정)</b></td><td><b>부분</b> — 위키 3종 경로는 확정(C80). <b>"맞아요" 승격 API 가 없다</b> (P24)</td><td>16~22</td></tr>
+<tr><td>알림함(메일)</td><td><code>/inbox</code> <b>(경로 미확정)</b></td><td><b>없음</b> — 엔드포인트가 아예 없다 (P23)</td><td>23~25</td></tr>
+<tr><td>브리핑 전체</td><td><code>/briefing</code> <b>(경로 미확정)</b></td><td><b>잠정</b> — <code>GET /ai/briefing</code> 은 있고 화면 자체가 잠정이다</td><td>26~29</td></tr>
 </table>
+<div style="margin-top:12px">
+<b>아트보드 30개 — 화면 8 + 상태 21 + 이 범위 시트.</b> 상태를 함께 그린 이유는 실패와 빈 상태가
+증권 앱에서 정상 상태보다 자주 보이기 때문이다. <b>도달할 수 없는 상태는 그리지 않고 노트에 이유를 적었다</b> —
+로그인의 에러(부를 API 가 없다) · 콜백의 빈 상태 · 마이페이지의 조회 에러(부팅 시 이미 실패한다) ·
+브리핑의 <code>generating</code>(서버가 내보내지 않는다) · 알림함의 에러(문구를 지어낼 수 없다) 다섯이다.
+</div>
 </div>
 
 <div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
@@ -377,7 +392,8 @@ Sprint 4 가 이미 그린 3개(포트폴리오 · 매매 내역 · 충전, <cod
     브리핑 <code>items[]</code> 마다 붙이지 않는다. <b>붙는 자리 수 자체는 회신 대기(6 vs 3 vs 8)</b>이고
     이 캔버스는 ia.md §4 표를 따랐다.</li>
 <li><b>캐릭터(핀치·블루치)는 AI 슬롯과 그 빈 상태·에러 자리에만 올 수 있다.</b> 이 캔버스에서 해당하는 자리는
-    아트보드 9(채팅 빈 상태) · 13·14(채팅 에러) · 17(위키 빈 상태) · 27(브리핑 빈 상태) 다섯이다.
+    아트보드 9(채팅 빈 상태) · 13·14(채팅 에러) · 17(위키 빈 상태) · 27·29(브리핑 빈 상태·에러) 여섯이다.
+    <b>알림함(23~25)은 AI 슬롯이 아니다</b> — Finch 가 물어다 놓는 것을 모은 목록이라 캐릭터 자리로 쓰지 않는다.
     <b>와이어프레임 단계라 에셋을 넣지 않고 자리만 비웠다</b> — 자산 요약 숫자·주문·충전 확인에는 넣지 않는다.</li>
 </ul>
 </div>
@@ -830,7 +846,7 @@ AI 명세의 <code>request_id</code>·<code>data_as_of</code>·<code>related_tic
       <div class="disc">시세 2026-09-04 14:31 · 보유 2026-09-04 14:30 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
 
       <div class="fb">
-        <span class="q">이 답변이 도움이 되었나요?</span>
+        <span class="lb">이 답변이 도움이 되었나요?</span>
         <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
         <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
       </div>
@@ -924,7 +940,7 @@ hover 툴팁 미리보기를 만들지 않는다. 모바일에 hover 가 없다.
       <p style="color:var(--finch-color-fg-neutral-subtle)">삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. …</p>
       <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
       <div class="fb">
-        <span class="q">어떤 점이 아쉬웠나요?</span>
+        <span class="lb">어떤 점이 아쉬웠나요?</span>
         <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
         <button class="thumb" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
       </div>
@@ -988,7 +1004,7 @@ hover 툴팁 미리보기를 만들지 않는다. 모바일에 hover 가 없다.
       </div>
       <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
       <div class="fb">
-        <span class="q">이 처리가 적절했나요?</span>
+        <span class="lb">이 처리가 적절했나요?</span>
         <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
       </div>
     </div>
@@ -1042,7 +1058,7 @@ hover 툴팁 미리보기를 만들지 않는다. 모바일에 hover 가 없다.
       </button>
       <div class="fb-sent" style="justify-content:space-between">
         <span>LLM_TIMEOUT · req_20260904_0187</span>
-        <button class="thumb" style="width:auto; height:32px; padding:0 8px; font-size:var(--finch-font-size-caption)">문제 알리기</button>
+        <button class="fbmin">문제 알리기</button>
       </div>
     </div>
 
@@ -1118,7 +1134,7 @@ AI 가 죽어도 화면의 나머지는 살아 있다 — <b>채팅은 화면 �
       </div>
       <div class="disc">시세 2026-09-04 14:31 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
       <div class="fb">
-        <span class="q">도움이 되었나요?</span>
+        <span class="lb">도움이 되었나요?</span>
         <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
         <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
       </div>
@@ -1526,6 +1542,410 @@ AI 가 먼저 묻기 때문이다(AI 명세 §9). "종목 담으러 가기" 버�
 자리라 조회 실패가 <b>"내가 쓴 게 날아갔나" 로 읽힌다.</b> 조회 실패와 데이터 손실을 구분해 준다.
 <br><br><b>빈 상태로 대신 그리지 않는다.</b> 실패를 "아직 모은 것이 없습니다"(아트보드 17)로 보여주면
 사용자가 쌓아 둔 것이 사라졌다고 읽는다 — <b>빈 배열을 실패로 다루지 않는 규칙의 반대 방향도 지킨다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 23 · 알림함 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 23 · 알림함 · 계약 없음</div>
+<div class="ab-name">목록 — 요청 사항이지 계약이 아니다</div>
+<div class="ab-api">엔드포인트 없음 (P23) · 라우트 /inbox 미확정</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">알림함</div>
+    <span class="navlink">모두 읽음</span>
+  </div>
+
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">알림으로 붙잡지 않고 쌓아 둡니다. 언제 열어도 됩니다.</div>
+
+    <div class="sec">적어야 할 것 <i>1</i></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>SK하이닉스를 새로 담으셨네요</b>
+          <span>어떤 점을 보고 결정하셨는지 알려주시면 다음 답변에 반영합니다</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag">기록 요청</span>2026.09.04 14:32
+          </span>
+        </span>
+        <span class="r"><span class="unread" style="width:8px; min-width:8px; height:8px; padding:0"></span></span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">확인해야 할 것 <i>2</i></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>오래 들고 가는 쪽을 선호하시나요?</b>
+          <span>대화에서 그렇게 보였습니다. 맞는지 확인해 주세요</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag" data-guess>AI 추측 확인</span>2026.09.03 21:10
+          </span>
+        </span>
+        <span class="r"><span class="unread" style="width:8px; min-width:8px; height:8px; padding:0"></span></span>
+      </div>
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>배당보다 성장을 보고 고르시나요?</b>
+          <span>대화에서 그렇게 보였습니다. 맞는지 확인해 주세요</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag" data-guess>AI 추측 확인</span>2026.09.03 09:40
+          </span>
+        </span>
+        <span class="r"><span class="unread" style="width:8px; min-width:8px; height:8px; padding:0"></span></span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">읽을 것 <i>1</i></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>9월 4일 브리핑</b>
+          <span>보유 종목 관련 4건</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag">브리핑</span>2026.09.04 07:30 · 읽음
+          </span>
+        </span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
+<b>⚠ 이 화면에는 API 계약이 아예 없다 — <code>contracts.md</code> P23. 시안은 요청 사항이지 계약이 아니다.</b>
+<b>백엔드 회신 전까지 구현하지 않는다.</b> <code>frontend/src/app/router.tsx</code> 가
+<code>RoutePlaceholder</code> 로 막아 둔 상태를 실제 렌더로 바꿀 근거가 아직 없다.
+<br><br><b>아래는 전부 가정이다.</b> 응답 스키마에서 온 것이 하나도 없다.
+<ul>
+<li><b>항목 종류 세 갈래</b>(적어야 할 것 · 확인해야 할 것 · 읽을 것) — PRD 문구를 그대로 옮긴 것이고
+    <code>category</code> 같은 열거값이 있는지 모른다. 세 갈래가 아니라 하나의 시간순 목록일 수도 있다.</li>
+<li><b>미읽음 표시와 개수</b> — 항목별 <code>read</code> 필드가 있는지, 총 미읽음 개수를 별도로 주는지 모른다.
+    마이페이지의 뱃지 <code>3</code>(아트보드 5)도 같은 가정에 기대고 있다.</li>
+<li><b>"모두 읽음"</b> — 읽음·처리 표시 API 가 있는지 모른다. 개별 읽음만 있고 일괄이 없으면 이 버튼은 사라진다.</li>
+<li><b>연결 대상</b> — 기록 요청이 채팅으로, 브리핑이 <code>/briefing</code> 으로 가는 것이 자연스럽지만
+    <code>deeplink</code> 같은 필드가 오는지 모른다.</li>
+</ul>
+<b>GitLab 이슈 #26 ①번</b>으로 목록 조회(항목 종류·제목·요약·연결 대상·미읽음 여부·미읽음 개수)와
+읽음·처리 표시 두 가지를 물어 뒀다.
+</div>
+<div class="note">
+<b>세 블록을 점선 + 그림자 없음으로 그렸다.</b> 근거가 확정되지 않은 카드의 형태다
+(<code>tokens.css</code> §5 주석). <b>새 토큰을 만들지 않았고 경고 배너도 붙이지 않았다</b> —
+화면 안에 "미확정" 이라고 적으면 그 문구가 그대로 구현된다. 형태는 옮겨 적히지 않는다.
+<br><br><b>라우트가 두 문서에서 어긋난다.</b> <code>routes.ts</code> 는 <code>inbox: '/inbox'</code>,
+<code>ia.md</code> §1 은 화면 이름 "메일" 과 <code>/mail</code> 이다. 이 캔버스는 코드 쪽을 따랐다 — 아트보드 0 의 노트를 본다.
+<br><br><b>알림(푸시)을 그리지 않았다.</b> PRD 정의가 "알림으로 붙잡지 않고 쌓아두고 기다린다" 다.
+푸시 권한 요청 화면이나 배지 카운트 동기화를 이 화면의 요구로 읽지 않는다.
+<br><br><b>"확인해야 할 것" 항목을 눌렀을 때의 동작이 P24 에 걸려 있다.</b> AI 추측을 "맞아요" 로 승격하는
+경로가 없으므로(아트보드 16) <b>이 항목의 처리 동작도 지금은 정의할 수 없다.</b> 위키로 보내 삭제만 하게
+할 수는 있지만 그건 "확인" 이 아니라 "거부" 다. <b>계약 둘이 서로 맞물려 있는 자리다.</b>
+<br><br><b>미읽음을 점으로만 표시했다.</b> 목록 안에서는 개수가 의미 없고 항목마다 하나씩이라 점이 맞다 —
+<b>다만 점 하나로 끝내지 않는다</b>: 읽은 항목("브리핑")은 점 대신 화살표가 오고 캡션에 "읽음" 이 붙는다.
+색·점만으로 알리지 않는 규칙(finch-seed §4)을 이렇게 지켰다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 24 · 알림함 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 24 · 알림함 · 빈 상태</div>
+<div class="ab-name">쌓인 것이 없음</div>
+<div class="ab-api">엔드포인트 없음 (P23)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">알림함</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM4 7l8 6 8-6"/></svg></div>
+      <b>아직 쌓인 것이 없습니다</b>
+      <span>종목을 매수하거나 브리핑이 만들어지면<br>Finch 가 여기에 물어다 놓습니다</span>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>버튼을 두지 않았다.</b> 이 화면의 항목은 사용자가 만드는 것이 아니라 <b>매수와 브리핑 배치가 만든다</b> —
+"매수하러 가기" 버튼을 두면 알림함을 채우려고 매수하게 만든다(위키 빈 상태와 같은 판단, 아트보드 18).
+<br><br><b>"모두 읽음" 버튼이 사라졌다.</b> 지울 것이 없을 때 남아 있으면 눌러도 아무 일도 안 일어난다.
+<br><br><b>이 빈 상태는 계약과 무관하게 성립한다.</b> 목록이 비었을 때의 화면은 어떤 스키마가 와도 필요하다 —
+그래서 점선으로 그리지 않았다. <b>가정이 들어간 것은 항목의 모양이고 빈 화면의 모양이 아니다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 25 · 알림함 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 25 · 알림함 · 상태</div>
+<div class="ab-name">로딩</div>
+<div class="ab-api">엔드포인트 없음 (P23) · 골격은 계약과 무관하다</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">알림함</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sk" style="width:64%; height:13px"></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start"><span class="l"><div class="sk" style="width:72%"></div><div class="sk" style="width:94%; height:12px; margin-top:7px"></div><div class="sk" style="width:128px; height:12px; margin-top:10px"></div></span></div>
+      <div class="row" style="align-items:flex-start"><span class="l"><div class="sk" style="width:60%"></div><div class="sk" style="width:88%; height:12px; margin-top:7px"></div><div class="sk" style="width:136px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start"><span class="l"><div class="sk" style="width:52%"></div><div class="sk" style="width:76%; height:12px; margin-top:7px"></div><div class="sk" style="width:120px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>에러 상태를 그리지 않았다 — 그릴 수 없다.</b> 문구는 서버가 완성해서 내려주는데(apiSpec §1.3)
+<b>부를 엔드포인트가 없어 에러 코드도 문구도 없다.</b> 여기서 화면이 문구를 지어 넣으면
+그 문구가 계약처럼 굳는다. <b>계약이 오면 코드별로 아트보드 4·22 와 같은 형태를 쓴다.</b>
+<br><br><b>섹션 헤더도 골격으로 뒀다.</b> 세 갈래가 계약이 아니라 가정이므로(P23) 헤더 문구를 미리
+확정해 놓으면 응답이 다른 구조로 왔을 때 골격이 거짓말을 한다.
+<br><br><b>블록의 개수와 행 수는 레이아웃 안정용 값이다.</b> 실제로 몇 갈래가 몇 건 올지 모른다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 26 · 브리핑 전체 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 26 · 브리핑 전체 · 슬롯 1</div>
+<div class="ab-name">기본 — 항목 최대 4건 (화면 자체가 잠정)</div>
+<div class="ab-api">GET /ai/briefing → content.items[] · citations · requestId</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">2026년 9월 4일 · 07:30 생성</div>
+
+    <div class="ai" style="padding:2px 16px 12px">
+      <div class="bitem">
+        <div class="hd"><span class="rk">1</span><b>SK하이닉스 강세</b></div>
+        <span class="tag" style="align-self:flex-start">보유 종목 등락</span>
+        <p>포트폴리오에서 18.2%를 차지하는 SK하이닉스가 <span class="up">+5.12%</span> 상승했습니다. 같은 기간 코스피는 <span class="up">+0.41%</span> 였습니다.<span class="cit">[1]</span></p>
+        <div class="tickers">
+          <a>SK하이닉스<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+
+      <div class="bitem">
+        <div class="hd"><span class="rk">2</span><b>삼성전자 반기보고서 제출</b></div>
+        <span class="tag" style="align-self:flex-start">공시</span>
+        <p>반기보고서가 어제 장 마감 후 제출됐습니다. 매출은 전년 동기 대비 <span class="up">+7.4%</span>, 영업이익은 <span class="down">−2.1%</span> 로 기재됐습니다.<span class="cit">[2]</span></p>
+        <div class="tickers">
+          <a>삼성전자<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+
+      <div class="cites">
+        <div class="hd">근거 2</div>
+        <div class="cite">
+          <span class="b" data-self>계산</span>
+          <span class="x"><b>보유 비중 · 지수 대비 등락</b><span>Finch 엔진 · 2026-09-04 07:30</span></span>
+        </div>
+        <div class="cite">
+          <span class="b">공시</span>
+          <span class="x"><b>삼성전자 반기보고서 (2026.06)</b><span>DART · 2026-09-03 17:41</span></span>
+          <span class="a"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+        </div>
+      </div>
+
+      <div class="disc">시세 2026-09-04 07:30 · 공시 2026-09-03 17:41 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+
+      <div class="fb">
+        <span class="lb">이 브리핑이 도움이 되었나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="fab"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>AI 에게 묻기</div>
+</div>
+<div class="note">
+<b>블록 하나에 항목을 <code>rank</code> 순으로 쌓았다.</b> 종류별로 블록을 나누지 않는다 — 어떤 날은 빈 블록이
+생긴다 (ia.md §4 1번 슬롯). <b><code>category</code> 5종은 블록 경계가 아니라 항목의 태그다.</b>
+<code>holding_move</code>·<code>earnings</code>·<code>filing</code>·<code>macro_event</code>·<code>portfolio_shift</code> 이고
+<b>최대 4건</b>이 온다. <b>이 아트보드는 2건이다</b> — 근거 목록·면책·피드백까지 한 화면에 들어가는 최대치가
+2건이고, <b>3건부터는 블록 하단이 접혀 스크롤이 생긴다.</b> 4건이 정상 상한이므로 <b>이 화면은 스크롤을
+전제로 만든다</b> — 피드백을 화면에 고정하지 않는 이유이기도 하다(블록의 마지막 요소여야 한다).
+<b>나머지 <code>category</code> 3종(<code>macro_event</code>·<code>portfolio_shift</code> 등)의 태그도 같은 형태다.</b>
+<br><br><b>항목 제목(<code>title</code>)은 AI 가 보낸 것을 그대로 쓴다.</b> 화면이 짓지 않는다.
+<b>태그 문구(보유 종목 등락 · 공시 · 시장 일정)만 화면이 정한 것</b>이고 <code>category</code> 열거값에 1:1 대응한다 —
+5종 전부에 문구를 미리 정해 두고, 모르는 값이 오면 태그를 생략한다(항목은 그대로 렌더한다).
+<br><br><b>피드백은 블록 하단에 하나다.</b> <code>items[]</code> 마다가 아니다 — <code>requestId</code> 는 브리핑
+응답 1건에 하나다 (ia.md §4). <b>근거 목록도 블록 하단에 하나</b>다: <code>items[].citations</code> 는 최상위
+<code>citations</code> 의 id 를 가리키고 여러 항목이 같은 문서를 함께 쓴다.
+<br><br><b>등락 색은 <code>segments[].direction</code> 이 있는 조각에만 왔다.</b> "+5.12%" 는 <code>up</code>,
+"−2.1%" 는 <code>down</code> 이다. 15px 본문이라 700 단계이고 <b>부호가 함께 온다</b>. "2.50%" 는 방향이 없는
+수치라 칠하지 않았다 — <b>숫자를 정규식으로 찾아 칠하면 이것도 칠해진다.</b>
+<br><br><b><code>relatedTickers</code> 로 종목 칩을 만들고 <code>deeplink</code> 는 조립하지 않는다.</b>
+<code>deeplink</code> 는 AI 서버가 만든 프론트 경로 문자열이라(예: <code>/stocks/000660?tab=ai</code>) 그대로
+이동시킨다. <b><code>macro_event</code> 처럼 종목이 붙지 않는 항목에는 칩이 없다</b> — 빈 칩 자리를 만들지 않는다.
+<br><br><b><code>relevanceScore</code> 를 노출하지 않았다.</b> <code>rank</code> 는 순서로 보이고 점수는 정렬에만 쓴다.
+<code>rank</code> 자체도 숫자 뱃지 하나로만 두고 "1위" 처럼 쓰지 않는다 — 순위 경쟁이 아니다.
+<br><br><b>AI 플로팅 버튼이 이 화면에 있다.</b> PRD 배치(종목 상세·포트폴리오·브리핑·뉴스 상세)와
+프로토타입 배치(홈·종목 상세·포트폴리오·브리핑) <b>양쪽이 브리핑에서는 일치한다</b> (ia.md §3).
+<b>다만 여기서 여는 채팅은 <code>context.screen</code> 을 채우지 않고 연다</b> — 열거값 5종
+(<code>home</code>·<code>portfolio</code>·<code>stock_detail</code>·<code>order</code>·<code>chat</code>)에 브리핑이 없다.
+GitLab 이슈 #26 ④번 회신 대기.
+<br><br><b>탭바를 그리지 않았다.</b> 브리핑 전체는 홈의 "전체 보기" 도착지이고 탭에 두지 않는다 (ia.md §3).
+FAB 이 탭바 자리를 쓰므로 <code>safe-area-inset-bottom</code> 을 FAB 이 직접 더한다.
+</div>
+<div class="note">
+<b>이 화면의 존재 자체가 잠정이다 (ia.md §1).</b> 프로토타입에 <code>isBriefing</code> 화면과 홈의
+"전체보기"(<code>goBriefing</code>)가 있었지만 <b>PRD v1.0 §06 의 화면 집계에 독립 항목으로 없다.</b>
+라우트 <code>/briefing</code> 도 프론트가 제안한 값이고 팀 확인을 받지 않았다.
+<b><code>GET /ai/briefing</code> 은 확정 계약이므로 홈의 브리핑 블록만으로 끝날 수도 있다</b> —
+그 경우 이 아트보드의 블록이 그대로 홈으로 들어간다(같은 컴포넌트다).
+</div>
+</section>
+
+
+<!-- ═════════════════ 27 · 브리핑 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 27 · 브리핑 전체 · 빈 상태</div>
+<div class="ab-name">status empty — 내보낼 항목이 없음 (에러 아님)</div>
+<div class="ab-api">GET /ai/briefing → status "empty" · items [] · date null 가능</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="empty">
+      <!-- 캐릭터가 올 수 있는 자리 (아트보드 0). -->
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+      <b>오늘 전할 것이 없습니다</b>
+      <span>보유 종목에 관련된 공시·실적·시장 일정이<br>확인되지 않았습니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="secondary">포트폴리오 보기</button>
+  </div>
+</div>
+<div class="note">
+<b><code>status: "empty"</code> 는 오류가 아니다.</b> 보유 종목이 없거나 유의미한 이벤트가 없을 때이고
+<code>items: []</code> 로 온다 (AI 명세 §8). <b>빈 배열을 실패로 다루지 않는다.</b>
+<br><br><b>홈과 이 화면의 처리가 갈린다.</b> 홈에서는 <code>empty</code> 면 <b>영역을 숨긴다</b>(AI 명세 §8 표) —
+자산 요약 아래에 빈 블록을 남기지 않는다. <b>그런데 이 화면은 숨길 수 없다</b>: 사용자가 직접 들어온
+화면이라 아무것도 없으면 고장으로 읽힌다. 그래서 <b>빈 상태를 그렸다.</b>
+<br><br><b>도달 경로를 다시 생각해야 하는 자리다.</b> 홈에서 영역이 숨겨지면 "전체 보기" 버튼도 없어지므로
+<b>정상적으로는 이 화면에 올 수 없다.</b> 도달하는 경우는 셋이다 —
+① 알림함의 브리핑 항목에서 직접(계약 미정, 아트보드 23), ② 북마크·주소 직접 입력,
+③ 홈을 본 뒤 항목이 사라지도록 갱신됐을 때. <b>③ 이 실제로 가능하다</b>(같은 쿼리를 공유하므로).
+<br><br><b>재시도 버튼을 두지 않았다.</b> 다시 불러도 <code>empty</code> 다. 대신 포트폴리오로 보낸다 —
+브리핑이 비는 가장 흔한 이유가 보유 종목이 없는 것이다.
+<br><br><b><code>date</code> 가 <code>null</code> 일 수 있다</b>(조회 시 <code>date</code> 를 주지 않았고 기준 거래일도 못 잡은 경우).
+그래서 이 화면은 상단 날짜 캡션을 그리지 않았다 — <b>값이 없을 수 있는 표기는 빈 상태에서 생략한다.</b>
+<br><br><b><code>status: "generating"</code> 은 그리지 않았다.</b> "현재 서버는 캐시 미스 시 즉시 생성하므로
+이 값을 내보내지 않는다" 가 명세에 있다(AI 명세 §8). <b>30초 뒤 재조회 로직도 만들지 않는다</b> —
+도달하지 않는 상태에 화면과 폴링을 붙이면 그만큼이 죽은 코드다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 28 · 브리핑 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 28 · 브리핑 전체 · 상태</div>
+<div class="ab-name">로딩</div>
+<div class="ab-api">GET /ai/briefing · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sk" style="width:168px; height:13px"></div>
+    <div class="ai" style="padding:16px">
+      <div style="display:flex; align-items:center; gap:8px">
+        <div class="sk" style="width:20px; height:20px; border-radius:999px"></div>
+        <div class="sk" style="width:132px; height:16px"></div>
+      </div>
+      <div class="sk" style="width:80px; height:20px; border-radius:var(--finch-radius-chip); margin-top:8px"></div>
+      <div class="sk" style="width:100%; margin-top:10px"></div>
+      <div class="sk" style="width:86%; margin-top:8px"></div>
+      <div class="sk" style="width:104px; height:44px; border-radius:var(--finch-radius-chip); margin-top:10px"></div>
+
+      <div style="height:14px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); margin-top:14px"></div>
+      <div style="display:flex; align-items:center; gap:8px">
+        <div class="sk" style="width:20px; height:20px; border-radius:999px"></div>
+        <div class="sk" style="width:158px; height:16px"></div>
+      </div>
+      <div class="sk" style="width:52px; height:20px; border-radius:var(--finch-radius-chip); margin-top:8px"></div>
+      <div class="sk" style="width:96%; margin-top:10px"></div>
+      <div class="sk" style="width:68%; margin-top:8px"></div>
+      <div class="sk" style="width:92px; height:44px; border-radius:var(--finch-radius-chip); margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>골격 항목을 2건으로 뒀다.</b> 최대 4건이지만 <b>몇 건 올지 응답 전에는 모른다</b> — 4건을 그려 두면
+1건만 왔을 때 화면이 크게 줄어들며 스크롤이 튄다. <b>2건은 접히지 않는 최소 높이</b>다.
+<br><br><b>종목 칩 자리를 44 높이 골격으로 잡았다.</b> 실제 칩도 44 라 값이 오면 높이가 바뀌지 않는다 —
+<b>골격의 크기를 실제 요소에서 가져오는 것이 레이아웃 이동을 없애는 유일한 방법이다.</b>
+<br><br><b>근거·면책·피드백 자리를 골격으로 그리지 않았다.</b> 값이 오기 전에는 근거가 몇 건인지 모르고,
+피드백은 <code>requestId</code> 가 있어야 성립한다. <b>골격으로 그리면 로딩 중에 엄지를 누르게 된다.</b>
+<br><br><b>AI 플로팅 버튼도 로딩 중에는 그리지 않았다.</b> 브리핑 맥락을 물고 들어가는 버튼인데
+맥락이 아직 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 29 · 브리핑 · 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 29 · 브리핑 전체 · 에러</div>
+<div class="ab-name">INSUFFICIENT_DATA — 재시도가 없고 피드백이 유일한 행동</div>
+<div class="ab-api">GET /ai/briefing → 409 INSUFFICIENT_DATA · requestId 보존</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="ai">
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+        <div>
+          <div class="m">브리핑을 만들 데이터가 아직 모자랍니다</div>
+          <div class="s">보유 종목과 거래 기록이 쌓이면 자동으로 만들어집니다. 지금 다시 시도해도 결과는 같습니다.</div>
+        </div>
+      </div>
+      <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="lb">이 안내가 적절했나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="secondary">포트폴리오 보기</button>
+  </div>
+</div>
+<div class="note">
+<b>"지금 다시 시도해도 결과는 같습니다" 를 문구에 넣었다.</b> <code>INSUFFICIENT_DATA</code>(409)는
+<b>재시도가 무의미</b>하다 — 재시도 버튼을 만들지 않으므로 사용자가 왜 없는지 알아야 새로고침을 멈춘다
+(apiSpec §10.4, AI 명세 §3).
+<br><br><b>그래서 피드백이 이 자리의 유일한 사용자 행동이고 가장 크게 노출된다</b> (ia.md §4 에러 자리의 피드백).
+<b><code>rating: "up"</code> 은 노출하지 않고 <code>down</code> 고정</b>이다 — 실패한 응답에 "좋다" 를 표시할 대상이 없다.
+<b>이 판단은 근거 문서가 없는 프론트 판단이라 잠정</b>이라고 ia.md 가 적어 뒀다.
+<br><br><b><code>empty</code>(아트보드 27)와 이 화면을 구분한다.</b> <code>empty</code> 는 200 이고 정상이라 알림 박스가
+없다. 이쪽은 409 라 알림 박스 + 피드백이 온다. <b>같은 모양으로 만들면 정상 상태가 실패로 읽힌다.</b>
+<br><br><b>개인화가 열리는 최소 데이터 건수를 화면에 적지 않았다.</b> "N건 이상" 같은 숫자를 쓰면
+그 값이 계약이 된다 — <b>PRD 자신이 "임시값" 이라고 적었고 GitLab 이슈 #26 ③번으로 물어 뒀다</b>(ia.md §7).
+문구는 "쌓이면" 까지만 말한다.
+<br><br><b>등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code> + 잉크 bold + 아이콘 + 문구.
 </div>
 </section>
 
