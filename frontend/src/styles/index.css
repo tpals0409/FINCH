@@ -73,7 +73,9 @@
   /* 눌림 면. hover 와 active 가 이 둘을 같이 쓴다 — -hover 상태를 따로 만들지 않는다
      (finch-seed.md §8). 소비처가 정해져 있어서 여는 것이다.
        neutral-solid-pressed  → Button.tsx primary 의 hover:/active:
-       transparent-pressed    → 탭 가능한 목록 행(종목·매매 내역·메일)과 칩
+       transparent-pressed    → 칩 · 금액 프리셋 · 결제수단 · 필터 탭
+     목록 행은 아직 아니다 — TransactionRow 는 <li> 로 클릭 대상이 아니다(프론트 실측).
+     행이 탭 가능해지면 새 토큰을 만들지 말고 transparent-pressed 를 쓴다.
      bg-layer-default-pressed(카드 눌림)와 bg-transparent-selected(선택 상태)는 열지 않는다.
      탭 가능한 카드와 세그먼티드 컨트롤을 만드는 사람이 그때 한 줄씩 연다. */
   --color-bg-neutral-solid-pressed: var(--finch-color-bg-neutral-solid-pressed);

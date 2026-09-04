@@ -288,6 +288,12 @@
      돈이 흐르는 것처럼 보여 값이 확정된 것으로 안 읽힌다. 등락 색 뒤집힘(적↔청)은
      보간이 중간에 회색을 지나서 그 순간 숫자가 "보합" 으로 읽힌다. 둘 다 즉시 전환이다.
 
+     **transition-colors 를 쓰지 않는다. transition-[background-color,border-color] 로 좁힌다.**
+     Tailwind 의 transition-colors 는 property 목록에 color 와 outline-color 를 함께 넣는다.
+     outline-color 때문에 포커스 링이 페이드인하고, color 때문에 시세를 자기 자신에 갖는 요소가
+     적↔청 사이를 보간해 중간에 회색을 지난다. 둘 다 위에서 금지한 것이다. 좁히면 구조적으로
+     막히고 grep 으로 강제된다. 눌림·호버가 실제로 바꾸는 건 면과 테두리뿐이라 잃는 게 없다.
+
      animate-pulse(스켈레톤)는 Tailwind 기본값 2s 로 이 셋 밖이다. 의도한 예외다 —
      이 셋은 마이크로 인터랙션 사다리고 2초 주기 앰비언트 루프는 성질이 다르다.
      여기에 넣으면 사다리에 종류가 다른 값이 하나 섞인다. finch-seed.md §8.
