@@ -33,13 +33,13 @@ export function InProgressDialog({ open, isRetrying, onRetry }: Props) {
   return (
     <Dialog.Root open={open}>
       <Dialog.Portal>
-        <Dialog.Overlay className="z-overlay fixed inset-0 bg-bg-overlay" />
+        <Dialog.Overlay className="fixed inset-0 z-(--z-overlay) bg-bg-overlay" />
         <Dialog.Content
           // 바깥 클릭·ESC 로 닫히지 않게 한다. 닫히면 뒤 CTA 로 돌아가는 경로가 열린다.
           onEscapeKeyDown={(event) => event.preventDefault()}
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
-          className="z-overlay fixed inset-x-0 bottom-0 mx-auto w-full max-w-md rounded-t-sheet bg-bg-layer-default p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+          className="fixed inset-x-0 bottom-0 z-(--z-overlay) mx-auto w-full max-w-md rounded-t-sheet bg-bg-layer-default p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         >
           <Dialog.Title className="text-title-3 text-fg-neutral">
             같은 요청을 처리하고 있습니다
