@@ -20,10 +20,19 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
  *
  * 비활성은 opacity 가 아니라 전용 색을 쓴다. opacity 는 자식 아이콘·스피너까지
  * 함께 흐려져 로딩 표시가 사라진다.
+ *
+ * **`transition-colors` 를 쓰지 않는다.** 그 유틸리티는 `color` 와 `outline-color` 까지 전이시킨다.
+ * 실측 결과 모든 버튼이 **포커스 링을 140ms 동안 페이드인**하고 있었고, `color` 가 걸리면 등락 색이
+ * 적↔청으로 바뀔 때 중간에 회색을 지나 "보합" 으로 읽힌다. 면과 테두리만 전이시킨다.
+ *
+ * `disabled:duration-0` 인 이유 — 비활성으로 넘어가는 순간은 전이하지 않아야 한다.
+ * `not-disabled:transition-[…]` 로 하면 비활성일 때 `transition-property` 선언 자체가 빠져
+ * CSS 초기값 `all` 로 되돌아가고 duration 만 남아 **140ms `transition-all`** 이 된다.
  */
 const BASE_CLASS =
   'flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md px-4 text-label ' +
-  'transition-colors duration-(--motion-fast) ease-standard ' +
+  'transition-[background-color,border-color] duration-(--motion-fast) ease-standard ' +
+  'disabled:duration-0 ' +
   'disabled:bg-bg-disabled disabled:text-fg-disabled disabled:border-transparent';
 
 type ButtonProps = ComponentProps<'button'> & { variant?: ButtonVariant };
