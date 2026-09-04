@@ -62,7 +62,13 @@ class WatchlistService(
 		watchlistItemRepository.deleteByUserIdAndStockCode(userId, stockCode)
 	}
 
-	/** 종목 상세의 `watched` (apiSpec 5.2). */
+	/**
+	 * 종목 상세의 `watched` (apiSpec 5.2).
+	 *
+	 * `stock` 이 이 값을 직접 읽지 않고 `StockController` 가 받아 넘긴다. `watchlist` 가 이미
+	 * `StockService` 를 쓰므로, `stock` 이 여기를 참조하면 생성자 주입이 서로를 기다리다
+	 * 기동에 실패한다.
+	 */
 	@Transactional(readOnly = true)
 	fun isWatched(userId: Long, stockCode: String): Boolean =
 		watchlistItemRepository.existsByUserIdAndStockCode(userId, stockCode)
