@@ -740,6 +740,795 @@ AI 명세의 <code>request_id</code>·<code>data_as_of</code>·<code>related_tic
 </div>
 </section>
 
+
+<!-- ═════════════════ 9 · AI 채팅 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 9 · AI 채팅 · 빈 상태</div>
+<div class="ab-name">첫 진입 — 대화 없음</div>
+<div class="ab-api">POST /ai/chat · conversationId 없음 (첫 요청이 발급받는다)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat" style="justify-content:center">
+    <div style="text-align:center; padding:0 8px">
+      <!-- 캐릭터가 올 수 있는 자리. 와이어프레임 단계라 에셋을 넣지 않는다 (아트보드 0). -->
+      <div class="avatar" style="margin:0 auto 12px; width:64px; height:64px">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg>
+      </div>
+      <b style="font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1)">내 계좌를 보고 답합니다</b>
+      <div class="cap" style="margin-top:6px">보유 종목·비중·거래 이력을 읽어 근거와 함께 설명합니다.<br>매수·매도 권유는 하지 않습니다.</div>
+    </div>
+    <div style="height:8px"></div>
+    <div class="qchips">
+      <button class="q">내 포트폴리오에서 비중이 가장 큰 종목은?</button>
+      <button class="q">이번 주 수익률이 왜 이렇게 움직였어?</button>
+      <button class="q">PER 이 뭐야?</button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send" data-off><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>제안 질문 세 개는 화면이 정한 문구다.</b> AI 가 내려주는 값이 아니다 —
+<code>POST /ai/chat</code> 은 요청이 있어야 응답하므로 <b>첫 진입에는 호출이 없다</b>.
+그래서 이 화면은 로딩 없이 곧바로 빈 상태로 뜬다.
+<br><br><b>세 번째 질문("PER 이 뭐야?")이 용어 설명이다.</b> 별도 엔드포인트가 아니라 같은 <code>/ai/chat</code> 이
+답하고, 도구가 필요 없으면 <code>toolsUsed</code> 가 빈 배열이 된다 (AI 명세 §4). 용어 사전 화면을 만들지 않는다.
+<br><br><b>내비 우측의 "AI가 이해한 나" 가 위키의 보조 진입이다</b> (ia.md §1 — 잠정으로 마이페이지 하위를 쓰고
+채팅 상단에 보조 진입을 둔다). <b>전체 화면 전환이라 대화 스크롤 위치가 날아가는 것이 이 배치의 알려진 문제다</b> —
+근거가 얇다고 ia.md 가 적어 뒀으므로 리뷰에서 다시 본다.
+<br><br><b>전송 버튼은 입력이 비면 비활성이다.</b> <code>message</code> 는 공백만으로는 안 되고 2,000자를 넘으면
+<code>INVALID_REQUEST</code> 다 (AI 명세 §4). <b>글자 수 카운터를 상시 노출하지 않는다</b> — 2,000자는 대화가 아니라
+문서 붙여넣기 길이라 평소에 보일 이유가 없다. 임계에 가까워질 때만 띄운다.
+<br><br><b><code>toolsUsed</code> 를 화면에 노출하지 않는다.</b> ia.md 의 표시 대상 목록에 없고, 사용자가 해석할 수
+있는 값이 아니다 — 근거는 <code>citations</code> 가 말한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 10 · AI 채팅 · 답변 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 10 · AI 채팅 · 슬롯 6</div>
+<div class="ab-name">답변 — 근거 · 기준 시각 · 면책 · 피드백</div>
+<div class="ab-api">POST /ai/chat → content.answer · citations · dataAsOf · disclaimer · requestId</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 비중이 너무 높은 거 아냐?</div>
+
+    <div class="ai">
+      <p>삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. 두 번째인 SK하이닉스가 18.2%라 상위 두 종목 합이 59.9%입니다.<span class="cit">[1]</span></p>
+      <p>두 종목은 같은 반도체 업종이라 업종 기준으로도 59.9%가 한 곳에 모여 있습니다.<span class="cit">[1]</span> 삼성전자는 최근 5거래일 <span class="up">+2.14%</span>, SK하이닉스는 <span class="down">−1.08%</span> 움직였습니다.<span class="cit">[2]</span></p>
+      <p>기록해 두신 내용에는 "단일 업종 40% 이상을 피하고자 함" 이 있습니다.<span class="cit">[3]</span> 지금 상태와 그 기록의 차이를 함께 보시면 됩니다.</p>
+
+      <div class="cites">
+        <div class="hd">근거 3</div>
+        <div class="cite">
+          <span class="b" data-self>계산</span>
+          <span class="x"><b>보유 비중 · 업종 집계</b><span>Finch 엔진 · 2026-09-04 14:30</span></span>
+        </div>
+        <div class="cite">
+          <span class="b">시세</span>
+          <span class="x"><b>삼성전자 · SK하이닉스 일별 종가</b><span>KRX · 2026-09-04</span></span>
+          <span class="a"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+        </div>
+        <div class="cite">
+          <span class="b" data-self>내 기록</span>
+          <span class="x"><b>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</b><span>내가 기록한 것 · 2026-04-02</span></span>
+        </div>
+      </div>
+
+      <div class="disc">시세 2026-09-04 14:31 · 보유 2026-09-04 14:30 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+
+      <div class="fb">
+        <span class="q">이 답변이 도움이 되었나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>답변 하나가 곧 슬롯 하나다.</b> AI 카드 안에 본문 → 근거 → 기준 시각·면책 → 피드백 순으로 쌓았다.
+<b>피드백은 그 응답 블록의 마지막 요소</b>이고 <code>dataAsOf</code>·<code>disclaimer</code> 아래에 온다 (ia.md §4).
+채팅은 답변마다 <code>requestId</code> 가 달라 <b>말풍선마다 슬롯 하나</b>다 — 화면 하단에 하나만 두면 어느 답변에
+대한 평가인지 잃는다.
+<br><br><b>AI 표면은 색이 아니라 깊이로 구분한다.</b> <code>bg-layer-default</code> + <code>stroke-neutral-weak</code> +
+<code>shadow-ai</code> + <code>radius-ai</code>(18px). 사용자 말풍선은 반대로 잉크 채움(<code>bg-neutral-solid</code>) +
+<code>fg-neutral-inverted</code> 다 — <b>누가 말했는지를 색이 아니라 채움의 방향으로 알린다.</b>
+<b>AI 카드에 브랜드 마크를 붙이지 않는다</b> (확정 결정).
+<br><br><b>등락 색은 <code>segments[].direction</code> 이 <code>up</code>·<code>down</code> 인 조각에만 쓴다.</b>
+<code>text</code> 하나로도 렌더되므로 <b>강조가 필요할 때만 <code>segments</code> 를 순회한다</b> —
+이어 붙이면 <code>text</code> 와 정확히 일치한다(AI 명세 §2.3). 숫자를 정규식으로 찾아 칠하지 않는다.
+15px 본문이라 <code>fg-up</code>·<code>fg-down</code>(700 단계)이고 <b>부호(+ · −)가 반드시 같이 온다</b>.
+<br><br><b>근거 뱃지가 두 형태다.</b> "시세" 는 외부 출처라 잉크 채움 + 외부 링크 화살표, <b>"계산"(<code>engine</code>)과
+"내 기록"(<code>wiki</code>)은 <code>url</code> 이 없어 테두리 뱃지 + 화살표 없음</b>이다 (ia.md §4). 링크 없는 행을
+눌리게 만들지 않는다. <b>"내 기록" 이 외부 근거처럼 보이면 안 된다</b> — 사용자 자신이 기록한 것이다.
+<br><br><b><code>relevance</code> 를 숫자로 노출하지 않는다.</b> 0~1 값이고 정렬에만 쓴다 — 사용자가 해석할 수 없다.
+<code>snippet</code> 은 길면 접는다. <b>각주(<code>[1]</code>)를 눌러 목록으로 보내는 것까지만 한다</b> —
+hover 툴팁 미리보기를 만들지 않는다. 모바일에 hover 가 없다.
+<br><br><b>이 답변에 판정이 없다.</b> "비중이 높다/낮다", "줄이는 게 좋다" 를 쓰지 않고 <b>수치와 사용자 자신의
+기록을 나란히 놓는 것</b>으로 끝낸다 — 판단은 사용자가 한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 11 · AI 채팅 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 11 · AI 채팅 · 상태</div>
+<div class="ab-name">답변 대기 — 단발 응답 (스트리밍 아님)</div>
+<div class="ab-api">POST /ai/chat · pending · SSE 폐기</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 비중이 너무 높은 거 아냐?</div>
+    <div class="ai">
+      <div class="ttl" style="display:flex; align-items:center; gap:8px; margin-bottom:12px">
+        <span class="spin" style="width:16px; height:16px"></span>근거를 찾아 정리하고 있습니다
+      </div>
+      <div class="sk" style="width:100%"></div>
+      <div class="sk" style="width:88%; margin-top:8px"></div>
+      <div class="sk" style="width:64%; margin-top:8px"></div>
+      <div class="sk" style="width:40%; height:12px; margin-top:16px"></div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f" style="color:var(--finch-color-fg-disabled)">답변을 기다리는 중</div>
+    <div class="send" data-off><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>글자가 한 자씩 나오는 연출을 그리지 않았다.</b> AI 6종 전부 단발 요청/응답이고 <b>SSE 는 폐기됐다</b>
+(ia.md 개정 전제 1, apiSpec §10). 스트리밍을 하려면 백엔드가 스트리밍 프록시를 먼저 만들어야 하고
+계획에 없는 작업이다. <b>타이핑 연출을 전제로 그리면 나중에 그 자리가 거짓이 된다.</b>
+<br><br><b>답변 자리에 골격을 두고 카드는 미리 그린다.</b> 응답이 오래 걸릴 수 있는 경로이므로
+(apiSpec §10 — "응답이 올 때까지 로딩 상태로 기다린다") <b>빈 상태와 로딩 상태를 구분해 표시한다</b>
+(ia.md §4 슬롯 공통 규약).
+<br><br><b>대기 중 입력을 잠근다.</b> 대화는 순서가 의미인데, 답변 전에 다음 질문이 나가면
+<code>conversationId</code> 안에서 두 요청이 뒤섞인다. <b>주문과 달리 채팅은 자동 재시도해도 안전하지만
+(원장을 쓰지 않는다) 순서는 지켜야 한다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 12 · AI 채팅 · 피드백 사유 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 12 · AI 채팅 · 피드백</div>
+<div class="ab-name">down 을 누른 뒤 — 사유 6종 복수 선택</div>
+<div class="ab-api">POST /ai/feedback · requestId · rating down · reasons[] · comment ≤1000</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="ai" style="margin-top:auto">
+      <p style="color:var(--finch-color-fg-neutral-subtle)">삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. …</p>
+      <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="q">어떤 점이 아쉬웠나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+      <div class="reasons">
+        <button class="chip" aria-pressed="true">숫자가 틀렸어요</button>
+        <button class="chip">질문과 안 맞아요</button>
+        <button class="chip">오래된 정보예요</button>
+        <button class="chip">너무 일반적이에요</button>
+        <button class="chip">이해하기 어려워요</button>
+        <button class="chip">근거가 안 맞아요</button>
+      </div>
+      <div class="ta"><span>더 알려주실 것이 있으면 적어 주세요 (선택)</span><span class="meta">0/1000</span></div>
+      <button class="sbtn" data-v="ink" style="width:100%; margin-top:10px">보내기</button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>사유는 <code>down</code> 을 누른 뒤에만 펼친다. <code>up</code> 에는 사유를 묻지 않는다</b> (ia.md §4).
+6종은 <code>wrong_number</code>·<code>not_relevant</code>·<code>outdated</code>·<code>too_generic</code>·<code>unclear</code>·<code>wrong_citation</code>
+이고 <b>복수 선택</b>이다. 화면 문구는 이 값에 1:1 로 대응한다 — 새 사유를 만들지 않는다.
+<br><br><b>선택을 면 하나로 알리지 않는다.</b> <code>bg-transparent-selected</code> 는 APCA 바닥 아래(Lc 0)라
+물리적으로 안 보인다. <code>stroke-neutral-contrast</code> 테두리 2px 와 글자 굵기가 함께 움직인다 (finch-seed §4).
+<br><br><b><code>comment</code> 를 필수로 만들지 않는다.</b> 최대 1,000자이고 선택 입력이다. 필수로 만들면
+사유만 남기려던 사용자가 전송을 포기한다.
+<br><br><b>전송 성공하면 슬롯을 잠근다.</b> 응답 <code>content</code> 는 <code>{recorded: true}</code> 이고 같은
+<code>requestId</code> 로 다시 보내면 <b>마지막 값으로 덮어쓴다 — 취소 API 는 없다</b>(C62·C66).
+서버가 재전송을 받아 준다고 해서 화면에 수정 UI 를 곧바로 열지는 않는다 — <b>잠금을 나중에 푸는 것은 쉽고
+반대 방향은 되돌리기 어렵다</b>(ia.md §4 전송 후 UI). 잠긴 뒤의 표기는 아트보드 14 하단에 있다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 13 · AI 채팅 · 차단 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 13 · AI 채팅 · 에러</div>
+<div class="ab-name">GUARDRAIL_BLOCKED — 재시도 버튼을 만들지 않는다</div>
+<div class="ab-api">POST /ai/chat → 422 GUARDRAIL_BLOCKED · requestId 보존</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 지금 사면 오를까?</div>
+    <div class="ai">
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+        <div>
+          <div class="m">이 질문에는 답할 수 없습니다</div>
+          <div class="s">주가 예측과 매수·매도 판단은 다루지 않습니다. 대신 지금 무엇이 확인되는지는 정리해 드릴 수 있습니다.</div>
+        </div>
+      </div>
+      <div class="qchips" style="margin-top:12px">
+        <button class="q">삼성전자의 최근 공시에 무엇이 있어?</button>
+        <button class="q">삼성전자 실적은 어떻게 나왔어?</button>
+      </div>
+      <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="q">이 처리가 적절했나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>재시도 버튼이 없는 것이 이 화면의 요점이다.</b> <code>GUARDRAIL_BLOCKED</code>(422)와
+<code>INSUFFICIENT_DATA</code>(409)는 <b>재시도가 무의미</b>하다 — 같은 질문을 다시 보내면 또 막힌다.
+재시도를 유도하지 않는 것이 AI 명세 §3 의 지시다.
+<br><br><b>그래서 피드백이 이 자리의 유일한 사용자 행동이고, 가장 크게 노출된다</b> (ia.md §4 에러 자리의 피드백).
+성공 자리와 다른 점 둘을 지켰다 —
+<b>① <code>rating: "up"</code> 을 노출하지 않는다</b>(실패한 응답에 "좋다" 를 표시할 대상이 없다. <code>rating</code> 은
+필수 값이라 에러 자리는 <code>down</code> 고정으로 보낸다. <b>근거 문서가 없는 프론트 판단이라 잠정이다</b>),
+<b>② 에러 봉투에도 <code>requestId</code> 가 보존되므로</b>(apiSpec §10.3) 슬롯이 성립한다.
+<br><br><b>막았다고 대화를 끊지 않는다.</b> 답할 수 있는 형태의 질문 두 개를 대신 제안했다 —
+"주가 예측" 을 "공시·실적 확인" 으로 바꿔 주는 것이 이 서비스가 하는 일이다.
+<b>제안 문구는 화면이 정한다</b>(AI 응답이 아니다).
+<br><br><b>차단 알림도 등락 적색이 아니다.</b> <code>bg-critical-weak</code> + 잉크 bold + 아이콘.
+</div>
+</section>
+
+
+<!-- ═════════════════ 14 · AI 채팅 · 재시도 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 14 · AI 채팅 · 에러</div>
+<div class="ab-name">재시도 가능 두 종 — 슬롯이 붙는 것과 안 붙는 것</div>
+<div class="ab-api">504 LLM_TIMEOUT (requestId 있음) · 504 AI_UPSTREAM_TIMEOUT (없음)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">이번 주 수익률이 왜 이렇게 움직였어?</div>
+
+    <div class="ai">
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>
+        <div>
+          <div class="m">답변을 만들다 시간이 초과됐습니다</div>
+          <div class="s">잠시 후 다시 시도해 주세요.</div>
+        </div>
+      </div>
+      <button class="sbtn" style="width:100%; margin-top:12px">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>다시 시도
+      </button>
+      <div class="fb-sent" style="justify-content:space-between">
+        <span>LLM_TIMEOUT · req_20260904_0187</span>
+        <button class="thumb" style="width:auto; height:32px; padding:0 8px; font-size:var(--finch-font-size-caption)">문제 알리기</button>
+      </div>
+    </div>
+
+    <div class="me">그럼 보유 비중만 알려줘</div>
+
+    <div class="ai" data-unspec>
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9.5v4M12 16.5h.01"/></svg>
+        <div>
+          <div class="m">AI 서버에 연결할 수 없습니다</div>
+          <div class="s">잠시 후 다시 시도해 주세요. 시세와 잔고는 정상입니다.</div>
+        </div>
+      </div>
+      <button class="sbtn" style="width:100%; margin-top:12px">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>다시 시도
+      </button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>두 에러를 한 프레임에 나란히 둔 이유는 피드백 슬롯의 유무가 갈리기 때문이다.</b>
+<ul>
+<li><b>위(<code>LLM_TIMEOUT</code> 504) — AI 서버가 발행한 에러라 <code>requestId</code> 가 보존된다.</b>
+    슬롯을 만들지만 <b>재시도가 주 동작이고 피드백은 보조로 접어 둔다</b> — 엄지 두 개를 펼치지 않고
+    "문제 알리기" 한 줄로 눕혔다 (ia.md §4). <code>RETRIEVAL_FAILED</code>(502)도 같은 자리다.</li>
+<li><b>아래(<code>AI_UPSTREAM_TIMEOUT</code> 504) — 백엔드 자체 에러라 최상위 <code>requestId</code> 가 없다.</b>
+    평가할 원본 응답이 존재하지 않으므로 <b>슬롯을 만들지 않는다</b>. <code>AI_UPSTREAM_UNAVAILABLE</code>(502)도 같다.
+    <b>에러 코드로 갈리므로 <code>requestId</code> 유무를 런타임에 떠보지 않아도 된다</b> (apiSpec §10.4).
+    근거를 확정할 수 없는 블록이라 <b>점선 + 그림자 없음</b>으로 그렸다.</li>
+</ul>
+<b>"시세와 잔고는 정상입니다" 를 문구에 넣었다.</b> 슬롯은 위젯 단위 에러 경계를 가지므로(컨벤션 §8)
+AI 가 죽어도 화면의 나머지는 살아 있다 — <b>채팅은 화면 전체가 AI 라 그 사실을 문구로 알려야 한다.</b>
+<br><br><b>실패한 말풍선을 지우지 않는다.</b> 사용자 질문은 남기고 그 자리에서 재시도한다 —
+지우면 무엇을 물었는지 다시 타이핑해야 한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 15 · AI 채팅 · 320px ═════════════════ -->
+<section class="ab" style="--w:320px">
+<div class="ab-tag">아트보드 15 · AI 채팅 · 최소 폭</div>
+<div class="ab-name">320px — 근거·피드백이 붙은 답변</div>
+<div class="ab-api">최소 지원 폭. 가로 오버플로 0 · 터치 대상 44 유지</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 비중이 너무 높은 거 아냐?</div>
+    <div class="ai">
+      <p>삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. 상위 두 종목 합이 59.9%입니다.<span class="cit">[1]</span> 최근 5거래일 <span class="up">+2.14%</span> 움직였습니다.<span class="cit">[2]</span></p>
+      <div class="cites">
+        <div class="hd">근거 3</div>
+        <div class="cite">
+          <span class="b" data-self>계산</span>
+          <span class="x"><b>보유 비중 · 업종 집계</b><span>Finch 엔진 · 2026-09-04 14:30</span></span>
+        </div>
+        <div class="cite">
+          <span class="b">시세</span>
+          <span class="x"><b>삼성전자 · SK하이닉스 일별 종가</b><span>KRX · 2026-09-04</span></span>
+          <span class="a"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+        </div>
+        <div class="cite">
+          <span class="b" data-self>내 기록</span>
+          <span class="x"><b>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</b><span>내가 기록한 것 · 2026-04-02</span></span>
+        </div>
+      </div>
+      <div class="disc">시세 2026-09-04 14:31 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="q">도움이 되었나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>390 에서 만들고 320 에서 확인한다.</b> 순서를 바꾸면 좁은 화면에서 줄일 곳이 없다.
+이 축에서 가장 조밀한 화면(근거 3행 + 피드백 + 입력바)을 320 으로 옮겨 확인했다.
+<br><br><b>줄어드는 것은 문구뿐이다.</b> 근거 행의 44 높이, 엄지 44×44, 전송 44×44, 내비 44 는
+그대로 유지된다 — <b>터치 대상은 폭에 따라 줄이지 않는다</b>(컨벤션 §9).
+"이 답변이 도움이 되었나요?" 가 "도움이 되었나요?" 로, 입력 플레이스홀더가 짧아진다.
+<br><br><b>근거 제목은 잘라내지 않고 감는다.</b> 여기서 <code>ellipsis</code> 를 쓰면 "분산 투자를 중시하며…" 로
+끝나 사용자가 자기 기록의 내용을 못 읽는다. <b>세로로 길어지는 쪽을 고른다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 16 · 위키 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 16 · AI가 이해한 나</div>
+<div class="ab-name">기본 — 사실 · 논지 (진입 경로 잠정)</div>
+<div class="ab-api">GET /ai/wiki → profile[] · theses[]</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">AI 가 대화와 거래에서 모은 내용입니다. 틀린 것은 고치거나 지울 수 있습니다.</div>
+
+    <div class="sec">투자 성향 <i>사실 4</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</p>
+          <span class="src"><span class="tag">직접 말함</span>2026.04.02 · 대화에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>반도체 업종 종목을 반복적으로 매수함</p>
+          <span class="src"><span class="tag">거래에서</span>2026.08.21 · 거래 이력에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>짧게 보고 파는 것보다 오래 들고 가는 쪽을 선호하시는 것으로 보이는데, 맞나요?</p>
+          <span class="src"><span class="tag" data-guess">AI 추측</span>2026.09.01 · 대화에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>배당보다 성장을 보고 고르시는 것으로 보이는데, 맞나요?</p>
+          <span class="src"><span class="tag" data-guess">AI 추측</span>2026.09.03 · 대화에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">종목별 투자 논지 <i>논지 2</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p style="font-weight:600">SK하이닉스<span class="meta" style="font-weight:400"> · 000660</span></p>
+          <p style="margin-top:4px">HBM 구조적 성장에 베팅</p>
+          <span class="src"><span class="tag">직접 말함</span><span class="tag">장기</span>2026.03.11 기록</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow" style="opacity:1">
+        <span class="x">
+          <p style="font-weight:600; color:var(--finch-color-fg-neutral-subtle)">한미반도체<span class="meta" style="font-weight:400"> · 042700</span></p>
+          <p style="margin-top:4px; color:var(--finch-color-fg-neutral-subtle)">장비 수주 확대를 보고 담았음</p>
+          <span class="src"><span class="tag">직접 말함</span><span class="tag">중기</span>2026.02.02 기록 · 비활성</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="meta" style="padding:0 2px">고친 내용은 저장한 순간부터 다음 AI 응답에 반영됩니다.</div>
+  </div>
+</div>
+<div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
+<b>⚠ "맞아요" 버튼을 그리지 않았다 — <code>contracts.md</code> P24.</b>
+<code>ai_inferred</code> 항목을 <b>사실로 승격하는 API 가 없다</b>. 반대쪽("아니에요")만
+<code>DELETE /ai/wiki/facts/{factId}</code> 로 성립하고, <code>PUT /wiki/theses/{stockCode}</code> 는
+투자 논지 수정이라 성격이 다르다.
+<br><br><b>그래서 확인 UI 를 짝으로 만들지 않고 기존 삭제 컨트롤 하나로 뒀다.</b> 한쪽만 있는 맞다/아니다는
+"아니오만 고를 수 있는 질문" 으로 읽힌다 — 그건 승격 경로가 없다는 사실보다 더 나쁘게 읽힌다.
+<b>승격 경로가 오면 이 두 행에 버튼 한 쌍을 붙이는 것이 그때의 작업이다.</b> GitLab 이슈 #26 ②번 회신 대기.
+</div>
+<div class="note">
+<b><code>ai_inferred</code> 는 단정형으로 렌더하지 않는다.</b> "~하신 것으로 보이는데 맞나요?" 형태만 허용된다
+(AI 명세 §9 <code>source</code> 표). <b>문구만이 아니라 형태로도 구분했다</b> — 태그 테두리를 점선으로 뒀다.
+색으로 구분하지 않은 이유는 모노톤에 "추측 색" 이 없고, 있어도 색만으로 알리면 안 되기 때문이다.
+<br><br><b><code>confidence</code> 를 뱃지로 만들지 않았다.</b> 예시에 <code>high</code> 만 나오고 <b>열거값 전체가 미확정</b>이라
+등급 뱃지를 만들면 나머지 값이 왔을 때 자리가 없다 (ia.md §1). 지금은 생략했다.
+<br><br><b><code>evidence.ref</code> 로 링크를 만들지 않았다.</b> <code>{type: "conversation", ref: "conv_01JQZ3M1"}</code> 가
+오지만 <b>그 <code>ref</code> 로 열 수 있는 화면이 없다</b>. 출처 종류("대화에서")만 표기한다.
+<br><br><b><code>status</code> 가 <code>active</code> 가 아닌 논지는 흐리게 뭉쳐 표기한다.</b> 예시에 <code>active</code> 만 나오고
+열거값이 미확정이라 값마다 표기를 만들지 않는다 — <code>fg-neutral-subtle</code> 로 내리고 "비활성" 한 단어를 붙인다.
+<b><code>opacity</code> 를 쓰지 않았다</b> — 자식 태그·아이콘까지 흐려진다.
+<br><br><b>논지 행에는 수정만 있다. 삭제가 없다.</b> <code>DELETE</code> 는 <code>facts</code> 전용이고 이슈 #17 회신으로
+"사용자가 부를 수 있는 논지 삭제 API 가 없다" 가 확정됐다(C64). 새 논지가 기록되면 기존 <code>active</code> 가
+서버 내부에서 <code>closed</code> 가 될 뿐이다.
+<br><br><b>논지 입력 폼을 만들지 않는다.</b> <code>POST /wiki/theses</code> 는 AI 서비스가 스스로 부르는 경로다 —
+논지는 대화에서만 기록된다 (AI 명세 §9 수집 경로).
+<br><br><b>"반영까지 시간이 걸립니다" 를 넣지 않았다.</b> <code>PUT</code> 으로 고친 논지는 <b>저장 직후부터</b> 다음 AI
+응답에 반영된다(C65). AI 명세의 "대화 종료 후 비동기 배치" 는 AI 가 새 사실을 추출하는 별도 과정이다.
+<br><br><b><code>editable: false</code> 인 항목에는 수정·삭제 컨트롤을 노출하지 않는다.</b> 이 아트보드의 네 사실은
+전부 <code>editable: true</code> 인 경우다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 17 · 위키 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 17 · AI가 이해한 나 · 빈 상태</div>
+<div class="ab-name">둘 다 비어 있음 — 처음의 정상 상태</div>
+<div class="ab-api">GET /ai/wiki → profile [] · theses [] (에러 아님)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="empty">
+      <!-- 캐릭터가 올 수 있는 자리 (아트보드 0). -->
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg></div>
+      <b>아직 모은 것이 없습니다</b>
+      <span>대화를 나누거나 종목을 매수하면<br>AI 가 이유를 묻고 여기에 쌓아 둡니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">AI 채팅으로 가기</button>
+  </div>
+</div>
+<div class="note">
+<b>위키는 처음에 반드시 비어 있다.</b> 사실도 논지도 AI 가 대화·거래에서 누적해야 생긴다 (ia.md §1).
+<b>빈 배열을 실패로 다루지 않는다</b> — 이 화면은 에러가 아니라 정상 상태다.
+<br><br><b>버튼이 AI 채팅으로 보내는 것 하나다.</b> 입력 폼을 주지 않는다 — <b>맥락은 대화에서만 쌓인다</b>.
+여기에 "성향 설문" 이나 "논지 직접 입력" 을 두면 <code>POST /wiki/theses</code> 를 프론트가 부르게 되고,
+그건 AI 서비스 내부 경로라 중계 대상이 아니다 (apiSpec §10.1).
+<br><br><b>이 화면에는 로딩과 빈 상태를 구분할 이유가 특히 크다.</b> 둘을 같은 모양으로 만들면
+사용자가 "아직 안 왔다" 와 "원래 없다" 를 구별할 수 없어 계속 새로고침한다. 로딩은 아트보드 21 이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 18 · 위키 · 한쪽만 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 18 · AI가 이해한 나 · 빈 상태</div>
+<div class="ab-name">논지만 비어 있음 — 수집 경로를 알려준다</div>
+<div class="ab-api">GET /ai/wiki → profile[2] · theses []</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">AI 가 대화와 거래에서 모은 내용입니다. 틀린 것은 고치거나 지울 수 있습니다.</div>
+
+    <div class="sec">투자 성향 <i>사실 2</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</p>
+          <span class="src"><span class="tag">직접 말함</span>2026.04.02 · 대화에서</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span></span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>반도체 업종 종목을 반복적으로 매수함</p>
+          <span class="src"><span class="tag">거래에서</span>2026.08.21 · 거래 이력에서</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span></span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">종목별 투자 논지 <i>논지 0</i></div>
+    <div class="card" style="padding:22px 16px; text-align:center">
+      <b style="font-size:var(--finch-font-size-body-2); font-weight:600">기록된 논지가 없습니다</b>
+      <div class="cap" style="margin-top:6px">종목을 매수하면 AI 가 대화에서<br>"어떤 점을 보고 결정하셨나요?" 를 묻습니다</div>
+    </div>
+
+    <div class="meta" style="padding:0 2px">고친 내용은 저장한 순간부터 다음 AI 응답에 반영됩니다.</div>
+  </div>
+</div>
+<div class="note">
+<b>한쪽만 비면 그 섹션에만 빈 문구를 둔다</b> (ia.md §1). 화면 전체를 빈 상태로 바꾸면 이미 쌓인 사실이 사라진다.
+<br><br><b>논지 쪽 빈 문구는 수집 경로를 알려주는 문구여야 한다.</b> "없습니다" 로만 끝내면 사용자가 어떻게
+채우는지 모른다. <b>여기에도 입력 폼을 주지 않는다</b> — 버튼도 두지 않았다. 매수가 트리거이고
+AI 가 먼저 묻기 때문이다(AI 명세 §9). "종목 담으러 가기" 버튼을 두면 논지를 채우려고 매수하게 만든다.
+<br><br><b>섹션 헤더에 개수를 적었다(<code>논지 0</code>).</b> 개수가 없으면 빈 카드가 로딩 실패로 읽힌다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 19 · 위키 · 논지 수정 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 19 · AI가 이해한 나 · 수정</div>
+<div class="ab-name">논지 수정 시트 — 최대 500자</div>
+<div class="ab-api">PUT /ai/wiki/theses/{stockCode} · body camelCase</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sec">종목별 투자 논지 <i>논지 2</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p style="font-weight:600">SK하이닉스<span class="meta" style="font-weight:400"> · 000660</span></p>
+          <p style="margin-top:4px">HBM 구조적 성장에 베팅</p>
+          <span class="src"><span class="tag">직접 말함</span><span class="tag">장기</span>2026.03.11 기록</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span></span>
+      </div>
+    </div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">논지 수정</div>
+    <div class="cap" style="margin-top:-6px">SK하이닉스 · 000660</div>
+    <div class="ta" style="min-height:104px; margin-top:0; color:var(--finch-color-fg-neutral)">
+      <span>HBM 구조적 성장에 베팅</span><span class="meta">13/500</span>
+    </div>
+    <div>
+      <div class="cap" style="margin-bottom:8px">보는 기간</div>
+      <div class="reasons" style="margin-top:0">
+        <button class="chip">단기</button>
+        <button class="chip">중기</button>
+        <button class="chip" aria-pressed="true">장기</button>
+      </div>
+    </div>
+    <div class="row2">
+      <button class="btn" data-v="secondary">취소</button>
+      <button class="btn" data-v="primary">저장</button>
+    </div>
+    <div class="meta" style="text-align:center">저장하면 이 논지는 "직접 말함" 으로 바뀝니다</div>
+  </div>
+</div>
+<div class="note">
+<b>최대 500자다</b> (<code>openapi.json</code> 의 <code>ThesisIn.text</code>). 카운터를 함께 둔다 — 500자는
+저장이 거부될 수 있는 경계라 상시 노출이 맞다(채팅의 2,000자와 다른 판단이다).
+<br><br><b><code>source</code> 를 화면이 보내지 않는다.</b> 수정하면 서버가 자동으로 <code>user_stated</code> 로 바꾼다
+(AI 명세 §9). 그 사실을 시트 하단 한 줄로 알린다 — 알리지 않으면 "AI 추측" 태그가 왜 사라졌는지 모른다.
+<br><br><b><code>horizon</code> 은 <code>short</code>·<code>mid</code>·<code>long</code> 셋뿐이다</b>
+(<code>openapi.json</code> 의 <code>ThesisHorizon</code>). 화면 문구는 단기·중기·장기로 1:1 대응한다.
+<br><br><b>경로 파라미터가 <code>{stockCode}</code> 다.</b> AI 서버 원본은 <code>{ticker}</code> 지만 프론트는 백엔드만
+부르므로 <code>PUT /api/v1/ai/wiki/theses/{stockCode}</code> 다 (C80·C19). <b>요청 본문 키는 camelCase</b>다(C75).
+<br><br><b>저장 후 재조회로 갱신한다.</b> <code>PUT</code> 응답의 <code>content</code> 는 갱신된 논지 전체지만(C61)
+낙관적 갱신 대신 <code>GET /wiki</code> 를 다시 부른다 — 되돌릴 범위가 쿼리 무효화 한 줄이라 가장 싸다.
+<b>화면에는 차이가 없다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 20 · 위키 · 사실 삭제 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 20 · AI가 이해한 나 · 삭제</div>
+<div class="ab-name">사실 삭제 확인 — 되돌리기가 없다</div>
+<div class="ab-api">DELETE /ai/wiki/facts/{factId} → content {id, deletedAt}</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sec">투자 성향 <i>사실 4</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</p>
+          <span class="src"><span class="tag">직접 말함</span>2026.04.02 · 대화에서</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span></span>
+      </div>
+    </div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">이 내용을 지울까요?</div>
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+      <div>
+        <div class="m">되돌릴 수 없습니다</div>
+        <div class="s">지운 즉시 이후 모든 AI 응답에서 제외됩니다.</div>
+      </div>
+    </div>
+    <div class="card" style="border-color:var(--finch-color-stroke-neutral-subtle); padding:12px 14px">
+      <div class="cap" style="color:var(--finch-color-fg-neutral)">분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</div>
+    </div>
+    <div class="row2">
+      <button class="btn" data-v="secondary">취소</button>
+      <button class="btn" data-v="primary">지우기</button>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>되돌리기를 만들지 않고 확인을 받는다.</b> "즉시 이후 모든 응답에서 제외된다" 가 명세에 있으므로
+(AI 명세 §9) 토스트 + 되돌리기로는 성립하지 않는다 — 되돌릴 API 가 없다 (ia.md §1).
+<br><br><b>지울 문장을 확인 시트에 다시 보여준다.</b> 목록이 딤 뒤에 가려지므로 무엇을 지우는지 시트 안에서
+읽혀야 한다. 오탭으로 열었을 때 취소할 근거가 이 한 줄이다.
+<br><br><b>이것이 <code>ai_inferred</code> 의 "아니에요" 를 흉내 내는 유일한 경로다</b> (P24, 아트보드 16).
+<b>다만 "아니에요" 라고 라벨을 붙이지 않았다</b> — 삭제와 부정은 다른 동작이고, 승격 경로가 오면
+확인 UI 는 이 시트가 아니라 행 안의 버튼 한 쌍이 된다.
+<br><br><b>응답 <code>content</code> 는 <code>{id, deletedAt}</code> 이다</b>(C61). 화면은 그 값을 쓰지 않고
+<code>GET /wiki</code> 를 재조회한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 21 · 위키 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 21 · AI가 이해한 나 · 상태</div>
+<div class="ab-name">로딩</div>
+<div class="ab-api">GET /ai/wiki · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sk" style="width:74%; height:13px"></div>
+    <div class="sk" style="width:88px; height:14px; margin-top:6px"></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow"><span class="x"><div class="sk" style="width:100%"></div><div class="sk" style="width:72%; margin-top:7px"></div><div class="sk" style="width:112px; height:12px; margin-top:10px"></div></span></div>
+      <div class="wrow"><span class="x"><div class="sk" style="width:84%"></div><div class="sk" style="width:104px; height:12px; margin-top:10px"></div></span></div>
+      <div class="wrow"><span class="x"><div class="sk" style="width:94%"></div><div class="sk" style="width:58%; margin-top:7px"></div><div class="sk" style="width:120px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+    <div class="sk" style="width:112px; height:14px; margin-top:6px"></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow"><span class="x"><div class="sk" style="width:104px"></div><div class="sk" style="width:66%; margin-top:7px"></div><div class="sk" style="width:136px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>골격 행의 수를 실제 응답 수와 맞추려 하지 않는다.</b> <code>GET /wiki</code> 는 개수를 미리 알려주지 않는다 —
+3 + 1 은 <b>레이아웃이 흔들리지 않을 만큼만 채우는 값</b>이고, 실제가 0건이면 아트보드 17 로 바뀐다.
+<br><br><b>삭제·수정 컨트롤을 골격으로 그리지 않았다.</b> 아이콘 자리를 비워 두면 로딩 중 눌릴 것이 없다는
+사실이 그대로 보인다 — 골격으로 그리면 눌러 보게 된다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 22 · 위키 · 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 22 · AI가 이해한 나 · 에러</div>
+<div class="ab-name">조회 실패 — 재시도 가능</div>
+<div class="ab-api">GET /ai/wiki → 502 AI_UPSTREAM_UNAVAILABLE (requestId 없음)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll" style="justify-content:center">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9.5v4M12 16.5h.01"/></svg>
+      <div>
+        <div class="m">AI 서버에 연결할 수 없습니다</div>
+        <div class="s">잠시 후 다시 시도해 주세요. 기록된 내용은 지워지지 않았습니다.</div>
+      </div>
+    </div>
+    <button class="sbtn" style="width:100%">
+      <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>다시 시도
+    </button>
+  </div>
+</div>
+<div class="note">
+<b>피드백 슬롯이 없다.</b> <code>AI_UPSTREAM_UNAVAILABLE</code>·<code>AI_UPSTREAM_TIMEOUT</code> 은 백엔드 자체
+에러라 최상위 <code>requestId</code> 가 없다 (apiSpec §10.4). <b>위키 3종은 애초에 AI 응답 생성 경로가 아니라
+저장된 값의 CRUD 라 <code>requestId</code> 로 평가할 원본 응답 개념이 없다</b> — 피드백은 슬롯 6종에만 붙는다.
+<br><br><b>"기록된 내용은 지워지지 않았습니다" 를 문구에 넣었다.</b> 이 화면은 사용자가 직접 적은 것을 보는
+자리라 조회 실패가 <b>"내가 쓴 게 날아갔나" 로 읽힌다.</b> 조회 실패와 데이터 손실을 구분해 준다.
+<br><br><b>빈 상태로 대신 그리지 않는다.</b> 실패를 "아직 모은 것이 없습니다"(아트보드 17)로 보여주면
+사용자가 쌓아 둔 것이 사라졌다고 읽는다 — <b>빈 배열을 실패로 다루지 않는 규칙의 반대 방향도 지킨다.</b>
+</div>
+</section>
+
 </x-dc>
 </body>
 </html>
