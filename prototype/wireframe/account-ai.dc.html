@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+
+<!-- 계정·AI 축 와이어프레임.
+     ia.md §1 의 화면 17개 중 8개 — 로그인 · 카카오 콜백 · 마이페이지 · 404 ·
+     AI 채팅 · AI가 이해한 나 · 알림함(메일) · 브리핑 전체.
+     나머지 6개(홈·검색·최근·종목 상세·주문)는 다른 캔버스가 그린다.
+
+     이 축에는 계약이 없는 화면이 있다. 아트보드 0 의 표를 먼저 본다 —
+     계약 없는 자리를 확정된 것으로 읽으면 없는 API 를 부르는 코드가 나온다.
+
+     토큰은 여기서 손으로 적지 않는다. 앱이 쓰는 파일을 그대로 불러온다.
+     tokens.css 를 고치면 이 페이지도 같이 바뀐다 (prototype/README.md).
+     상대 경로라 저장소 안에서 열 때만 해석된다. -->
+<link rel="stylesheet" href="../../frontend/src/styles/tokens.css">
+
+<style>
+/* 앱이 서빙하는 서브셋 woff2 를 그대로 쓴다. index.css 의 @font-face 와 같은 굵기 범위. */
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-light.woff2') format('woff2'); font-weight:100 399; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-medium.woff2') format('woff2'); font-weight:400 599; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-bold.woff2') format('woff2'); font-weight:600 900; font-display:swap }
+
+/* 캔버스 바닥색만 여기 적는다 — 앱 색이 아니라 시트 배경이다 (sprint-4.dc.html 과 같은 값).
+   앱에 쓰이는 색·크기·반경·그림자는 전부 토큰에서 온다. */
+body { margin:0; background:#EDEFF3; font-family:var(--finch-font-family-sans);
+  color:var(--finch-color-fg-neutral); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; padding:44px }
+/* 캔버스 런타임 없이 브라우저로 열었을 때의 배치. 런타임이 있으면 런타임 스타일이 이긴다. */
+body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
+
+/* ── 아트보드 ── */
+.ab { width:var(--w,390px); display:flex; flex-direction:column; gap:12px; box-sizing:content-box }
+.ab-wide { width:1240px }
+.ab-tag { font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--finch-color-fg-placeholder) }
+.ab-name { font-size:17px; font-weight:700; letter-spacing:-.015em; margin-top:-4px }
+.ab-api { font-size:12px; line-height:17px; color:var(--finch-color-fg-neutral-subtle); font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+
+/* 아트보드 밖 주석. 화면 안에 개발 얘기를 쓰지 않기 위한 자리다. */
+.note { background:var(--finch-color-bg-layer-default); border:1px dashed var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:14px 16px; font-size:12px; line-height:1.7;
+  color:var(--finch-color-fg-neutral-subtle) }
+.note b { color:var(--finch-color-fg-neutral) }
+.note code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--finch-color-fg-neutral) }
+.note ul { margin:6px 0 0; padding-left:16px }
+
+/* ── 390×844 프레임 ── */
+.ph { width:var(--w,390px); height:844px; box-sizing:border-box; background:var(--finch-color-bg-layer-basement);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:20px; overflow:hidden;
+  display:flex; flex-direction:column; position:relative;
+  font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+
+/* 상단 내비 — z-sticky */
+.nav { flex:none; min-height:56px; display:flex; align-items:center; gap:4px; padding:0 8px 0 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.nav .t { flex:1; min-width:0; font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3); letter-spacing:-.015em }
+/* 터치 대상 44×44 (frontConvention 9) */
+.icon { width:44px; height:44px; flex:none; display:grid; place-items:center; color:var(--finch-color-fg-neutral) }
+.icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+/* 내비 우측 텍스트 링크 — 44 높이를 유지한다 */
+.navlink { min-height:44px; display:flex; align-items:center; padding:0 10px; flex:none;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:600;
+  color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected) }
+
+.scroll { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 20px }
+.scroll.flush { padding:0 }
+
+/* ── 카드 ── */
+.card { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:18px 16px }
+.sec { font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label);
+  font-weight:var(--finch-font-weight-label); color:var(--finch-color-fg-neutral-muted); padding:0 2px;
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px }
+.sec i { font-style:normal; font-weight:400; font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-placeholder) }
+
+.hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.cap { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.meta { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder) }
+
+/* ── 버튼 ── */
+.btn { display:flex; min-height:54px; width:100%; box-sizing:border-box; align-items:center; justify-content:center;
+  gap:8px; border-radius:var(--finch-radius-control); padding:0 16px; border:0; font-family:inherit;
+  font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label); font-weight:600 }
+.btn[data-v="primary"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.btn[data-v="secondary"] { background:var(--finch-color-bg-layer-default); color:var(--finch-color-fg-neutral);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.btn[data-v="disabled"] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+/* 카카오 로그인 버튼만 브랜드 가이드가 색을 강제한다 — Button.tsx 의 bg-[#FEE500] 과 같은 예외다.
+   토큰화하지 않는 이유는 우리 팔레트 값이 아니기 때문이다 (designer 브리핑 "유일한 예외"). */
+.btn[data-v="kakao"] { background:#FEE500; color:#191600 }
+.btn svg { width:19px; height:19px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+/* 작은 보조 버튼 — 44 를 지킨다 */
+.sbtn { min-height:44px; display:flex; align-items:center; justify-content:center; gap:6px; padding:0 14px;
+  box-sizing:border-box; border-radius:var(--finch-radius-control); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:600; background:var(--finch-color-bg-layer-default);
+  color:var(--finch-color-fg-neutral); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.sbtn[data-v="ink"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted); border:0 }
+.sbtn svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+/* 하단 고정 CTA — z-sticky. 노치에서 잘리지 않게 safe-area 를 더한다 */
+.cta { flex:none; background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:8px;
+  position:relative; z-index:var(--finch-z-sticky); box-shadow:var(--finch-shadow-float) }
+
+/* ── 하단 탭바 ── */
+.tabbar { flex:none; display:flex; background:var(--finch-color-bg-layer-default);
+  border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-bottom:env(safe-area-inset-bottom);
+  position:relative; z-index:var(--finch-z-sticky) }
+.tabbar a { flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-size:11px; color:var(--finch-color-fg-placeholder); text-decoration:none }
+.tabbar a[aria-current] { color:var(--finch-color-fg-neutral); font-weight:600 }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 진입 행 목록 (마이페이지 · 알림함) ── */
+.rows { display:flex; flex-direction:column; background:var(--finch-color-bg-layer-default);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-card); overflow:hidden }
+.rows.flush { border:0; border-radius:0 }
+.row { display:flex; align-items:center; gap:12px; padding:13px 16px; min-height:44px; box-sizing:border-box }
+.row + .row { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.row .l { flex:1; min-width:0 }
+.row .l b { display:block; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:600 }
+.row .l span { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle); margin-top:2px }
+.row .r { flex:none; display:flex; align-items:center; gap:8px; color:var(--finch-color-fg-placeholder) }
+.row .r svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+/* 미읽음 — 점 하나로 알리지 않는다. 개수 뱃지가 같이 온다 */
+.unread { min-width:20px; height:20px; padding:0 6px; box-sizing:border-box; border-radius:999px;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  font-size:11px; font-weight:700; display:grid; place-items:center }
+
+/* ── 프로필 ── */
+.prof { display:flex; align-items:center; gap:14px }
+.avatar { width:60px; height:60px; flex:none; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; color:var(--finch-color-fg-placeholder) }
+.avatar svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 위험·에러 알림. 모노톤에서 위험은 색이 아니라 잉크 채움·굵기·형태다 (finch-seed 4) ── */
+.alert { display:flex; gap:10px; padding:14px; border-radius:var(--finch-radius-card);
+  background:var(--finch-color-bg-critical-weak); color:var(--finch-color-fg-critical) }
+.alert svg { width:18px; height:18px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+.alert .m { font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+.alert .s { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  font-weight:400; margin-top:3px; color:var(--finch-color-fg-neutral-muted) }
+
+/* ── 빈 상태 ── */
+.empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:32px 24px; text-align:center }
+.empty .g { width:56px; height:56px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; margin-bottom:6px; color:var(--finch-color-fg-placeholder) }
+.empty .g svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+.empty b { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:600 }
+.empty span { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+
+/* ── 로딩 ── */
+.sk { background:var(--finch-color-bg-skeleton); border-radius:var(--finch-radius-chip); height:14px }
+.spin { width:20px; height:20px; border-radius:999px; border:2px solid var(--finch-color-bg-skeleton);
+  border-top-color:var(--finch-color-fg-neutral); animation:spin 800ms linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+.center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:32px 24px; text-align:center }
+
+/* ── 딤 + 바텀시트 — z-overlay ── */
+.dim { position:absolute; inset:0; background:var(--finch-color-bg-overlay); z-index:var(--finch-z-overlay) }
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:var(--finch-z-overlay);
+  background:var(--finch-color-bg-layer-default); border-radius:var(--finch-radius-sheet) var(--finch-radius-sheet) 0 0;
+  box-shadow:var(--finch-shadow-float); padding:22px 16px calc(16px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:14px }
+.sheet .h { font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3) }
+.sheet .row2 { display:flex; gap:8px }
+.sheet .row2 .btn { flex:1 }
+
+/* ── AI 표면 — 색이 아니라 깊이로 구분한다 (tokens.css 5. Shadow 주석) ──
+   일반 카드: stroke-subtle · 그림자 없음 · radius-card
+   AI 카드 : stroke-weak  · shadow-ai  · radius-ai   → 획 무게·깊이·반경 셋이 함께 달라진다 */
+.ai { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-ai); box-shadow:var(--finch-shadow-ai); padding:16px }
+/* 근거·계약이 확정되지 않은 자리. 토큰이 아니라 형태로 알린다 — dashed + 그림자 없음 */
+.ai[data-unspec] { border-style:dashed; box-shadow:none }
+.ai .ttl { font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label);
+  font-weight:700; color:var(--finch-color-fg-neutral-muted); margin-bottom:6px }
+.ai p { margin:0; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.ai p + p { margin-top:8px }
+.up { color:var(--finch-color-fg-up); font-weight:700 }
+.down { color:var(--finch-color-fg-down); font-weight:700 }
+/* 본문 각주 — 눌러서 근거 목록으로 보내는 것까지만 한다 (ia.md 4 근거 표시) */
+.cit { font-size:11px; font-weight:700; vertical-align:super; color:var(--finch-color-fg-neutral-subtle) }
+
+/* 기준 시각 · 면책. 응답에 없으면 그 표기만 생략한다 */
+.disc { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  margin-top:12px; padding-top:10px }
+
+/* ── 근거 목록 (citations) ── */
+.cites { margin-top:12px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:10px;
+  display:flex; flex-direction:column; gap:2px }
+.cites .hd { font-size:var(--finch-font-size-caption); font-weight:700; color:var(--finch-color-fg-neutral-muted);
+  min-height:24px; display:flex; align-items:center; gap:6px }
+.cite { display:flex; align-items:flex-start; gap:8px; min-height:44px; padding:6px 0; box-sizing:border-box }
+.cite .b { flex:none; margin-top:2px; height:20px; padding:0 7px; box-sizing:border-box; border-radius:var(--finch-radius-chip);
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  font-size:11px; font-weight:700; display:grid; place-items:center }
+/* engine · wiki 는 외부 URL 이 없다. 채움 뱃지와 같은 모양이면 "출처가 있는 척" 이 된다 —
+   테두리만 남기고 링크 화살표를 뺀다 (ia.md 4 근거 표시) */
+.cite .b[data-self] { background:transparent; color:var(--finch-color-fg-neutral-subtle);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.cite .x { flex:1; min-width:0 }
+.cite .x b { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption); font-weight:600 }
+.cite .x span { display:block; font-size:11px; line-height:16px; color:var(--finch-color-fg-placeholder); margin-top:1px }
+.cite .a { flex:none; margin-top:3px; color:var(--finch-color-fg-placeholder) }
+.cite .a svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 피드백 슬롯 — requestId 하나 = 슬롯 하나 (ia.md 4) ── */
+.fb { margin-top:10px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:8px;
+  display:flex; align-items:center; gap:6px }
+.fb .lb { flex:1; font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle) }
+.thumb { width:44px; height:44px; flex:none; display:grid; place-items:center; border-radius:var(--finch-radius-chip);
+  color:var(--finch-color-fg-neutral-subtle); background:transparent; border:1px solid transparent }
+.thumb[aria-pressed="true"] { color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected);
+  border-color:var(--finch-color-stroke-neutral-contrast) }
+.thumb svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+.fb-sent { margin-top:10px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-top:10px;
+  font-size:var(--finch-font-size-caption); color:var(--finch-color-fg-neutral-subtle);
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px }
+/* 코드·requestId 는 감고, 접힌 피드백 버튼이 좁은 폭에서 다음 줄로 내려간다.
+   자르면(ellipsis) 장애 추적에 쓸 requestId 를 잃는다 */
+.fb-sent > span { flex:1; min-width:0; overflow-wrap:anywhere }
+.fb-sent svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round }
+/* 사유 6종 복수 선택. down 을 누른 뒤에만 펼친다 */
+/* 재시도가 주 동작인 에러 자리의 접힌 피드백. 엄지를 펼치지 않지만 44 는 지킨다 */
+.fbmin { min-height:44px; flex:none; display:flex; align-items:center; padding:0 12px; box-sizing:border-box;
+  margin:-11px 0; border:0; background:transparent; font-family:inherit;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:600;
+  color:var(--finch-color-fg-neutral) }
+.reasons { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
+.chip { min-height:44px; display:flex; align-items:center; padding:0 12px; box-sizing:border-box;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-caption); font-weight:400;
+  color:var(--finch-color-fg-neutral-subtle); background:var(--finch-color-bg-layer-default);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.chip[aria-pressed="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-transparent-selected); border-color:var(--finch-color-stroke-neutral-contrast); border-width:2px; padding:0 11px }
+.ta { border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-control);
+  padding:10px 12px; min-height:64px; box-sizing:border-box; font-size:var(--finch-font-size-caption);
+  color:var(--finch-color-fg-placeholder); margin-top:8px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px }
+
+/* ── 채팅 ── */
+.chat { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 8px }
+.me { align-self:flex-end; max-width:80%; background:var(--finch-color-bg-neutral-solid);
+  color:var(--finch-color-fg-neutral-inverted); border-radius:var(--finch-radius-ai) var(--finch-radius-ai) 6px var(--finch-radius-ai);
+  padding:11px 14px; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.qchips { display:flex; flex-direction:column; gap:8px; width:100% }
+.qchips .q { min-height:48px; display:flex; align-items:center; padding:0 14px; box-sizing:border-box; text-align:left;
+  border-radius:var(--finch-radius-control); background:var(--finch-color-bg-layer-default);
+  border:1px solid var(--finch-color-stroke-neutral-weak); font-size:var(--finch-font-size-body-2) }
+/* 입력바 — 하단 고정. safe-area 를 더한다 */
+.composer { flex:none; display:flex; align-items:flex-end; gap:8px; padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.composer .f { flex:1; min-height:44px; box-sizing:border-box; display:flex; align-items:center; padding:0 14px;
+  border-radius:var(--finch-radius-control); border:1px solid var(--finch-color-stroke-neutral-weak);
+  color:var(--finch-color-fg-placeholder); font-size:var(--finch-font-size-body-2) }
+.composer .send { width:44px; height:44px; flex:none; border-radius:var(--finch-radius-control); display:grid; place-items:center;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.composer .send[data-off] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+.composer svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 위키 행 ── */
+.wrow { padding:14px 16px; display:flex; gap:12px; align-items:flex-start }
+.wrow + .wrow { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.wrow .x { flex:1; min-width:0 }
+.wrow .x p { margin:0; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.wrow .x .src { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px;
+  font-size:11px; line-height:16px; color:var(--finch-color-fg-placeholder) }
+.tag { height:20px; padding:0 7px; box-sizing:border-box; border-radius:var(--finch-radius-chip);
+  border:1px solid var(--finch-color-stroke-neutral-weak); color:var(--finch-color-fg-neutral-subtle);
+  font-size:11px; font-weight:600; display:inline-grid; place-items:center }
+/* ai_inferred 는 단정형으로 렌더하지 않는다. 형태로도 구분한다 — 점선 테두리 (AI 명세 9 source 표) */
+.tag[data-guess] { border-style:dashed }
+.wrow .act { flex:none; display:flex; gap:2px }
+.wact { width:44px; height:44px; display:grid; place-items:center; border-radius:var(--finch-radius-chip);
+  color:var(--finch-color-fg-neutral-subtle) }
+.wact svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 브리핑 항목 ── */
+.bitem { padding:14px 0; display:flex; flex-direction:column; gap:6px }
+.bitem + .bitem { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.bitem .hd { display:flex; align-items:center; gap:8px }
+.bitem .hd b { flex:1; min-width:0; font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:700 }
+.bitem .rk { flex:none; width:20px; height:20px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  font-size:11px; font-weight:700; display:grid; place-items:center; color:var(--finch-color-fg-neutral-subtle) }
+.bitem p { margin:0; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+.tickers { display:flex; flex-wrap:wrap; gap:6px; margin-top:2px }
+.tickers a { min-height:44px; display:flex; align-items:center; gap:5px; padding:0 12px; box-sizing:border-box;
+  border-radius:var(--finch-radius-chip); border:1px solid var(--finch-color-stroke-neutral-weak);
+  font-size:var(--finch-font-size-caption); font-weight:600; color:var(--finch-color-fg-neutral); text-decoration:none }
+.tickers a svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── AI 플로팅 버튼 — z-floating ── */
+.fab { position:absolute; right:16px; bottom:calc(20px + env(safe-area-inset-bottom)); z-index:var(--finch-z-floating);
+  min-width:44px; height:44px; padding:0 14px; box-sizing:border-box; border-radius:999px; display:flex; align-items:center; gap:7px;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  box-shadow:var(--finch-shadow-float); font-size:var(--finch-font-size-caption); font-weight:700 }
+.fab svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* 표 (범위 시트용) */
+.tb { width:100%; border-collapse:collapse; font-size:12px }
+.tb th, .tb td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); vertical-align:top }
+.tb th { color:var(--finch-color-fg-placeholder); font-weight:600; white-space:nowrap }
+.tb code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px }
+</style>
+</helmet>
+
+
+<!-- ═════════════════ 0 · 범위 ═════════════════ -->
+<section class="ab ab-wide">
+<div class="ab-tag">FINCH · SPRINT 5 · WIREFRAME</div>
+<div class="ab-name">계정 · AI 축 — 화면 범위</div>
+
+<div class="note" style="border-style:solid">
+<b>ia.md §1 의 화면 17개 중 8개를 그린다.</b> 나머지 6개(홈 · 종목 검색 · 최근 본 종목 · 종목 상세 · 주문)와
+Sprint 4 가 이미 그린 3개(포트폴리오 · 매매 내역 · 충전, <code>sprint-4.dc.html</code>)는 이 캔버스에 없다.
+<table class="tb" style="margin-top:12px">
+<tr><th>화면</th><th>라우트</th><th>계약</th><th>아트보드</th></tr>
+<tr><td>로그인</td><td><code>/login</code></td><td><b>확정</b> — API 없음. 카카오 인가 URL 로 이동만 한다</td><td>1 · 2</td></tr>
+<tr><td>카카오 콜백</td><td><code>/oauth/kakao</code></td><td><b>확정</b> — <code>POST /auth/kakao</code> · <code>GET /users/me</code> (apiSpec §2.1·§2.4)</td><td>3 · 4</td></tr>
+<tr><td>마이페이지</td><td><code>/my</code></td><td><b>확정</b> — <code>GET /users/me</code> · <code>POST /auth/logout</code></td><td>5 · 6 · 7</td></tr>
+<tr><td>404</td><td><code>*</code></td><td><b>확정</b> — API 없음</td><td>8</td></tr>
+<tr><td>AI 채팅</td><td><code>/chat</code></td><td><b>확정</b> — <code>POST /ai/chat</code> (apiSpec §10.1)</td><td>9~15</td></tr>
+<tr><td>AI가 이해한 나</td><td><code>/my/wiki</code> <b>(진입 경로 잠정)</b></td><td><b>부분</b> — 위키 3종 경로는 확정(C80). <b>"맞아요" 승격 API 가 없다</b> (P24)</td><td>16~22</td></tr>
+<tr><td>알림함(메일)</td><td><code>/inbox</code> <b>(경로 미확정)</b></td><td><b>없음</b> — 엔드포인트가 아예 없다 (P23)</td><td>23~25</td></tr>
+<tr><td>브리핑 전체</td><td><code>/briefing</code> <b>(경로 미확정)</b></td><td><b>잠정</b> — <code>GET /ai/briefing</code> 은 있고 화면 자체가 잠정이다</td><td>26~29</td></tr>
+</table>
+<div style="margin-top:12px">
+<b>아트보드 30개 — 화면 8 + 상태 21 + 이 범위 시트.</b> 상태를 함께 그린 이유는 실패와 빈 상태가
+증권 앱에서 정상 상태보다 자주 보이기 때문이다. <b>도달할 수 없는 상태는 그리지 않고 노트에 이유를 적었다</b> —
+로그인의 에러(부를 API 가 없다) · 콜백의 빈 상태 · 마이페이지의 조회 에러(부팅 시 이미 실패한다) ·
+브리핑의 <code>generating</code>(서버가 내보내지 않는다) · 알림함의 에러(문구를 지어낼 수 없다) 다섯이다.
+</div>
+</div>
+
+<div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
+<b>⚠ 이 캔버스에는 계약이 없는 자리가 셋 있다. 시안은 요청 사항이지 계약이 아니다.</b>
+백엔드·AI 회신 전까지 구현하지 않는다. <b>화면 안에서도 형태로 구분했다</b> — 근거가 확정되지 않은 블록은
+점선 테두리에 그림자를 뺐다(<code>tokens.css</code> §5 주석). 색 토큰을 새로 만들지 않은 이유다.
+<ul>
+<li><b>알림함(메일) 전체 — <code>contracts.md</code> P23.</b> 목록 조회도 읽음 처리도 엔드포인트가 없다.
+    아트보드 22~24 의 항목 종류·요약·미읽음 개수는 <b>PRD 문구에서 옮긴 요청 사항</b>이고 응답 스키마가 아니다.
+    GitLab 이슈 #26 ①번 회신 대기.</li>
+<li><b>위키의 "맞아요" 승격 — <code>contracts.md</code> P24.</b> <code>ai_inferred</code> 항목을 사실로 승격하는 경로가 없다.
+    <b>그래서 아트보드 16 에 "맞아요" 버튼을 그리지 않았다</b> — 그리면 눌러도 아무 일도 안 일어나는 죽은 버튼이 된다.
+    반대쪽("아니에요")만 <code>DELETE /ai/wiki/facts/{factId}</code> 로 성립하는데, 한쪽만 있는 맞다/아니다는
+    "아니오만 고를 수 있는 질문" 으로 읽히므로 <b>확인 UI 를 짝으로 만들지 않고 기존 삭제 컨트롤 하나로 뒀다.</b>
+    GitLab 이슈 #26 ②번 회신 대기.</li>
+<li><b>브리핑 전체 화면의 존재 자체 — ia.md §1.</b> PRD v1.0 §06 의 화면 집계에 독립 항목으로 없다.
+    <code>GET /ai/briefing</code> 은 확정 계약이지만 <b>그 응답을 전체 화면으로 펼칠지가 잠정</b>이다.
+    홈의 브리핑 블록만으로 끝날 수도 있다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>라우트 이름이 두 문서에서 어긋난다 — 코드를 따랐다.</b>
+<code>ia.md</code> §1 은 화면 이름을 "메일", 라우트를 <code>/mail</code> 로 적었지만
+<code>frontend/src/shared/config/routes.ts</code> 는 <code>inbox: '/inbox'</code> 이고
+"프로토타입을 보고 <code>/mail</code> 로 되돌리지 않는다" 를 주석으로 못박았다.
+<code>contracts.md</code> P23 도 "알림함(<code>/inbox</code>)" 으로 등재돼 있다.
+<b>둘 다 미확정이므로 이 캔버스는 코드 쪽(<code>/inbox</code>)을 쓰고 화면 제목은 "알림함" 으로 적는다.</b>
+확정이 오면 고칠 자리는 <code>routes.ts</code> 한 줄과 이 캔버스의 아트보드 22~24 다.
+</div>
+
+<div class="note">
+<b>AI 슬롯 배치를 새로 정하지 않았다.</b> <code>ia.md</code> §4 가 이미 정한 것을 화면으로 옮겼을 뿐이다.
+이 축에 들어오는 슬롯은 <b>2종</b>이다 — 6번(Ask My Portfolio, AI 채팅 화면 전체)과 1번(데일리 브리핑)이다.
+나머지 4종(수익률 원인 분석 · 종목 분석 · 주문 전 점검 · 포트폴리오 진단)은 다른 축의 화면에 들어간다.
+<ul>
+<li><b>6종 전부 일반 요청/응답이다. SSE 는 폐기됐다</b> (ia.md 개정 전제 1). 아트보드 11 의 대기 상태는
+    타이핑 연출이 아니라 <b>단발 응답을 기다리는 로딩</b>이다. 글자가 한 자씩 나오는 화면을 그리지 않았다.</li>
+<li><b>근거 목록(<code>citations</code>)은 접거나 생략하지 않는다.</b> 응답 봉투의 최상위 키라 슬롯 6종 전부에 실린다.
+    <code>engine</code>·<code>wiki</code> 는 외부 URL 이 없어 <b>테두리 뱃지 + 화살표 없음</b>으로 구분했다 — 채움 뱃지와
+    같은 모양이면 "출처가 있는 척" 이 된다 (ia.md §4 근거 표시).</li>
+<li><b>피드백 슬롯은 <code>requestId</code> 하나 = 슬롯 하나.</b> 채팅은 답변 말풍선마다, 브리핑은 블록 하단에 하나다.
+    브리핑 <code>items[]</code> 마다 붙이지 않는다. <b>붙는 자리 수 자체는 회신 대기(6 vs 3 vs 8)</b>이고
+    이 캔버스는 ia.md §4 표를 따랐다.</li>
+<li><b>캐릭터(핀치·블루치)는 AI 슬롯과 그 빈 상태·에러 자리에만 올 수 있다.</b> 이 캔버스에서 해당하는 자리는
+    아트보드 9(채팅 빈 상태) · 13·14(채팅 에러) · 17(위키 빈 상태) · 27·29(브리핑 빈 상태·에러) 여섯이다.
+    <b>알림함(23~25)은 AI 슬롯이 아니다</b> — Finch 가 물어다 놓는 것을 모은 목록이라 캐릭터 자리로 쓰지 않는다.
+    <b>와이어프레임 단계라 에셋을 넣지 않고 자리만 비웠다</b> — 자산 요약 숫자·주문·충전 확인에는 넣지 않는다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>AI 는 판단을 대신하지 않는다.</b> 이 캔버스의 AI 문구에는 매수·매도 권유, 목표주가, 투자의견, "좋다/나쁘다" 판정이 없다.
+"긍정 요인 / 부정 요인" 같은 표현도 쓰지 않는다 — AI 명세 §2 가 출처 귀속형("시장이 주목하는 요인",
+"공시·실적에서 확인된 위험 요인")으로 고정했고 규제 대응이라 화면에서 되돌리면 안 된다.
+<code>disclaimer</code> 는 모든 AI 응답 자리에 노출한다 (apiSpec §10.3 보존 4종).
+</div>
+
+<div class="note">
+<b>응답은 백엔드 형식으로 온다.</b> 백엔드가 AI 의 <code>snake_case</code> + 봉투를 벗겨
+<code>camelCase</code> + 봉투 없음으로 재포장한다 (apiSpec §10.3). 그래서 이 캔버스의
+<code>ab-api</code> 줄은 <code>requestId</code>·<code>dataAsOf</code>·<code>relatedTickers</code> 로 적혀 있다 —
+AI 명세의 <code>request_id</code>·<code>data_as_of</code>·<code>related_tickers</code> 를 그대로 옮기지 않았다.
+<b>필드 이름 자체는 바뀌지 않는다</b> — <code>ticker</code> 를 <code>stockCode</code> 로 바꾸지 않는다(경로 파라미터만 그렇다).
+</div>
+
+<div class="note">
+<b>토큰을 새로 만들지 않았다.</b> 이 캔버스의 모든 색·반경·그림자·타이포는 기존 역할 토큰으로 해결된다.
+판단이 들어간 자리는 넷이다.
+<ul>
+<li><b>AI 표면에 "AI 색" 을 쓰지 않는다.</b> <code>bg-layer-default</code> + <code>stroke-neutral-weak</code> +
+    <code>shadow-ai</code> + <code>radius-ai</code>(18px). 일반 카드는 <code>stroke-neutral-subtle</code> · 그림자 없음 ·
+    <code>radius-card</code>(16px) 이라 <b>획 무게 · 깊이 · 반경 셋이 한꺼번에 달라진다</b>. AI 카드에 브랜드 마크를 붙이지 않는다.</li>
+<li><b>계약·근거가 없는 블록은 점선 + 그림자 없음.</b> 새 토큰이 아니라 형태다 (<code>tokens.css</code> §5 주석).
+    <code>ai_inferred</code> 태그도 같은 이유로 점선이다 — 단정형이 아님을 색이 아니라 형태로 말한다.</li>
+<li><b>에러에 등락 적색을 쓰지 않는다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크) bold + 아이콘.
+    적색이면 "떨어졌다" 로 오독된다 (finch-seed §4).</li>
+<li><b>등락은 브리핑 항목 본문에만 나온다.</b> <code>segments[].direction</code> 이 <code>up</code>·<code>down</code> 인 조각만
+    <code>fg-up</code>·<code>fg-down</code>(700 단계) 로 칠하고 <b>부호가 반드시 같이 온다</b>. 13~15px 본문이라
+    <code>-vivid</code>(600)를 쓰지 않는다 — 18px 이상 굵은 가격에만 쓴다. 숫자를 정규식으로 찾아 칠하지 않는다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>카카오 로그인 버튼의 <code>#FEE500</code> 이 이 캔버스의 유일한 토큰 밖 색이다.</b>
+카카오 브랜드 가이드가 강제하는 색이라 토큰화하지 않는다 — <code>Button.tsx</code> 의
+<code>bg-[#FEE500]</code> 과 같은 예외이고 팔레트 유출 검사에서도 이것만 통과시킨다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 1 · 로그인 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 1 · 로그인</div>
+<div class="ab-name">로그인 — 기본</div>
+<div class="ab-api">API 없음 · 카카오 인가 URL 로 이동만 한다</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center; gap:0; background:var(--finch-color-bg-layer-basement)">
+    <div style="flex:1"></div>
+    <div style="text-align:center">
+      <div class="hero" style="font-size:var(--finch-font-size-display); line-height:var(--finch-line-height-display)">Finch</div>
+      <div style="margin-top:14px; font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); color:var(--finch-color-fg-neutral-muted)">
+        판단은 당신이,<br>근거 정리는 Finch 가.
+      </div>
+      <div class="meta" style="margin-top:12px">모의투자 서비스입니다. 실제 매매가 일어나지 않습니다.</div>
+    </div>
+    <div style="flex:1.2"></div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="kakao">
+      <svg viewBox="0 0 24 24"><path d="M12 4C7 4 3 7.1 3 11c0 2.5 1.7 4.7 4.2 5.9l-.8 3 3.4-1.9c.7.1 1.4.2 2.2.2 5 0 9-3.1 9-7s-4-7-9-7z" fill="currentColor" stroke="none"/></svg>
+      카카오로 시작하기
+    </button>
+    <div class="meta" style="text-align:center">최초 로그인 시 계좌와 초기 예수금 1,000,000원이 함께 만들어집니다</div>
+  </div>
+</div>
+<div class="note">
+<b>자체 회원가입 폼이 없다.</b> 인증 수단은 카카오 OAuth 2.0 단일이고 서버가 최초 로그인 시 계정·계좌·초기
+예수금을 함께 만든다 (apiSpec §2.1). 이전 판의 <code>/signup</code> 화면은 ia.md 에서 삭제됐다 — 되살리지 않는다.
+<br><br><b>이 화면에는 에러 상태가 없다.</b> 부를 API 가 없기 때문이다. 인가 실패는 카카오 화면에서 일어나거나
+콜백(<code>/oauth/kakao</code>)으로 돌아온 뒤에 드러난다 — 아트보드 4 가 그 자리다.
+<b>빈 상태도 없다</b> — 표시할 데이터가 없는 화면이다.
+<br><br><b>미인증 접근이 <code>?redirect=</code> 를 들고 여기로 온다</b> (ia.md §1). 화면에는 아무 표시도 하지 않는다 —
+"로그인이 필요합니다" 를 띄우면 처음 방문한 사람에게 실패로 읽힌다. 세션 복구 실패 코드 두 가지 중
+<code>AUTH_REFRESH_TOKEN_MISSING</code>(쿠키 없음)은 <b>조용히 비로그인</b>으로 다루는 것이 계약이다 (apiSpec §2.2).
+</div>
+</section>
+
+
+<!-- ═════════════════ 2 · 로그인 · 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 2 · 로그인 · 상태</div>
+<div class="ab-name">인가 화면으로 이동 중</div>
+<div class="ab-api">location.assign(kauth.kakao.com/oauth/authorize)</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center; gap:0; background:var(--finch-color-bg-layer-basement)">
+    <div style="flex:1"></div>
+    <div style="text-align:center">
+      <div class="hero" style="font-size:var(--finch-font-size-display); line-height:var(--finch-line-height-display)">Finch</div>
+      <div style="margin-top:14px; font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); color:var(--finch-color-fg-neutral-muted)">
+        판단은 당신이,<br>근거 정리는 Finch 가.
+      </div>
+      <div class="meta" style="margin-top:12px">모의투자 서비스입니다. 실제 매매가 일어나지 않습니다.</div>
+    </div>
+    <div style="flex:1.2"></div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="disabled"><span class="spin" style="border-top-color:var(--finch-color-fg-disabled)"></span>카카오로 이동 중</button>
+    <div class="meta" style="text-align:center">최초 로그인 시 계좌와 초기 예수금 1,000,000원이 함께 만들어집니다</div>
+  </div>
+</div>
+<div class="note">
+<b>버튼을 잠그는 것이 이 상태의 목적이다.</b> 이동은 브라우저가 하므로 화면은 곧 사라지지만, 그 사이 두 번 누르면
+인가 요청이 두 번 나간다. 누른 뒤 <code>disabled</code> 로 바꾸고 스피너를 얹는다.
+<br><br><b>비활성 면은 <code>bg-disabled</code>(gray-400) 이고 글자는 <code>fg-disabled</code>(gray-600) 다.</b>
+<code>opacity</code> 로 흐리면 안에 있는 스피너까지 같이 사라진다 (finch-seed §4).
+카카오 노란 면을 흐리는 방식도 쓰지 않는다 — 브랜드 색을 반투명으로 만드는 것은 가이드 위반이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 3 · 콜백 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 3 · 카카오 콜백</div>
+<div class="ab-name">토큰 교환 중 — 이 화면의 정상 상태</div>
+<div class="ab-api">POST /auth/kakao → GET /users/me → 홈</div>
+<div class="ph">
+  <div class="center">
+    <span class="spin" style="width:28px; height:28px"></span>
+    <b style="font-size:var(--finch-font-size-body-1); font-weight:600">로그인 중입니다</b>
+    <span class="cap">잠시만 기다려 주세요</span>
+  </div>
+</div>
+<div class="note">
+<b>이 화면은 로딩 상태가 곧 기본 상태다.</b> 성공하면 홈으로 떠나므로 사용자가 머무는 정상 화면이 아니다.
+그래서 <b>내비도 탭바도 그리지 않았다</b> — 뒤로 갈 곳이 없고, 탭을 누를 시간도 없다.
+<br><br><b>빈 상태가 없다.</b> 인가 코드가 없으면 그건 빈 상태가 아니라 에러다(아트보드 4).
+<br><br><b>성공 시 화면에 "성공" 을 그리지 않는다.</b> 완료 화면을 만들면 사용자가 한 번 더 눌러야 홈에 간다.
+<code>Set-Cookie: refreshToken</code> 은 헤더로만 오고 <code>accessToken</code> 은 메모리에 둔다 (apiSpec §1.2·§2.1) —
+화면에 표시할 것이 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 4 · 콜백 · 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 4 · 카카오 콜백 · 에러</div>
+<div class="ab-name">인가 실패 — AUTH_KAKAO_FAILED</div>
+<div class="ab-api">POST /auth/kakao → 401 AUTH_KAKAO_FAILED</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+      <div>
+        <div class="m">로그인에 실패했습니다</div>
+        <div class="s">인가 정보가 만료되었거나 유효하지 않습니다. 다시 시도해 주세요.</div>
+      </div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">로그인 화면으로</button>
+  </div>
+</div>
+<div class="note">
+<b>문구는 서버가 완성해서 내려준다</b> (apiSpec §1.3). 화면이 코드별 문구를 다시 만들지 않는다.
+이 화면이 다룰 코드는 <b><code>AUTH_KAKAO_FAILED</code>(401) 하나</b>다 — apiSpec §2.1 의 에러 표에 그것만 있다.
+<br><br><b>재시도 버튼을 두지 않고 로그인 화면으로 보낸다.</b> 인가 코드는 일회용이라 같은 코드로 다시 부르면
+반드시 또 실패한다. "다시 시도" 버튼은 눌러도 안 되는 버튼이 된다.
+<br><br><b>등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code>(gray-300) 면 + <code>fg-critical</code>(잉크) bold +
+아이콘 + 문구. 색만으로 알리지 않는다 (finch-seed §4).
+</div>
+</section>
+
+
+<!-- ═════════════════ 5 · 마이페이지 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 5 · 마이페이지</div>
+<div class="ab-name">내 정보 — 기본</div>
+<div class="ab-api">GET /users/me · POST /auth/logout</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">내 정보</div><div class="icon"></div></div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="prof">
+        <div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+        <div style="flex:1; min-width:0">
+          <div style="font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3); font-weight:var(--finch-font-weight-title-3)">홍길동</div>
+          <div class="meta" style="margin-top:3px">2026.08.25 가입</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rows">
+      <div class="row">
+        <span class="l"><b>알림함</b><span>Finch 가 물어다 놓은 것</span></span>
+        <span class="r"><span class="unread">3</span><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b>AI가 이해한 나</b><span>사실 4 · 논지 2</span></span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b>매매 내역</b></span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+      <div class="row">
+        <span class="l"><b>충전</b></span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+
+    <div class="rows">
+      <div class="row"><span class="l"><b>로그아웃</b></span><span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    </div>
+
+    <div class="meta" style="text-align:center; margin-top:auto; padding-top:16px">
+      모의투자 서비스입니다. 실제 매매가 일어나지 않습니다.
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-6 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>설정 화면을 흡수한 자리다</b> (ia.md §1 기타). 테마·로그아웃만 있는 화면을 따로 두면 사용자가 어느 쪽에
+무엇이 있는지 외워야 한다. <b>계좌 초기화 진입점은 없다</b> — GitLab 이슈 #27 로 기능 자체가 빠졌고
+<code>POST /account/reset</code> 은 apiSpec v0.7 에서 삭제됐다. 되살리지 않는다.
+<br><br><b><code>profileImageUrl</code> 은 <code>null</code> 일 수 있다</b> (apiSpec §2.4). 카카오의 선택 동의 항목이라
+동의하지 않으면 값이 없고, 빈 문자열이 아니라 <code>null</code> 이다. <b>이 아트보드가 그 기본 아바타 상태다</b> —
+<code>&lt;img src=""&gt;</code> 는 브라우저가 현재 페이지를 다시 요청하게 만든다.
+<br><br><b>로그아웃을 다른 진입 행과 같은 무게로 두지 않았다.</b> 목록을 끊어 별도 블록으로 뒀다 — 오탭하면
+세션이 날아간다. 색으로 위험을 알리지 않고 <b>블록 분리</b>로 알린다(확인은 아트보드 7).
+<br><br><b>미읽음을 점 하나로 알리지 않는다.</b> 개수 뱃지(<code>3</code>)를 함께 둔다 — 점만 있으면 몇 건인지 알 수 없어
+사용자가 매번 열어 확인한다. <b>다만 이 개수의 출처가 없다</b> — 알림함 계약이 없어서다(P23, 아트보드 22).
+<br><br><b>AI 플로팅 버튼이 없다.</b> PRD 가 정한 배치(종목 상세 · 포트폴리오 · 브리핑 · 뉴스 상세)와
+프로토타입의 실제 배치(홈 · 종목 상세 · 포트폴리오 · 브리핑) <b>어느 쪽에도 마이페이지가 없다</b> (ia.md §3).
+</div>
+</section>
+
+
+<!-- ═════════════════ 6 · 마이페이지 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 6 · 마이페이지 · 상태</div>
+<div class="ab-name">내 정보 — 로딩</div>
+<div class="ab-api">GET /users/me · pending</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">내 정보</div><div class="icon"></div></div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="prof">
+        <div class="avatar" style="background:var(--finch-color-bg-skeleton)"></div>
+        <div style="flex:1">
+          <div class="sk" style="width:92px; height:18px"></div>
+          <div class="sk" style="width:120px; height:13px; margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rows">
+      <div class="row"><span class="l"><div class="sk" style="width:64px"></div><div class="sk" style="width:148px; height:12px; margin-top:6px"></div></span></div>
+      <div class="row"><span class="l"><div class="sk" style="width:104px"></div><div class="sk" style="width:88px; height:12px; margin-top:6px"></div></span></div>
+      <div class="row"><span class="l"><div class="sk" style="width:74px"></div></span></div>
+      <div class="row"><span class="l"><div class="sk" style="width:44px"></div></span></div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-6 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>탭바와 내비는 골격으로 만들지 않는다.</b> 이미 아는 값이고, 골격으로 바꾸면 탭이 눌리지 않는 것처럼 보인다.
+<b>로그아웃 행도 골격으로 둔다</b> — 프로필이 아직 안 온 상태에서 로그아웃만 눌리게 하면 어느 계정을
+로그아웃하는지 모르는 채로 누른다.
+<br><br><b>이 화면의 에러 상태는 그리지 않았다 — 도달할 수 없다.</b>
+<code>GET /users/me</code> 는 앱 부팅 시 세션 복구에 이미 한 번 쓰이고(apiSpec §2.4), 실패하면
+그 단계에서 <code>/login</code> 으로 보내진다. 마이페이지에 들어온 시점에는 값이 캐시에 있다.
+<b>도달 가능한 실패는 <code>POST /auth/logout</code> 쪽</b>이고, 로그아웃은 실패해도 클라이언트 토큰을 버려
+비로그인으로 떨어지므로 에러 화면 대신 로그인 화면이 결과다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 7 · 마이페이지 · 로그아웃 확인 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 7 · 마이페이지 · 확인</div>
+<div class="ab-name">로그아웃 확인 시트</div>
+<div class="ab-api">POST /auth/logout → 204</div>
+<div class="ph">
+  <div class="nav"><div class="icon"></div><div class="t">내 정보</div><div class="icon"></div></div>
+  <div class="scroll">
+    <div class="card">
+      <div class="prof">
+        <div class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+        <div style="flex:1; min-width:0">
+          <div style="font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3); font-weight:var(--finch-font-weight-title-3)">홍길동</div>
+          <div class="meta" style="margin-top:3px">2026.08.25 가입</div>
+        </div>
+      </div>
+    </div>
+    <div class="rows">
+      <div class="row"><span class="l"><b>알림함</b><span>Finch 가 물어다 놓은 것</span></span><span class="r"><span class="unread">3</span></span></div>
+      <div class="row"><span class="l"><b>AI가 이해한 나</b><span>사실 4 · 논지 2</span></span><span class="r"></span></div>
+      <div class="row"><span class="l"><b>매매 내역</b></span><span class="r"></span></div>
+      <div class="row"><span class="l"><b>충전</b></span><span class="r"></span></div>
+    </div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">로그아웃할까요?</div>
+    <div class="cap">보유 종목과 예수금은 그대로 남습니다. 다시 카카오로 로그인하면 이어서 볼 수 있습니다.</div>
+    <div class="row2">
+      <button class="btn" data-v="secondary">취소</button>
+      <button class="btn" data-v="primary">로그아웃</button>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>파괴적 확인 버튼의 채움도 주요 버튼과 같은 잉크다.</b> 모노톤에 위험 solid 면을 두지 않았기 때문이다
+(<code>tokens.css</code> §3 주석 — <code>bg-critical-solid</code> 를 만들지 않은 이유). <b>구분은 문구가 한다.</b>
+<br><br><b>"데이터가 지워집니다" 로 쓰지 않는다.</b> 로그아웃은 원장을 건드리지 않는다 —
+<code>POST /auth/logout</code> 은 Refresh Token 만 무효화한다(apiSpec §2.3). 지워지지 않는 것을
+지워진다고 적으면 사용자가 로그아웃을 못 한다.
+<br><br><b>확인 자체는 필요하다.</b> Access Token 이 메모리에만 있어 로그아웃하면 그 자리에서 세션이 끊긴다
+— 되돌리려면 카카오 인가를 다시 통과해야 한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 8 · 404 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 8 · 404</div>
+<div class="ab-name">없는 경로</div>
+<div class="ab-api">라우트 * · API 없음</div>
+<div class="ph">
+  <div class="scroll" style="justify-content:center">
+    <div class="empty" style="flex:none">
+      <div class="g"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21M11 8v3.5M11 14h.01"/></svg></div>
+      <b>페이지를 찾을 수 없습니다</b>
+      <span>주소가 바뀌었거나 없는 화면입니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">홈으로</button>
+    <button class="btn" data-v="secondary">이전 화면으로</button>
+  </div>
+</div>
+<div class="note">
+<b>브리핑의 <code>deeplink</code> 가 조용히 404 가 되는 자리다.</b>
+<code>deeplink</code> 는 AI 서버가 만든 프론트 경로 문자열이고(예: <code>/stocks/000660?tab=ai</code>),
+라우트를 바꾸면 화면에 에러도 안 뜨고 그냥 이 페이지로 온다 (ia.md §2).
+<b>그래서 "이전 화면으로" 를 함께 둔다</b> — 브리핑에서 눌러 왔다면 목록으로 돌아갈 길이 있어야 한다.
+<br><br><b>404 에 검색창을 넣지 않는다.</b> 탐색 탭이 이미 그것이고, 여기서 검색시키면 잘못된 링크를
+사용자가 스스로 고치게 만드는 화면이 된다.
+<br><br><b>탭바를 그리지 않았다.</b> 없는 경로는 어느 탭에도 속하지 않는다 — 탭을 그리면 어느 탭이
+현재인지 정할 수 없고, 아무 탭도 켜지지 않은 탭바는 고장으로 읽힌다.
+<br><br><b>로딩·에러·빈 상태가 없다.</b> 이 화면 자체가 다른 화면들의 최종 에러 상태다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 9 · AI 채팅 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 9 · AI 채팅 · 빈 상태</div>
+<div class="ab-name">첫 진입 — 대화 없음</div>
+<div class="ab-api">POST /ai/chat · conversationId 없음 (첫 요청이 발급받는다)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat" style="justify-content:center">
+    <div style="text-align:center; padding:0 8px">
+      <!-- 캐릭터가 올 수 있는 자리. 와이어프레임 단계라 에셋을 넣지 않는다 (아트보드 0). -->
+      <div class="avatar" style="margin:0 auto 12px; width:64px; height:64px">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg>
+      </div>
+      <b style="font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1)">내 계좌를 보고 답합니다</b>
+      <div class="cap" style="margin-top:6px">보유 종목·비중·거래 이력을 읽어 근거와 함께 설명합니다.<br>매수·매도 권유는 하지 않습니다.</div>
+    </div>
+    <div style="height:8px"></div>
+    <div class="qchips">
+      <button class="q">내 포트폴리오에서 비중이 가장 큰 종목은?</button>
+      <button class="q">이번 주 수익률이 왜 이렇게 움직였어?</button>
+      <button class="q">PER 이 뭐야?</button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send" data-off><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>제안 질문 세 개는 화면이 정한 문구다.</b> AI 가 내려주는 값이 아니다 —
+<code>POST /ai/chat</code> 은 요청이 있어야 응답하므로 <b>첫 진입에는 호출이 없다</b>.
+그래서 이 화면은 로딩 없이 곧바로 빈 상태로 뜬다.
+<br><br><b>세 번째 질문("PER 이 뭐야?")이 용어 설명이다.</b> 별도 엔드포인트가 아니라 같은 <code>/ai/chat</code> 이
+답하고, 도구가 필요 없으면 <code>toolsUsed</code> 가 빈 배열이 된다 (AI 명세 §4). 용어 사전 화면을 만들지 않는다.
+<br><br><b>내비 우측의 "AI가 이해한 나" 가 위키의 보조 진입이다</b> (ia.md §1 — 잠정으로 마이페이지 하위를 쓰고
+채팅 상단에 보조 진입을 둔다). <b>전체 화면 전환이라 대화 스크롤 위치가 날아가는 것이 이 배치의 알려진 문제다</b> —
+근거가 얇다고 ia.md 가 적어 뒀으므로 리뷰에서 다시 본다.
+<br><br><b>전송 버튼은 입력이 비면 비활성이다.</b> <code>message</code> 는 공백만으로는 안 되고 2,000자를 넘으면
+<code>INVALID_REQUEST</code> 다 (AI 명세 §4). <b>글자 수 카운터를 상시 노출하지 않는다</b> — 2,000자는 대화가 아니라
+문서 붙여넣기 길이라 평소에 보일 이유가 없다. 임계에 가까워질 때만 띄운다.
+<br><br><b><code>toolsUsed</code> 를 화면에 노출하지 않는다.</b> ia.md 의 표시 대상 목록에 없고, 사용자가 해석할 수
+있는 값이 아니다 — 근거는 <code>citations</code> 가 말한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 10 · AI 채팅 · 답변 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 10 · AI 채팅 · 슬롯 6</div>
+<div class="ab-name">답변 — 근거 · 기준 시각 · 면책 · 피드백</div>
+<div class="ab-api">POST /ai/chat → content.answer · citations · dataAsOf · disclaimer · requestId</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 비중이 너무 높은 거 아냐?</div>
+
+    <div class="ai">
+      <p>삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. 두 번째인 SK하이닉스가 18.2%라 상위 두 종목 합이 59.9%입니다.<span class="cit">[1]</span></p>
+      <p>두 종목은 같은 반도체 업종이라 업종 기준으로도 59.9%가 한 곳에 모여 있습니다.<span class="cit">[1]</span> 삼성전자는 최근 5거래일 <span class="up">+2.14%</span>, SK하이닉스는 <span class="down">−1.08%</span> 움직였습니다.<span class="cit">[2]</span></p>
+      <p>기록해 두신 내용에는 "단일 업종 40% 이상을 피하고자 함" 이 있습니다.<span class="cit">[3]</span> 지금 상태와 그 기록의 차이를 함께 보시면 됩니다.</p>
+
+      <div class="cites">
+        <div class="hd">근거 3</div>
+        <div class="cite">
+          <span class="b" data-self>계산</span>
+          <span class="x"><b>보유 비중 · 업종 집계</b><span>Finch 엔진 · 2026-09-04 14:30</span></span>
+        </div>
+        <div class="cite">
+          <span class="b">시세</span>
+          <span class="x"><b>삼성전자 · SK하이닉스 일별 종가</b><span>KRX · 2026-09-04</span></span>
+          <span class="a"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+        </div>
+        <div class="cite">
+          <span class="b" data-self>내 기록</span>
+          <span class="x"><b>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</b><span>내가 기록한 것 · 2026-04-02</span></span>
+        </div>
+      </div>
+
+      <div class="disc">시세 2026-09-04 14:31 · 보유 2026-09-04 14:30 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+
+      <div class="fb">
+        <span class="lb">이 답변이 도움이 되었나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>답변 하나가 곧 슬롯 하나다.</b> AI 카드 안에 본문 → 근거 → 기준 시각·면책 → 피드백 순으로 쌓았다.
+<b>피드백은 그 응답 블록의 마지막 요소</b>이고 <code>dataAsOf</code>·<code>disclaimer</code> 아래에 온다 (ia.md §4).
+채팅은 답변마다 <code>requestId</code> 가 달라 <b>말풍선마다 슬롯 하나</b>다 — 화면 하단에 하나만 두면 어느 답변에
+대한 평가인지 잃는다.
+<br><br><b>AI 표면은 색이 아니라 깊이로 구분한다.</b> <code>bg-layer-default</code> + <code>stroke-neutral-weak</code> +
+<code>shadow-ai</code> + <code>radius-ai</code>(18px). 사용자 말풍선은 반대로 잉크 채움(<code>bg-neutral-solid</code>) +
+<code>fg-neutral-inverted</code> 다 — <b>누가 말했는지를 색이 아니라 채움의 방향으로 알린다.</b>
+<b>AI 카드에 브랜드 마크를 붙이지 않는다</b> (확정 결정).
+<br><br><b>등락 색은 <code>segments[].direction</code> 이 <code>up</code>·<code>down</code> 인 조각에만 쓴다.</b>
+<code>text</code> 하나로도 렌더되므로 <b>강조가 필요할 때만 <code>segments</code> 를 순회한다</b> —
+이어 붙이면 <code>text</code> 와 정확히 일치한다(AI 명세 §2.3). 숫자를 정규식으로 찾아 칠하지 않는다.
+15px 본문이라 <code>fg-up</code>·<code>fg-down</code>(700 단계)이고 <b>부호(+ · −)가 반드시 같이 온다</b>.
+<br><br><b>근거 뱃지가 두 형태다.</b> "시세" 는 외부 출처라 잉크 채움 + 외부 링크 화살표, <b>"계산"(<code>engine</code>)과
+"내 기록"(<code>wiki</code>)은 <code>url</code> 이 없어 테두리 뱃지 + 화살표 없음</b>이다 (ia.md §4). 링크 없는 행을
+눌리게 만들지 않는다. <b>"내 기록" 이 외부 근거처럼 보이면 안 된다</b> — 사용자 자신이 기록한 것이다.
+<br><br><b><code>relevance</code> 를 숫자로 노출하지 않는다.</b> 0~1 값이고 정렬에만 쓴다 — 사용자가 해석할 수 없다.
+<code>snippet</code> 은 길면 접는다. <b>각주(<code>[1]</code>)를 눌러 목록으로 보내는 것까지만 한다</b> —
+hover 툴팁 미리보기를 만들지 않는다. 모바일에 hover 가 없다.
+<br><br><b>이 답변에 판정이 없다.</b> "비중이 높다/낮다", "줄이는 게 좋다" 를 쓰지 않고 <b>수치와 사용자 자신의
+기록을 나란히 놓는 것</b>으로 끝낸다 — 판단은 사용자가 한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 11 · AI 채팅 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 11 · AI 채팅 · 상태</div>
+<div class="ab-name">답변 대기 — 단발 응답 (스트리밍 아님)</div>
+<div class="ab-api">POST /ai/chat · pending · SSE 폐기</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 비중이 너무 높은 거 아냐?</div>
+    <div class="ai">
+      <div class="ttl" style="display:flex; align-items:center; gap:8px; margin-bottom:12px">
+        <span class="spin" style="width:16px; height:16px"></span>근거를 찾아 정리하고 있습니다
+      </div>
+      <div class="sk" style="width:100%"></div>
+      <div class="sk" style="width:88%; margin-top:8px"></div>
+      <div class="sk" style="width:64%; margin-top:8px"></div>
+      <div class="sk" style="width:40%; height:12px; margin-top:16px"></div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f" style="color:var(--finch-color-fg-disabled)">답변을 기다리는 중</div>
+    <div class="send" data-off><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>글자가 한 자씩 나오는 연출을 그리지 않았다.</b> AI 6종 전부 단발 요청/응답이고 <b>SSE 는 폐기됐다</b>
+(ia.md 개정 전제 1, apiSpec §10). 스트리밍을 하려면 백엔드가 스트리밍 프록시를 먼저 만들어야 하고
+계획에 없는 작업이다. <b>타이핑 연출을 전제로 그리면 나중에 그 자리가 거짓이 된다.</b>
+<br><br><b>답변 자리에 골격을 두고 카드는 미리 그린다.</b> 응답이 오래 걸릴 수 있는 경로이므로
+(apiSpec §10 — "응답이 올 때까지 로딩 상태로 기다린다") <b>빈 상태와 로딩 상태를 구분해 표시한다</b>
+(ia.md §4 슬롯 공통 규약).
+<br><br><b>대기 중 입력을 잠근다.</b> 대화는 순서가 의미인데, 답변 전에 다음 질문이 나가면
+<code>conversationId</code> 안에서 두 요청이 뒤섞인다. <b>주문과 달리 채팅은 자동 재시도해도 안전하지만
+(원장을 쓰지 않는다) 순서는 지켜야 한다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 12 · AI 채팅 · 피드백 사유 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 12 · AI 채팅 · 피드백</div>
+<div class="ab-name">down 을 누른 뒤 — 사유 6종 복수 선택</div>
+<div class="ab-api">POST /ai/feedback · requestId · rating down · reasons[] · comment ≤1000</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="ai" style="margin-top:auto">
+      <p style="color:var(--finch-color-fg-neutral-subtle)">삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. …</p>
+      <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="lb">어떤 점이 아쉬웠나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+      <div class="reasons">
+        <button class="chip" aria-pressed="true">숫자가 틀렸어요</button>
+        <button class="chip">질문과 안 맞아요</button>
+        <button class="chip">오래된 정보예요</button>
+        <button class="chip">너무 일반적이에요</button>
+        <button class="chip">이해하기 어려워요</button>
+        <button class="chip">근거가 안 맞아요</button>
+      </div>
+      <div class="ta"><span>더 알려주실 것이 있으면 적어 주세요 (선택)</span><span class="meta">0/1000</span></div>
+      <button class="sbtn" data-v="ink" style="width:100%; margin-top:10px">보내기</button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>사유는 <code>down</code> 을 누른 뒤에만 펼친다. <code>up</code> 에는 사유를 묻지 않는다</b> (ia.md §4).
+6종은 <code>wrong_number</code>·<code>not_relevant</code>·<code>outdated</code>·<code>too_generic</code>·<code>unclear</code>·<code>wrong_citation</code>
+이고 <b>복수 선택</b>이다. 화면 문구는 이 값에 1:1 로 대응한다 — 새 사유를 만들지 않는다.
+<br><br><b>선택을 면 하나로 알리지 않는다.</b> <code>bg-transparent-selected</code> 는 APCA 바닥 아래(Lc 0)라
+물리적으로 안 보인다. <code>stroke-neutral-contrast</code> 테두리 2px 와 글자 굵기가 함께 움직인다 (finch-seed §4).
+<br><br><b><code>comment</code> 를 필수로 만들지 않는다.</b> 최대 1,000자이고 선택 입력이다. 필수로 만들면
+사유만 남기려던 사용자가 전송을 포기한다.
+<br><br><b>전송 성공하면 슬롯을 잠근다.</b> 응답 <code>content</code> 는 <code>{recorded: true}</code> 이고 같은
+<code>requestId</code> 로 다시 보내면 <b>마지막 값으로 덮어쓴다 — 취소 API 는 없다</b>(C62·C66).
+서버가 재전송을 받아 준다고 해서 화면에 수정 UI 를 곧바로 열지는 않는다 — <b>잠금을 나중에 푸는 것은 쉽고
+반대 방향은 되돌리기 어렵다</b>(ia.md §4 전송 후 UI). 잠긴 뒤의 표기는 아트보드 14 하단에 있다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 13 · AI 채팅 · 차단 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 13 · AI 채팅 · 에러</div>
+<div class="ab-name">GUARDRAIL_BLOCKED — 재시도 버튼을 만들지 않는다</div>
+<div class="ab-api">POST /ai/chat → 422 GUARDRAIL_BLOCKED · requestId 보존</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 지금 사면 오를까?</div>
+    <div class="ai">
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+        <div>
+          <div class="m">이 질문에는 답할 수 없습니다</div>
+          <div class="s">주가 예측과 매수·매도 판단은 다루지 않습니다. 대신 지금 무엇이 확인되는지는 정리해 드릴 수 있습니다.</div>
+        </div>
+      </div>
+      <div class="qchips" style="margin-top:12px">
+        <button class="q">삼성전자의 최근 공시에 무엇이 있어?</button>
+        <button class="q">삼성전자 실적은 어떻게 나왔어?</button>
+      </div>
+      <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="lb">이 처리가 적절했나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>재시도 버튼이 없는 것이 이 화면의 요점이다.</b> <code>GUARDRAIL_BLOCKED</code>(422)와
+<code>INSUFFICIENT_DATA</code>(409)는 <b>재시도가 무의미</b>하다 — 같은 질문을 다시 보내면 또 막힌다.
+재시도를 유도하지 않는 것이 AI 명세 §3 의 지시다.
+<br><br><b>그래서 피드백이 이 자리의 유일한 사용자 행동이고, 가장 크게 노출된다</b> (ia.md §4 에러 자리의 피드백).
+성공 자리와 다른 점 둘을 지켰다 —
+<b>① <code>rating: "up"</code> 을 노출하지 않는다</b>(실패한 응답에 "좋다" 를 표시할 대상이 없다. <code>rating</code> 은
+필수 값이라 에러 자리는 <code>down</code> 고정으로 보낸다. <b>근거 문서가 없는 프론트 판단이라 잠정이다</b>),
+<b>② 에러 봉투에도 <code>requestId</code> 가 보존되므로</b>(apiSpec §10.3) 슬롯이 성립한다.
+<br><br><b>막았다고 대화를 끊지 않는다.</b> 답할 수 있는 형태의 질문 두 개를 대신 제안했다 —
+"주가 예측" 을 "공시·실적 확인" 으로 바꿔 주는 것이 이 서비스가 하는 일이다.
+<b>제안 문구는 화면이 정한다</b>(AI 응답이 아니다).
+<br><br><b>차단 알림도 등락 적색이 아니다.</b> <code>bg-critical-weak</code> + 잉크 bold + 아이콘.
+</div>
+</section>
+
+
+<!-- ═════════════════ 14 · AI 채팅 · 재시도 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 14 · AI 채팅 · 에러</div>
+<div class="ab-name">재시도 가능 두 종 — 슬롯이 붙는 것과 안 붙는 것</div>
+<div class="ab-api">504 LLM_TIMEOUT (requestId 있음) · 504 AI_UPSTREAM_TIMEOUT (없음)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">이번 주 수익률이 왜 이렇게 움직였어?</div>
+
+    <div class="ai">
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>
+        <div>
+          <div class="m">답변을 만들다 시간이 초과됐습니다</div>
+          <div class="s">잠시 후 다시 시도해 주세요.</div>
+        </div>
+      </div>
+      <button class="sbtn" style="width:100%; margin-top:12px">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>다시 시도
+      </button>
+      <div class="fb-sent" style="justify-content:space-between">
+        <span>LLM_TIMEOUT · req_20260904_0187</span>
+        <button class="fbmin">문제 알리기</button>
+      </div>
+    </div>
+
+    <div class="me">그럼 보유 비중만 알려줘</div>
+
+    <div class="ai" data-unspec>
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9.5v4M12 16.5h.01"/></svg>
+        <div>
+          <div class="m">AI 서버에 연결할 수 없습니다</div>
+          <div class="s">잠시 후 다시 시도해 주세요. 시세와 잔고는 정상입니다.</div>
+        </div>
+      </div>
+      <button class="sbtn" style="width:100%; margin-top:12px">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>다시 시도
+      </button>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">궁금한 것을 물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>두 에러를 한 프레임에 나란히 둔 이유는 피드백 슬롯의 유무가 갈리기 때문이다.</b>
+<ul>
+<li><b>위(<code>LLM_TIMEOUT</code> 504) — AI 서버가 발행한 에러라 <code>requestId</code> 가 보존된다.</b>
+    슬롯을 만들지만 <b>재시도가 주 동작이고 피드백은 보조로 접어 둔다</b> — 엄지 두 개를 펼치지 않고
+    "문제 알리기" 한 줄로 눕혔다 (ia.md §4). <code>RETRIEVAL_FAILED</code>(502)도 같은 자리다.</li>
+<li><b>아래(<code>AI_UPSTREAM_TIMEOUT</code> 504) — 백엔드 자체 에러라 최상위 <code>requestId</code> 가 없다.</b>
+    평가할 원본 응답이 존재하지 않으므로 <b>슬롯을 만들지 않는다</b>. <code>AI_UPSTREAM_UNAVAILABLE</code>(502)도 같다.
+    <b>에러 코드로 갈리므로 <code>requestId</code> 유무를 런타임에 떠보지 않아도 된다</b> (apiSpec §10.4).
+    근거를 확정할 수 없는 블록이라 <b>점선 + 그림자 없음</b>으로 그렸다.</li>
+</ul>
+<b>"시세와 잔고는 정상입니다" 를 문구에 넣었다.</b> 슬롯은 위젯 단위 에러 경계를 가지므로(컨벤션 §8)
+AI 가 죽어도 화면의 나머지는 살아 있다 — <b>채팅은 화면 전체가 AI 라 그 사실을 문구로 알려야 한다.</b>
+<br><br><b>실패한 말풍선을 지우지 않는다.</b> 사용자 질문은 남기고 그 자리에서 재시도한다 —
+지우면 무엇을 물었는지 다시 타이핑해야 한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 15 · AI 채팅 · 320px ═════════════════ -->
+<section class="ab" style="--w:320px">
+<div class="ab-tag">아트보드 15 · AI 채팅 · 최소 폭</div>
+<div class="ab-name">320px — 근거·피드백이 붙은 답변</div>
+<div class="ab-api">최소 지원 폭. 가로 오버플로 0 · 터치 대상 44 유지</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI 채팅</div>
+    <span class="navlink">AI가 이해한 나</span>
+  </div>
+  <div class="chat">
+    <div class="me">삼성전자 비중이 너무 높은 거 아냐?</div>
+    <div class="ai">
+      <p>삼성전자는 평가금액 기준 포트폴리오의 41.7%입니다. 상위 두 종목 합이 59.9%입니다.<span class="cit">[1]</span> 최근 5거래일 <span class="up">+2.14%</span> 움직였습니다.<span class="cit">[2]</span></p>
+      <div class="cites">
+        <div class="hd">근거 3</div>
+        <div class="cite">
+          <span class="b" data-self>계산</span>
+          <span class="x"><b>보유 비중 · 업종 집계</b><span>Finch 엔진 · 2026-09-04 14:30</span></span>
+        </div>
+        <div class="cite">
+          <span class="b">시세</span>
+          <span class="x"><b>삼성전자 · SK하이닉스 일별 종가</b><span>KRX · 2026-09-04</span></span>
+          <span class="a"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+        </div>
+        <div class="cite">
+          <span class="b" data-self>내 기록</span>
+          <span class="x"><b>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</b><span>내가 기록한 것 · 2026-04-02</span></span>
+        </div>
+      </div>
+      <div class="disc">시세 2026-09-04 14:31 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="lb">도움이 되었나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="composer">
+    <div class="f">물어보세요</div>
+    <div class="send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></div>
+  </div>
+</div>
+<div class="note">
+<b>390 에서 만들고 320 에서 확인한다.</b> 순서를 바꾸면 좁은 화면에서 줄일 곳이 없다.
+이 축에서 가장 조밀한 화면(근거 3행 + 피드백 + 입력바)을 320 으로 옮겨 확인했다.
+<br><br><b>줄어드는 것은 문구뿐이다.</b> 근거 행의 44 높이, 엄지 44×44, 전송 44×44, 내비 44 는
+그대로 유지된다 — <b>터치 대상은 폭에 따라 줄이지 않는다</b>(컨벤션 §9).
+"이 답변이 도움이 되었나요?" 가 "도움이 되었나요?" 로, 입력 플레이스홀더가 짧아진다.
+<br><br><b>근거 제목은 잘라내지 않고 감는다.</b> 여기서 <code>ellipsis</code> 를 쓰면 "분산 투자를 중시하며…" 로
+끝나 사용자가 자기 기록의 내용을 못 읽는다. <b>세로로 길어지는 쪽을 고른다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 16 · 위키 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 16 · AI가 이해한 나</div>
+<div class="ab-name">기본 — 사실 · 논지 (진입 경로 잠정)</div>
+<div class="ab-api">GET /ai/wiki → profile[] · theses[]</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">AI 가 대화와 거래에서 모은 내용입니다. 틀린 것은 고치거나 지울 수 있습니다.</div>
+
+    <div class="sec">투자 성향 <i>사실 4</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</p>
+          <span class="src"><span class="tag">직접 말함</span>2026.04.02 · 대화에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>반도체 업종 종목을 반복적으로 매수함</p>
+          <span class="src"><span class="tag">거래에서</span>2026.08.21 · 거래 이력에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>짧게 보고 파는 것보다 오래 들고 가는 쪽을 선호하시는 것으로 보이는데, 맞나요?</p>
+          <span class="src"><span class="tag" data-guess">AI 추측</span>2026.09.01 · 대화에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>배당보다 성장을 보고 고르시는 것으로 보이는데, 맞나요?</p>
+          <span class="src"><span class="tag" data-guess">AI 추측</span>2026.09.03 · 대화에서</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">종목별 투자 논지 <i>논지 2</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p style="font-weight:600">SK하이닉스<span class="meta" style="font-weight:400"> · 000660</span></p>
+          <p style="margin-top:4px">HBM 구조적 성장에 베팅</p>
+          <span class="src"><span class="tag">직접 말함</span><span class="tag">장기</span>2026.03.11 기록</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span>
+        </span>
+      </div>
+      <div class="wrow" style="opacity:1">
+        <span class="x">
+          <p style="font-weight:600; color:var(--finch-color-fg-neutral-subtle)">한미반도체<span class="meta" style="font-weight:400"> · 042700</span></p>
+          <p style="margin-top:4px; color:var(--finch-color-fg-neutral-subtle)">장비 수주 확대를 보고 담았음</p>
+          <span class="src"><span class="tag">직접 말함</span><span class="tag">중기</span>2026.02.02 기록 · 비활성</span>
+        </span>
+        <span class="act">
+          <span class="wact"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="meta" style="padding:0 2px">고친 내용은 저장한 순간부터 다음 AI 응답에 반영됩니다.</div>
+  </div>
+</div>
+<div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
+<b>⚠ "맞아요" 버튼을 그리지 않았다 — <code>contracts.md</code> P24.</b>
+<code>ai_inferred</code> 항목을 <b>사실로 승격하는 API 가 없다</b>. 반대쪽("아니에요")만
+<code>DELETE /ai/wiki/facts/{factId}</code> 로 성립하고, <code>PUT /wiki/theses/{stockCode}</code> 는
+투자 논지 수정이라 성격이 다르다.
+<br><br><b>그래서 확인 UI 를 짝으로 만들지 않고 기존 삭제 컨트롤 하나로 뒀다.</b> 한쪽만 있는 맞다/아니다는
+"아니오만 고를 수 있는 질문" 으로 읽힌다 — 그건 승격 경로가 없다는 사실보다 더 나쁘게 읽힌다.
+<b>승격 경로가 오면 이 두 행에 버튼 한 쌍을 붙이는 것이 그때의 작업이다.</b> GitLab 이슈 #26 ②번 회신 대기.
+</div>
+<div class="note">
+<b><code>ai_inferred</code> 는 단정형으로 렌더하지 않는다.</b> "~하신 것으로 보이는데 맞나요?" 형태만 허용된다
+(AI 명세 §9 <code>source</code> 표). <b>문구만이 아니라 형태로도 구분했다</b> — 태그 테두리를 점선으로 뒀다.
+색으로 구분하지 않은 이유는 모노톤에 "추측 색" 이 없고, 있어도 색만으로 알리면 안 되기 때문이다.
+<br><br><b><code>confidence</code> 를 뱃지로 만들지 않았다.</b> 예시에 <code>high</code> 만 나오고 <b>열거값 전체가 미확정</b>이라
+등급 뱃지를 만들면 나머지 값이 왔을 때 자리가 없다 (ia.md §1). 지금은 생략했다.
+<br><br><b><code>evidence.ref</code> 로 링크를 만들지 않았다.</b> <code>{type: "conversation", ref: "conv_01JQZ3M1"}</code> 가
+오지만 <b>그 <code>ref</code> 로 열 수 있는 화면이 없다</b>. 출처 종류("대화에서")만 표기한다.
+<br><br><b><code>status</code> 가 <code>active</code> 가 아닌 논지는 흐리게 뭉쳐 표기한다.</b> 예시에 <code>active</code> 만 나오고
+열거값이 미확정이라 값마다 표기를 만들지 않는다 — <code>fg-neutral-subtle</code> 로 내리고 "비활성" 한 단어를 붙인다.
+<b><code>opacity</code> 를 쓰지 않았다</b> — 자식 태그·아이콘까지 흐려진다.
+<br><br><b>논지 행에는 수정만 있다. 삭제가 없다.</b> <code>DELETE</code> 는 <code>facts</code> 전용이고 이슈 #17 회신으로
+"사용자가 부를 수 있는 논지 삭제 API 가 없다" 가 확정됐다(C64). 새 논지가 기록되면 기존 <code>active</code> 가
+서버 내부에서 <code>closed</code> 가 될 뿐이다.
+<br><br><b>논지 입력 폼을 만들지 않는다.</b> <code>POST /wiki/theses</code> 는 AI 서비스가 스스로 부르는 경로다 —
+논지는 대화에서만 기록된다 (AI 명세 §9 수집 경로).
+<br><br><b>"반영까지 시간이 걸립니다" 를 넣지 않았다.</b> <code>PUT</code> 으로 고친 논지는 <b>저장 직후부터</b> 다음 AI
+응답에 반영된다(C65). AI 명세의 "대화 종료 후 비동기 배치" 는 AI 가 새 사실을 추출하는 별도 과정이다.
+<br><br><b><code>editable: false</code> 인 항목에는 수정·삭제 컨트롤을 노출하지 않는다.</b> 이 아트보드의 네 사실은
+전부 <code>editable: true</code> 인 경우다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 17 · 위키 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 17 · AI가 이해한 나 · 빈 상태</div>
+<div class="ab-name">둘 다 비어 있음 — 처음의 정상 상태</div>
+<div class="ab-api">GET /ai/wiki → profile [] · theses [] (에러 아님)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="empty">
+      <!-- 캐릭터가 올 수 있는 자리 (아트보드 0). -->
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/></svg></div>
+      <b>아직 모은 것이 없습니다</b>
+      <span>대화를 나누거나 종목을 매수하면<br>AI 가 이유를 묻고 여기에 쌓아 둡니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="primary">AI 채팅으로 가기</button>
+  </div>
+</div>
+<div class="note">
+<b>위키는 처음에 반드시 비어 있다.</b> 사실도 논지도 AI 가 대화·거래에서 누적해야 생긴다 (ia.md §1).
+<b>빈 배열을 실패로 다루지 않는다</b> — 이 화면은 에러가 아니라 정상 상태다.
+<br><br><b>버튼이 AI 채팅으로 보내는 것 하나다.</b> 입력 폼을 주지 않는다 — <b>맥락은 대화에서만 쌓인다</b>.
+여기에 "성향 설문" 이나 "논지 직접 입력" 을 두면 <code>POST /wiki/theses</code> 를 프론트가 부르게 되고,
+그건 AI 서비스 내부 경로라 중계 대상이 아니다 (apiSpec §10.1).
+<br><br><b>이 화면에는 로딩과 빈 상태를 구분할 이유가 특히 크다.</b> 둘을 같은 모양으로 만들면
+사용자가 "아직 안 왔다" 와 "원래 없다" 를 구별할 수 없어 계속 새로고침한다. 로딩은 아트보드 21 이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 18 · 위키 · 한쪽만 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 18 · AI가 이해한 나 · 빈 상태</div>
+<div class="ab-name">논지만 비어 있음 — 수집 경로를 알려준다</div>
+<div class="ab-api">GET /ai/wiki → profile[2] · theses []</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">AI 가 대화와 거래에서 모은 내용입니다. 틀린 것은 고치거나 지울 수 있습니다.</div>
+
+    <div class="sec">투자 성향 <i>사실 2</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</p>
+          <span class="src"><span class="tag">직접 말함</span>2026.04.02 · 대화에서</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span></span>
+      </div>
+      <div class="wrow">
+        <span class="x">
+          <p>반도체 업종 종목을 반복적으로 매수함</p>
+          <span class="src"><span class="tag">거래에서</span>2026.08.21 · 거래 이력에서</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span></span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">종목별 투자 논지 <i>논지 0</i></div>
+    <div class="card" style="padding:22px 16px; text-align:center">
+      <b style="font-size:var(--finch-font-size-body-2); font-weight:600">기록된 논지가 없습니다</b>
+      <div class="cap" style="margin-top:6px">종목을 매수하면 AI 가 대화에서<br>"어떤 점을 보고 결정하셨나요?" 를 묻습니다</div>
+    </div>
+
+    <div class="meta" style="padding:0 2px">고친 내용은 저장한 순간부터 다음 AI 응답에 반영됩니다.</div>
+  </div>
+</div>
+<div class="note">
+<b>한쪽만 비면 그 섹션에만 빈 문구를 둔다</b> (ia.md §1). 화면 전체를 빈 상태로 바꾸면 이미 쌓인 사실이 사라진다.
+<br><br><b>논지 쪽 빈 문구는 수집 경로를 알려주는 문구여야 한다.</b> "없습니다" 로만 끝내면 사용자가 어떻게
+채우는지 모른다. <b>여기에도 입력 폼을 주지 않는다</b> — 버튼도 두지 않았다. 매수가 트리거이고
+AI 가 먼저 묻기 때문이다(AI 명세 §9). "종목 담으러 가기" 버튼을 두면 논지를 채우려고 매수하게 만든다.
+<br><br><b>섹션 헤더에 개수를 적었다(<code>논지 0</code>).</b> 개수가 없으면 빈 카드가 로딩 실패로 읽힌다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 19 · 위키 · 논지 수정 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 19 · AI가 이해한 나 · 수정</div>
+<div class="ab-name">논지 수정 시트 — 최대 500자</div>
+<div class="ab-api">PUT /ai/wiki/theses/{stockCode} · body camelCase</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sec">종목별 투자 논지 <i>논지 2</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p style="font-weight:600">SK하이닉스<span class="meta" style="font-weight:400"> · 000660</span></p>
+          <p style="margin-top:4px">HBM 구조적 성장에 베팅</p>
+          <span class="src"><span class="tag">직접 말함</span><span class="tag">장기</span>2026.03.11 기록</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span></span>
+      </div>
+    </div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">논지 수정</div>
+    <div class="cap" style="margin-top:-6px">SK하이닉스 · 000660</div>
+    <div class="ta" style="min-height:104px; margin-top:0; color:var(--finch-color-fg-neutral)">
+      <span>HBM 구조적 성장에 베팅</span><span class="meta">13/500</span>
+    </div>
+    <div>
+      <div class="cap" style="margin-bottom:8px">보는 기간</div>
+      <div class="reasons" style="margin-top:0">
+        <button class="chip">단기</button>
+        <button class="chip">중기</button>
+        <button class="chip" aria-pressed="true">장기</button>
+      </div>
+    </div>
+    <div class="row2">
+      <button class="btn" data-v="secondary">취소</button>
+      <button class="btn" data-v="primary">저장</button>
+    </div>
+    <div class="meta" style="text-align:center">저장하면 이 논지는 "직접 말함" 으로 바뀝니다</div>
+  </div>
+</div>
+<div class="note">
+<b>최대 500자다</b> (<code>openapi.json</code> 의 <code>ThesisIn.text</code>). 카운터를 함께 둔다 — 500자는
+저장이 거부될 수 있는 경계라 상시 노출이 맞다(채팅의 2,000자와 다른 판단이다).
+<br><br><b><code>source</code> 를 화면이 보내지 않는다.</b> 수정하면 서버가 자동으로 <code>user_stated</code> 로 바꾼다
+(AI 명세 §9). 그 사실을 시트 하단 한 줄로 알린다 — 알리지 않으면 "AI 추측" 태그가 왜 사라졌는지 모른다.
+<br><br><b><code>horizon</code> 은 <code>short</code>·<code>mid</code>·<code>long</code> 셋뿐이다</b>
+(<code>openapi.json</code> 의 <code>ThesisHorizon</code>). 화면 문구는 단기·중기·장기로 1:1 대응한다.
+<br><br><b>경로 파라미터가 <code>{stockCode}</code> 다.</b> AI 서버 원본은 <code>{ticker}</code> 지만 프론트는 백엔드만
+부르므로 <code>PUT /api/v1/ai/wiki/theses/{stockCode}</code> 다 (C80·C19). <b>요청 본문 키는 camelCase</b>다(C75).
+<br><br><b>저장 후 재조회로 갱신한다.</b> <code>PUT</code> 응답의 <code>content</code> 는 갱신된 논지 전체지만(C61)
+낙관적 갱신 대신 <code>GET /wiki</code> 를 다시 부른다 — 되돌릴 범위가 쿼리 무효화 한 줄이라 가장 싸다.
+<b>화면에는 차이가 없다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 20 · 위키 · 사실 삭제 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 20 · AI가 이해한 나 · 삭제</div>
+<div class="ab-name">사실 삭제 확인 — 되돌리기가 없다</div>
+<div class="ab-api">DELETE /ai/wiki/facts/{factId} → content {id, deletedAt}</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sec">투자 성향 <i>사실 4</i></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow">
+        <span class="x">
+          <p>분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</p>
+          <span class="src"><span class="tag">직접 말함</span>2026.04.02 · 대화에서</span>
+        </span>
+        <span class="act"><span class="wact"><svg viewBox="0 0 24 24"><path d="M6 7h12M9 7V5h6v2M8 7l1 12h6l1-12"/></svg></span></span>
+      </div>
+    </div>
+  </div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div class="h">이 내용을 지울까요?</div>
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+      <div>
+        <div class="m">되돌릴 수 없습니다</div>
+        <div class="s">지운 즉시 이후 모든 AI 응답에서 제외됩니다.</div>
+      </div>
+    </div>
+    <div class="card" style="border-color:var(--finch-color-stroke-neutral-subtle); padding:12px 14px">
+      <div class="cap" style="color:var(--finch-color-fg-neutral)">분산 투자를 중시하며 단일 업종 40% 이상을 피하고자 함</div>
+    </div>
+    <div class="row2">
+      <button class="btn" data-v="secondary">취소</button>
+      <button class="btn" data-v="primary">지우기</button>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>되돌리기를 만들지 않고 확인을 받는다.</b> "즉시 이후 모든 응답에서 제외된다" 가 명세에 있으므로
+(AI 명세 §9) 토스트 + 되돌리기로는 성립하지 않는다 — 되돌릴 API 가 없다 (ia.md §1).
+<br><br><b>지울 문장을 확인 시트에 다시 보여준다.</b> 목록이 딤 뒤에 가려지므로 무엇을 지우는지 시트 안에서
+읽혀야 한다. 오탭으로 열었을 때 취소할 근거가 이 한 줄이다.
+<br><br><b>이것이 <code>ai_inferred</code> 의 "아니에요" 를 흉내 내는 유일한 경로다</b> (P24, 아트보드 16).
+<b>다만 "아니에요" 라고 라벨을 붙이지 않았다</b> — 삭제와 부정은 다른 동작이고, 승격 경로가 오면
+확인 UI 는 이 시트가 아니라 행 안의 버튼 한 쌍이 된다.
+<br><br><b>응답 <code>content</code> 는 <code>{id, deletedAt}</code> 이다</b>(C61). 화면은 그 값을 쓰지 않고
+<code>GET /wiki</code> 를 재조회한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 21 · 위키 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 21 · AI가 이해한 나 · 상태</div>
+<div class="ab-name">로딩</div>
+<div class="ab-api">GET /ai/wiki · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sk" style="width:74%; height:13px"></div>
+    <div class="sk" style="width:88px; height:14px; margin-top:6px"></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow"><span class="x"><div class="sk" style="width:100%"></div><div class="sk" style="width:72%; margin-top:7px"></div><div class="sk" style="width:112px; height:12px; margin-top:10px"></div></span></div>
+      <div class="wrow"><span class="x"><div class="sk" style="width:84%"></div><div class="sk" style="width:104px; height:12px; margin-top:10px"></div></span></div>
+      <div class="wrow"><span class="x"><div class="sk" style="width:94%"></div><div class="sk" style="width:58%; margin-top:7px"></div><div class="sk" style="width:120px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+    <div class="sk" style="width:112px; height:14px; margin-top:6px"></div>
+    <div class="rows" style="padding:0">
+      <div class="wrow"><span class="x"><div class="sk" style="width:104px"></div><div class="sk" style="width:66%; margin-top:7px"></div><div class="sk" style="width:136px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>골격 행의 수를 실제 응답 수와 맞추려 하지 않는다.</b> <code>GET /wiki</code> 는 개수를 미리 알려주지 않는다 —
+3 + 1 은 <b>레이아웃이 흔들리지 않을 만큼만 채우는 값</b>이고, 실제가 0건이면 아트보드 17 로 바뀐다.
+<br><br><b>삭제·수정 컨트롤을 골격으로 그리지 않았다.</b> 아이콘 자리를 비워 두면 로딩 중 눌릴 것이 없다는
+사실이 그대로 보인다 — 골격으로 그리면 눌러 보게 된다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 22 · 위키 · 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 22 · AI가 이해한 나 · 에러</div>
+<div class="ab-name">조회 실패 — 재시도 가능</div>
+<div class="ab-api">GET /ai/wiki → 502 AI_UPSTREAM_UNAVAILABLE (requestId 없음)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">AI가 이해한 나</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll" style="justify-content:center">
+    <div class="alert">
+      <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9.5v4M12 16.5h.01"/></svg>
+      <div>
+        <div class="m">AI 서버에 연결할 수 없습니다</div>
+        <div class="s">잠시 후 다시 시도해 주세요. 기록된 내용은 지워지지 않았습니다.</div>
+      </div>
+    </div>
+    <button class="sbtn" style="width:100%">
+      <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.6M20 5v6h-6"/></svg>다시 시도
+    </button>
+  </div>
+</div>
+<div class="note">
+<b>피드백 슬롯이 없다.</b> <code>AI_UPSTREAM_UNAVAILABLE</code>·<code>AI_UPSTREAM_TIMEOUT</code> 은 백엔드 자체
+에러라 최상위 <code>requestId</code> 가 없다 (apiSpec §10.4). <b>위키 3종은 애초에 AI 응답 생성 경로가 아니라
+저장된 값의 CRUD 라 <code>requestId</code> 로 평가할 원본 응답 개념이 없다</b> — 피드백은 슬롯 6종에만 붙는다.
+<br><br><b>"기록된 내용은 지워지지 않았습니다" 를 문구에 넣었다.</b> 이 화면은 사용자가 직접 적은 것을 보는
+자리라 조회 실패가 <b>"내가 쓴 게 날아갔나" 로 읽힌다.</b> 조회 실패와 데이터 손실을 구분해 준다.
+<br><br><b>빈 상태로 대신 그리지 않는다.</b> 실패를 "아직 모은 것이 없습니다"(아트보드 17)로 보여주면
+사용자가 쌓아 둔 것이 사라졌다고 읽는다 — <b>빈 배열을 실패로 다루지 않는 규칙의 반대 방향도 지킨다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 23 · 알림함 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 23 · 알림함 · 계약 없음</div>
+<div class="ab-name">목록 — 요청 사항이지 계약이 아니다</div>
+<div class="ab-api">엔드포인트 없음 (P23) · 라우트 /inbox 미확정</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">알림함</div>
+    <span class="navlink">모두 읽음</span>
+  </div>
+
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">알림으로 붙잡지 않고 쌓아 둡니다. 언제 열어도 됩니다.</div>
+
+    <div class="sec">적어야 할 것 <i>1</i></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>SK하이닉스를 새로 담으셨네요</b>
+          <span>어떤 점을 보고 결정하셨는지 알려주시면 다음 답변에 반영합니다</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag">기록 요청</span>2026.09.04 14:32
+          </span>
+        </span>
+        <span class="r"><span class="unread" style="width:8px; min-width:8px; height:8px; padding:0"></span></span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">확인해야 할 것 <i>2</i></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>오래 들고 가는 쪽을 선호하시나요?</b>
+          <span>대화에서 그렇게 보였습니다. 맞는지 확인해 주세요</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag" data-guess>AI 추측 확인</span>2026.09.03 21:10
+          </span>
+        </span>
+        <span class="r"><span class="unread" style="width:8px; min-width:8px; height:8px; padding:0"></span></span>
+      </div>
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>배당보다 성장을 보고 고르시나요?</b>
+          <span>대화에서 그렇게 보였습니다. 맞는지 확인해 주세요</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag" data-guess>AI 추측 확인</span>2026.09.03 09:40
+          </span>
+        </span>
+        <span class="r"><span class="unread" style="width:8px; min-width:8px; height:8px; padding:0"></span></span>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:4px">읽을 것 <i>1</i></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start">
+        <span class="l">
+          <b>9월 4일 브리핑</b>
+          <span>보유 종목 관련 4건</span>
+          <span class="src" style="display:flex; gap:6px; margin-top:8px; font-size:11px; color:var(--finch-color-fg-placeholder)">
+            <span class="tag">브리핑</span>2026.09.04 07:30 · 읽음
+          </span>
+        </span>
+        <span class="r"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="note" style="border-style:solid; border-width:2px; border-color:var(--finch-color-stroke-neutral-contrast)">
+<b>⚠ 이 화면에는 API 계약이 아예 없다 — <code>contracts.md</code> P23. 시안은 요청 사항이지 계약이 아니다.</b>
+<b>백엔드 회신 전까지 구현하지 않는다.</b> <code>frontend/src/app/router.tsx</code> 가
+<code>RoutePlaceholder</code> 로 막아 둔 상태를 실제 렌더로 바꿀 근거가 아직 없다.
+<br><br><b>아래는 전부 가정이다.</b> 응답 스키마에서 온 것이 하나도 없다.
+<ul>
+<li><b>항목 종류 세 갈래</b>(적어야 할 것 · 확인해야 할 것 · 읽을 것) — PRD 문구를 그대로 옮긴 것이고
+    <code>category</code> 같은 열거값이 있는지 모른다. 세 갈래가 아니라 하나의 시간순 목록일 수도 있다.</li>
+<li><b>미읽음 표시와 개수</b> — 항목별 <code>read</code> 필드가 있는지, 총 미읽음 개수를 별도로 주는지 모른다.
+    마이페이지의 뱃지 <code>3</code>(아트보드 5)도 같은 가정에 기대고 있다.</li>
+<li><b>"모두 읽음"</b> — 읽음·처리 표시 API 가 있는지 모른다. 개별 읽음만 있고 일괄이 없으면 이 버튼은 사라진다.</li>
+<li><b>연결 대상</b> — 기록 요청이 채팅으로, 브리핑이 <code>/briefing</code> 으로 가는 것이 자연스럽지만
+    <code>deeplink</code> 같은 필드가 오는지 모른다.</li>
+</ul>
+<b>GitLab 이슈 #26 ①번</b>으로 목록 조회(항목 종류·제목·요약·연결 대상·미읽음 여부·미읽음 개수)와
+읽음·처리 표시 두 가지를 물어 뒀다.
+</div>
+<div class="note">
+<b>세 블록을 점선 + 그림자 없음으로 그렸다.</b> 근거가 확정되지 않은 카드의 형태다
+(<code>tokens.css</code> §5 주석). <b>새 토큰을 만들지 않았고 경고 배너도 붙이지 않았다</b> —
+화면 안에 "미확정" 이라고 적으면 그 문구가 그대로 구현된다. 형태는 옮겨 적히지 않는다.
+<br><br><b>라우트가 두 문서에서 어긋난다.</b> <code>routes.ts</code> 는 <code>inbox: '/inbox'</code>,
+<code>ia.md</code> §1 은 화면 이름 "메일" 과 <code>/mail</code> 이다. 이 캔버스는 코드 쪽을 따랐다 — 아트보드 0 의 노트를 본다.
+<br><br><b>알림(푸시)을 그리지 않았다.</b> PRD 정의가 "알림으로 붙잡지 않고 쌓아두고 기다린다" 다.
+푸시 권한 요청 화면이나 배지 카운트 동기화를 이 화면의 요구로 읽지 않는다.
+<br><br><b>"확인해야 할 것" 항목을 눌렀을 때의 동작이 P24 에 걸려 있다.</b> AI 추측을 "맞아요" 로 승격하는
+경로가 없으므로(아트보드 16) <b>이 항목의 처리 동작도 지금은 정의할 수 없다.</b> 위키로 보내 삭제만 하게
+할 수는 있지만 그건 "확인" 이 아니라 "거부" 다. <b>계약 둘이 서로 맞물려 있는 자리다.</b>
+<br><br><b>미읽음을 점으로만 표시했다.</b> 목록 안에서는 개수가 의미 없고 항목마다 하나씩이라 점이 맞다 —
+<b>다만 점 하나로 끝내지 않는다</b>: 읽은 항목("브리핑")은 점 대신 화살표가 오고 캡션에 "읽음" 이 붙는다.
+색·점만으로 알리지 않는 규칙(finch-seed §4)을 이렇게 지켰다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 24 · 알림함 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 24 · 알림함 · 빈 상태</div>
+<div class="ab-name">쌓인 것이 없음</div>
+<div class="ab-api">엔드포인트 없음 (P23)</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">알림함</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="empty">
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M4 7h16v12H4zM4 7l8 6 8-6"/></svg></div>
+      <b>아직 쌓인 것이 없습니다</b>
+      <span>종목을 매수하거나 브리핑이 만들어지면<br>Finch 가 여기에 물어다 놓습니다</span>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>버튼을 두지 않았다.</b> 이 화면의 항목은 사용자가 만드는 것이 아니라 <b>매수와 브리핑 배치가 만든다</b> —
+"매수하러 가기" 버튼을 두면 알림함을 채우려고 매수하게 만든다(위키 빈 상태와 같은 판단, 아트보드 18).
+<br><br><b>"모두 읽음" 버튼이 사라졌다.</b> 지울 것이 없을 때 남아 있으면 눌러도 아무 일도 안 일어난다.
+<br><br><b>이 빈 상태는 계약과 무관하게 성립한다.</b> 목록이 비었을 때의 화면은 어떤 스키마가 와도 필요하다 —
+그래서 점선으로 그리지 않았다. <b>가정이 들어간 것은 항목의 모양이고 빈 화면의 모양이 아니다.</b>
+</div>
+</section>
+
+
+<!-- ═════════════════ 25 · 알림함 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 25 · 알림함 · 상태</div>
+<div class="ab-name">로딩</div>
+<div class="ab-api">엔드포인트 없음 (P23) · 골격은 계약과 무관하다</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">알림함</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sk" style="width:64%; height:13px"></div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start"><span class="l"><div class="sk" style="width:72%"></div><div class="sk" style="width:94%; height:12px; margin-top:7px"></div><div class="sk" style="width:128px; height:12px; margin-top:10px"></div></span></div>
+      <div class="row" style="align-items:flex-start"><span class="l"><div class="sk" style="width:60%"></div><div class="sk" style="width:88%; height:12px; margin-top:7px"></div><div class="sk" style="width:136px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+    <div class="ai" data-unspec style="padding:0">
+      <div class="row" style="align-items:flex-start"><span class="l"><div class="sk" style="width:52%"></div><div class="sk" style="width:76%; height:12px; margin-top:7px"></div><div class="sk" style="width:120px; height:12px; margin-top:10px"></div></span></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>에러 상태를 그리지 않았다 — 그릴 수 없다.</b> 문구는 서버가 완성해서 내려주는데(apiSpec §1.3)
+<b>부를 엔드포인트가 없어 에러 코드도 문구도 없다.</b> 여기서 화면이 문구를 지어 넣으면
+그 문구가 계약처럼 굳는다. <b>계약이 오면 코드별로 아트보드 4·22 와 같은 형태를 쓴다.</b>
+<br><br><b>섹션 헤더도 골격으로 뒀다.</b> 세 갈래가 계약이 아니라 가정이므로(P23) 헤더 문구를 미리
+확정해 놓으면 응답이 다른 구조로 왔을 때 골격이 거짓말을 한다.
+<br><br><b>블록의 개수와 행 수는 레이아웃 안정용 값이다.</b> 실제로 몇 갈래가 몇 건 올지 모른다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 26 · 브리핑 전체 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 26 · 브리핑 전체 · 슬롯 1</div>
+<div class="ab-name">기본 — 항목 최대 4건 (화면 자체가 잠정)</div>
+<div class="ab-api">GET /ai/briefing → content.items[] · citations · requestId</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+
+  <div class="scroll">
+    <div class="cap" style="padding:0 2px">2026년 9월 4일 · 07:30 생성</div>
+
+    <div class="ai" style="padding:2px 16px 12px">
+      <div class="bitem">
+        <div class="hd"><span class="rk">1</span><b>SK하이닉스 강세</b></div>
+        <span class="tag" style="align-self:flex-start">보유 종목 등락</span>
+        <p>포트폴리오에서 18.2%를 차지하는 SK하이닉스가 <span class="up">+5.12%</span> 상승했습니다. 같은 기간 코스피는 <span class="up">+0.41%</span> 였습니다.<span class="cit">[1]</span></p>
+        <div class="tickers">
+          <a>SK하이닉스<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+
+      <div class="bitem">
+        <div class="hd"><span class="rk">2</span><b>삼성전자 반기보고서 제출</b></div>
+        <span class="tag" style="align-self:flex-start">공시</span>
+        <p>반기보고서가 어제 장 마감 후 제출됐습니다. 매출은 전년 동기 대비 <span class="up">+7.4%</span>, 영업이익은 <span class="down">−2.1%</span> 로 기재됐습니다.<span class="cit">[2]</span></p>
+        <div class="tickers">
+          <a>삼성전자<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+
+      <div class="cites">
+        <div class="hd">근거 2</div>
+        <div class="cite">
+          <span class="b" data-self>계산</span>
+          <span class="x"><b>보유 비중 · 지수 대비 등락</b><span>Finch 엔진 · 2026-09-04 07:30</span></span>
+        </div>
+        <div class="cite">
+          <span class="b">공시</span>
+          <span class="x"><b>삼성전자 반기보고서 (2026.06)</b><span>DART · 2026-09-03 17:41</span></span>
+          <span class="a"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span>
+        </div>
+      </div>
+
+      <div class="disc">시세 2026-09-04 07:30 · 공시 2026-09-03 17:41 기준<br>본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+
+      <div class="fb">
+        <span class="lb">이 브리핑이 도움이 되었나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M7 21V10l4.5-7a2 2 0 0 1 2 3l-1 4h5a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 16 21z"/></svg></button>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="fab"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>AI 에게 묻기</div>
+</div>
+<div class="note">
+<b>블록 하나에 항목을 <code>rank</code> 순으로 쌓았다.</b> 종류별로 블록을 나누지 않는다 — 어떤 날은 빈 블록이
+생긴다 (ia.md §4 1번 슬롯). <b><code>category</code> 5종은 블록 경계가 아니라 항목의 태그다.</b>
+<code>holding_move</code>·<code>earnings</code>·<code>filing</code>·<code>macro_event</code>·<code>portfolio_shift</code> 이고
+<b>최대 4건</b>이 온다. <b>이 아트보드는 2건이다</b> — 근거 목록·면책·피드백까지 한 화면에 들어가는 최대치가
+2건이고, <b>3건부터는 블록 하단이 접혀 스크롤이 생긴다.</b> 4건이 정상 상한이므로 <b>이 화면은 스크롤을
+전제로 만든다</b> — 피드백을 화면에 고정하지 않는 이유이기도 하다(블록의 마지막 요소여야 한다).
+<b>나머지 <code>category</code> 3종(<code>macro_event</code>·<code>portfolio_shift</code> 등)의 태그도 같은 형태다.</b>
+<br><br><b>항목 제목(<code>title</code>)은 AI 가 보낸 것을 그대로 쓴다.</b> 화면이 짓지 않는다.
+<b>태그 문구(보유 종목 등락 · 공시 · 시장 일정)만 화면이 정한 것</b>이고 <code>category</code> 열거값에 1:1 대응한다 —
+5종 전부에 문구를 미리 정해 두고, 모르는 값이 오면 태그를 생략한다(항목은 그대로 렌더한다).
+<br><br><b>피드백은 블록 하단에 하나다.</b> <code>items[]</code> 마다가 아니다 — <code>requestId</code> 는 브리핑
+응답 1건에 하나다 (ia.md §4). <b>근거 목록도 블록 하단에 하나</b>다: <code>items[].citations</code> 는 최상위
+<code>citations</code> 의 id 를 가리키고 여러 항목이 같은 문서를 함께 쓴다.
+<br><br><b>등락 색은 <code>segments[].direction</code> 이 있는 조각에만 왔다.</b> "+5.12%" 는 <code>up</code>,
+"−2.1%" 는 <code>down</code> 이다. 15px 본문이라 700 단계이고 <b>부호가 함께 온다</b>. "2.50%" 는 방향이 없는
+수치라 칠하지 않았다 — <b>숫자를 정규식으로 찾아 칠하면 이것도 칠해진다.</b>
+<br><br><b><code>relatedTickers</code> 로 종목 칩을 만들고 <code>deeplink</code> 는 조립하지 않는다.</b>
+<code>deeplink</code> 는 AI 서버가 만든 프론트 경로 문자열이라(예: <code>/stocks/000660?tab=ai</code>) 그대로
+이동시킨다. <b><code>macro_event</code> 처럼 종목이 붙지 않는 항목에는 칩이 없다</b> — 빈 칩 자리를 만들지 않는다.
+<br><br><b><code>relevanceScore</code> 를 노출하지 않았다.</b> <code>rank</code> 는 순서로 보이고 점수는 정렬에만 쓴다.
+<code>rank</code> 자체도 숫자 뱃지 하나로만 두고 "1위" 처럼 쓰지 않는다 — 순위 경쟁이 아니다.
+<br><br><b>AI 플로팅 버튼이 이 화면에 있다.</b> PRD 배치(종목 상세·포트폴리오·브리핑·뉴스 상세)와
+프로토타입 배치(홈·종목 상세·포트폴리오·브리핑) <b>양쪽이 브리핑에서는 일치한다</b> (ia.md §3).
+<b>다만 여기서 여는 채팅은 <code>context.screen</code> 을 채우지 않고 연다</b> — 열거값 5종
+(<code>home</code>·<code>portfolio</code>·<code>stock_detail</code>·<code>order</code>·<code>chat</code>)에 브리핑이 없다.
+GitLab 이슈 #26 ④번 회신 대기.
+<br><br><b>탭바를 그리지 않았다.</b> 브리핑 전체는 홈의 "전체 보기" 도착지이고 탭에 두지 않는다 (ia.md §3).
+FAB 이 탭바 자리를 쓰므로 <code>safe-area-inset-bottom</code> 을 FAB 이 직접 더한다.
+</div>
+<div class="note">
+<b>이 화면의 존재 자체가 잠정이다 (ia.md §1).</b> 프로토타입에 <code>isBriefing</code> 화면과 홈의
+"전체보기"(<code>goBriefing</code>)가 있었지만 <b>PRD v1.0 §06 의 화면 집계에 독립 항목으로 없다.</b>
+라우트 <code>/briefing</code> 도 프론트가 제안한 값이고 팀 확인을 받지 않았다.
+<b><code>GET /ai/briefing</code> 은 확정 계약이므로 홈의 브리핑 블록만으로 끝날 수도 있다</b> —
+그 경우 이 아트보드의 블록이 그대로 홈으로 들어간다(같은 컴포넌트다).
+</div>
+</section>
+
+
+<!-- ═════════════════ 27 · 브리핑 · 빈 상태 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 27 · 브리핑 전체 · 빈 상태</div>
+<div class="ab-name">status empty — 내보낼 항목이 없음 (에러 아님)</div>
+<div class="ab-api">GET /ai/briefing → status "empty" · items [] · date null 가능</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="empty">
+      <!-- 캐릭터가 올 수 있는 자리 (아트보드 0). -->
+      <div class="g"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></div>
+      <b>오늘 전할 것이 없습니다</b>
+      <span>보유 종목에 관련된 공시·실적·시장 일정이<br>확인되지 않았습니다</span>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="secondary">포트폴리오 보기</button>
+  </div>
+</div>
+<div class="note">
+<b><code>status: "empty"</code> 는 오류가 아니다.</b> 보유 종목이 없거나 유의미한 이벤트가 없을 때이고
+<code>items: []</code> 로 온다 (AI 명세 §8). <b>빈 배열을 실패로 다루지 않는다.</b>
+<br><br><b>홈과 이 화면의 처리가 갈린다.</b> 홈에서는 <code>empty</code> 면 <b>영역을 숨긴다</b>(AI 명세 §8 표) —
+자산 요약 아래에 빈 블록을 남기지 않는다. <b>그런데 이 화면은 숨길 수 없다</b>: 사용자가 직접 들어온
+화면이라 아무것도 없으면 고장으로 읽힌다. 그래서 <b>빈 상태를 그렸다.</b>
+<br><br><b>도달 경로를 다시 생각해야 하는 자리다.</b> 홈에서 영역이 숨겨지면 "전체 보기" 버튼도 없어지므로
+<b>정상적으로는 이 화면에 올 수 없다.</b> 도달하는 경우는 셋이다 —
+① 알림함의 브리핑 항목에서 직접(계약 미정, 아트보드 23), ② 북마크·주소 직접 입력,
+③ 홈을 본 뒤 항목이 사라지도록 갱신됐을 때. <b>③ 이 실제로 가능하다</b>(같은 쿼리를 공유하므로).
+<br><br><b>재시도 버튼을 두지 않았다.</b> 다시 불러도 <code>empty</code> 다. 대신 포트폴리오로 보낸다 —
+브리핑이 비는 가장 흔한 이유가 보유 종목이 없는 것이다.
+<br><br><b><code>date</code> 가 <code>null</code> 일 수 있다</b>(조회 시 <code>date</code> 를 주지 않았고 기준 거래일도 못 잡은 경우).
+그래서 이 화면은 상단 날짜 캡션을 그리지 않았다 — <b>값이 없을 수 있는 표기는 빈 상태에서 생략한다.</b>
+<br><br><b><code>status: "generating"</code> 은 그리지 않았다.</b> "현재 서버는 캐시 미스 시 즉시 생성하므로
+이 값을 내보내지 않는다" 가 명세에 있다(AI 명세 §8). <b>30초 뒤 재조회 로직도 만들지 않는다</b> —
+도달하지 않는 상태에 화면과 폴링을 붙이면 그만큼이 죽은 코드다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 28 · 브리핑 · 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 28 · 브리핑 전체 · 상태</div>
+<div class="ab-name">로딩</div>
+<div class="ab-api">GET /ai/briefing · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="sk" style="width:168px; height:13px"></div>
+    <div class="ai" style="padding:16px">
+      <div style="display:flex; align-items:center; gap:8px">
+        <div class="sk" style="width:20px; height:20px; border-radius:999px"></div>
+        <div class="sk" style="width:132px; height:16px"></div>
+      </div>
+      <div class="sk" style="width:80px; height:20px; border-radius:var(--finch-radius-chip); margin-top:8px"></div>
+      <div class="sk" style="width:100%; margin-top:10px"></div>
+      <div class="sk" style="width:86%; margin-top:8px"></div>
+      <div class="sk" style="width:104px; height:44px; border-radius:var(--finch-radius-chip); margin-top:10px"></div>
+
+      <div style="height:14px; border-top:1px solid var(--finch-color-stroke-neutral-subtle); margin-top:14px"></div>
+      <div style="display:flex; align-items:center; gap:8px">
+        <div class="sk" style="width:20px; height:20px; border-radius:999px"></div>
+        <div class="sk" style="width:158px; height:16px"></div>
+      </div>
+      <div class="sk" style="width:52px; height:20px; border-radius:var(--finch-radius-chip); margin-top:8px"></div>
+      <div class="sk" style="width:96%; margin-top:10px"></div>
+      <div class="sk" style="width:68%; margin-top:8px"></div>
+      <div class="sk" style="width:92px; height:44px; border-radius:var(--finch-radius-chip); margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+<b>골격 항목을 2건으로 뒀다.</b> 최대 4건이지만 <b>몇 건 올지 응답 전에는 모른다</b> — 4건을 그려 두면
+1건만 왔을 때 화면이 크게 줄어들며 스크롤이 튄다. <b>2건은 접히지 않는 최소 높이</b>다.
+<br><br><b>종목 칩 자리를 44 높이 골격으로 잡았다.</b> 실제 칩도 44 라 값이 오면 높이가 바뀌지 않는다 —
+<b>골격의 크기를 실제 요소에서 가져오는 것이 레이아웃 이동을 없애는 유일한 방법이다.</b>
+<br><br><b>근거·면책·피드백 자리를 골격으로 그리지 않았다.</b> 값이 오기 전에는 근거가 몇 건인지 모르고,
+피드백은 <code>requestId</code> 가 있어야 성립한다. <b>골격으로 그리면 로딩 중에 엄지를 누르게 된다.</b>
+<br><br><b>AI 플로팅 버튼도 로딩 중에는 그리지 않았다.</b> 브리핑 맥락을 물고 들어가는 버튼인데
+맥락이 아직 없다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 29 · 브리핑 · 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 29 · 브리핑 전체 · 에러</div>
+<div class="ab-name">INSUFFICIENT_DATA — 재시도가 없고 피드백이 유일한 행동</div>
+<div class="ab-api">GET /ai/briefing → 409 INSUFFICIENT_DATA · requestId 보존</div>
+<div class="ph">
+  <div class="nav">
+    <div class="icon"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></div>
+    <div class="t">오늘의 브리핑</div>
+    <div class="icon"></div>
+  </div>
+  <div class="scroll">
+    <div class="ai">
+      <div class="alert" style="margin:-2px -2px 0">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5M12 16h.01"/></svg>
+        <div>
+          <div class="m">브리핑을 만들 데이터가 아직 모자랍니다</div>
+          <div class="s">보유 종목과 거래 기록이 쌓이면 자동으로 만들어집니다. 지금 다시 시도해도 결과는 같습니다.</div>
+        </div>
+      </div>
+      <div class="disc">본 서비스는 모의투자이며 투자 자문이 아닙니다.</div>
+      <div class="fb">
+        <span class="lb">이 안내가 적절했나요?</span>
+        <button class="thumb"><svg viewBox="0 0 24 24"><path d="M17 3v11l-4.5 7a2 2 0 0 1-2-3l1-4h-5a2 2 0 0 1-2-2.4l1.4-7A2 2 0 0 1 8 3z"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div class="cta">
+    <button class="btn" data-v="secondary">포트폴리오 보기</button>
+  </div>
+</div>
+<div class="note">
+<b>"지금 다시 시도해도 결과는 같습니다" 를 문구에 넣었다.</b> <code>INSUFFICIENT_DATA</code>(409)는
+<b>재시도가 무의미</b>하다 — 재시도 버튼을 만들지 않으므로 사용자가 왜 없는지 알아야 새로고침을 멈춘다
+(apiSpec §10.4, AI 명세 §3).
+<br><br><b>그래서 피드백이 이 자리의 유일한 사용자 행동이고 가장 크게 노출된다</b> (ia.md §4 에러 자리의 피드백).
+<b><code>rating: "up"</code> 은 노출하지 않고 <code>down</code> 고정</b>이다 — 실패한 응답에 "좋다" 를 표시할 대상이 없다.
+<b>이 판단은 근거 문서가 없는 프론트 판단이라 잠정</b>이라고 ia.md 가 적어 뒀다.
+<br><br><b><code>empty</code>(아트보드 27)와 이 화면을 구분한다.</b> <code>empty</code> 는 200 이고 정상이라 알림 박스가
+없다. 이쪽은 409 라 알림 박스 + 피드백이 온다. <b>같은 모양으로 만들면 정상 상태가 실패로 읽힌다.</b>
+<br><br><b>개인화가 열리는 최소 데이터 건수를 화면에 적지 않았다.</b> "N건 이상" 같은 숫자를 쓰면
+그 값이 계약이 된다 — <b>PRD 자신이 "임시값" 이라고 적었고 GitLab 이슈 #26 ③번으로 물어 뒀다</b>(ia.md §7).
+문구는 "쌓이면" 까지만 말한다.
+<br><br><b>등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code> + 잉크 bold + 아이콘 + 문구.
+</div>
+</section>
+
+</x-dc>
+</body>
+</html>
