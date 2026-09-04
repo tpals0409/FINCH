@@ -452,6 +452,354 @@ body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
 </ul>
 </div>
 </section>
+
+
+<!-- ═════════════════ 1 · 홈 상단 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 1 · 홈</div>
+<div class="ab-name">홈 — 자산 요약 · 브리핑 슬롯 · 보유 종목</div>
+<div class="ab-api">GET /account · /portfolio · /ai/briefing</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><i class="dot"></i></div>
+  </div>
+
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">총자산</div>
+      <div class="hero" style="margin-top:4px">1,985,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 14:30 기준</div>
+
+      <div style="height:14px"></div>
+      <div class="kv">
+        <span class="k">예수금</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <b class="v">1,250,000원</b>
+          <span class="linkrow">충전하기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+        </span>
+      </div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">735,000원</span></div>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>오늘의 브리핑
+        <span class="rsv">데이터 기준 09-04 08:00</span></div>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:88%"></span>
+      <span class="sk" style="width:64%"></span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <span class="spin"></span><span class="cap">불러오는 중</span>
+      </div>
+    </div>
+
+    <div class="sec">보유 종목
+      <span class="more">전체 보기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>10주 · 평균 71,200원</span></span>
+        <span class="r"><b>735,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+23,000 (3.23%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">SK하이닉스</span></b><span>3주 · 평균 198,000원</span></span>
+        <span class="r"><b>573,000원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-21,000 (-3.53%)</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="fold"></div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>홈과 포트폴리오는 데이터 출처가 겹친다.</b> 같은 쿼리 키를 공유해 두 화면이 서로 다른 값을 보여주는 일이
+없게 한다 (ia.md §1). 그래서 총자산·예수금·평가금액 세 숫자는 <code>sprint-4.dc.html</code> 아트보드 1 과
+<b>같은 카드 형태</b>다 — 형태가 다르면 사용자가 두 화면을 다른 계좌로 읽는다.
+<br><br><b>상단은 워드마크다.</b> 브랜드 심볼(<code>prototype/brand/finch-symbol.svg</code>)을 쓰지 않았다 —
+56px 내비에 들어갈 크기가 48px 미만이라 발과 힌지가 뭉개진다.
+<br><br><b>메일 아이콘의 미읽음 점은 잉크다.</b> PRD 문구는 "빨간 점" 이지만 모노톤에 세 번째 빨강을 들이면
+상승 적색·위험과 셋이 섞인다. paper 링 2px 을 둘러 흰 내비 면 위에서 떨어져 보이게 했다.
+<b>미읽음 개수를 숫자로 그리지 않았다</b> — 메일 목록 API 계약이 없다 (ia.md §1 메일, GitLab 이슈 #26 1번).
+메일 화면 자체는 <code>account-ai.dc.html</code> 이 그린다.
+<br><br><b>브리핑 슬롯을 로딩 상태로 그렸다.</b> 자산 요약 아래 첫 블록이라는 위치와 표면 형태
+(<code>radius-ai</code> 18px · <code>shadow-ai</code> · <code>stroke-neutral-weak</code>)가 이 캔버스가 확정할
+것이고, 항목 내용·근거 목록·피드백은 아니다 (아트보드 0). <b>슬롯이 비어 있는 상태와 로딩 상태를
+구분해 표시한다</b> (ia.md §4 슬롯 공통 규약) — 여기 그린 것은 로딩이다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 2 · 홈 스크롤 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 2 · 홈</div>
+<div class="ab-name">홈 스크롤 — 원인 분석 슬롯 · 관심 종목</div>
+<div class="ab-api">GET /watchlist?sort=REGISTERED · /stocks/prices</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><i class="dot"></i></div>
+  </div>
+
+  <div class="scroll">
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">카카오</span></b><span>12주 · 평균 41,300원</span></span>
+        <span class="r"><b>484,800원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+9,200 (1.94%)</span></span>
+      </div>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M4 18l5-6 4 3 7-9"/></svg>수익률 원인 분석
+        <span class="rsv">데이터 기준 09-04 14:30</span></div>
+      <span class="sk" style="width:94%"></span>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:52%"></span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+        <span class="spin"></span><span class="cap">불러오는 중</span>
+      </div>
+    </div>
+
+    <div class="sec">관심 종목 <span class="badge" data-v="soft">12 / 50</span></div>
+    <div class="chips">
+      <button aria-selected="true">등록순</button><button>이름순</button><button>등락률순</button>
+    </div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span><span class="badge" data-v="soft">보유</span></b><span>005930 · KOSPI</span></span>
+        <span class="r"><b>73,500원</b>
+          <span class="chg" data-d="down"><svg viewBox="0 0 10 10"><path d="M5 9L1 1h8z"/></svg>-900 (-1.21%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">LG에너지솔루션</span></b><span>373220 · KOSPI</span></span>
+        <span class="r"><b>412,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+8,500 (2.11%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">에코프로비엠</span></b><span>247540 · KOSDAQ</span></span>
+        <span class="r"><b>121,400원</b>
+          <span class="chg" data-d="flat"><svg viewBox="0 0 10 10"><rect x="1" y="4" width="8" height="2"/></svg>0 (0.00%)</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>관심 종목은 독립 화면을 갖지 않는다</b> (ia.md §1). 홈 안의 섹션으로만 존재하고
+<code>GET</code>·<code>POST</code>·<code>DELETE /watchlist</code> 는 홈이 부른다.
+<code>count</code>·<code>maxCount</code> 를 <b>화면이 계산하지 않고</b> 응답값을 그대로 뱃지에 쓴다 —
+50개 한도를 화면에 상수로 박으면 서버 정책이 바뀔 때 어긋난다.
+<br><br>정렬 칩은 <code>?sort=REGISTERED|NAME|CHANGE_RATE</code> 셋이다 (apiSpec §6.3).
+<b>선택을 면 하나로 알리지 않는다</b> — <code>bg-transparent-selected</code> 는 흰 면 위에서 Lc 0 이라
+물리적으로 안 보인다. 테두리(<code>stroke-neutral-contrast</code> 2px)와 글자 굵기가 함께 움직인다 (finch-seed §4).
+<br><br><b>보합 행을 함께 그렸다.</b> 등락 0 은 <code>fg-flat</code>(gray-700)이고 삼각형이 아니라 가로 막대다.
+up/down 과 <b>형태가 달라야</b> 흑백 인쇄나 색맹 사용자에게도 방향 없음이 전달된다.
+<br><br><b>보유 종목 · 관심 종목의 시세는 <code>GET /stocks/prices</code> 한 번으로 받는다.</b>
+행마다 <code>GET /stocks/{code}/price</code> 를 부르면 N+1 이 된다 (apiSpec §5.5, 최대 50건).
+관심 종목 최대 50개와 이 벌크 한도가 같은 값인 것이 그 이유다.
+<br><br><b>"보유" 뱃지는 <code>held</code> 값에서 온다.</b> 화면이 보유 목록과 관심 목록을 교차 비교해
+계산하지 않는다 — 두 응답의 <code>asOf</code> 가 다르면 결과가 흔들린다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 3 · 홈 로딩 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 3 · 홈 · 상태 · 로딩</div>
+<div class="ab-name">홈 — 첫 로드</div>
+<div class="ab-api">GET /account · /portfolio · pending</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <span class="sk" style="width:52px;height:13px"></span>
+      <span class="sk" style="width:196px;height:32px;margin-top:8px;border-radius:var(--finch-radius-control)"></span>
+      <span class="sk" style="width:132px;height:12px;margin-top:10px"></span>
+      <div style="height:16px"></div>
+      <div class="kv"><span class="sk" style="width:54px"></span><span class="sk" style="width:104px"></span></div>
+      <div class="kv"><span class="sk" style="width:66px"></span><span class="sk" style="width:82px"></span></div>
+    </div>
+    <div class="aislot">
+      <div class="hd"><span class="sk" style="width:96px;height:15px"></span></div>
+      <span class="sk" style="width:100%"></span>
+      <span class="sk" style="width:80%"></span>
+    </div>
+    <div class="sec"><span class="sk" style="width:64px;height:13px"></span></div>
+    <div class="rows inset">
+      <div class="row"><span class="l"><span class="sk" style="width:82px"></span><span class="sk" style="width:118px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:88px"></span><span class="sk" style="width:64px;height:12px;margin-top:6px"></span></span></div>
+      <div class="row"><span class="l"><span class="sk" style="width:98px"></span><span class="sk" style="width:104px;height:12px;margin-top:6px"></span></span>
+        <span class="r"><span class="sk" style="width:80px"></span><span class="sk" style="width:70px;height:12px;margin-top:6px"></span></span></div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+자리표시자는 <code>bg-skeleton</code>(gray-300) 하나만 쓴다. 첫 로드는 골격, 추가 로드는 스피너다
+(<code>sprint-4.dc.html</code> 아트보드 2·14 와 같은 규칙).
+<br><br><b>미읽음 점을 로딩 중에 그리지 않았다.</b> 계약이 없어 값을 모르는 상태이므로 점이 있다가 사라지면
+사용자가 읽지 않은 메일을 놓쳤다고 읽는다. <b>없다가 생기는 쪽</b>으로 만든다.
+<br><br><b>AI 슬롯의 골격도 그린다.</b> 슬롯이 늦게 도착해 카드가 나중에 밀려 들어오면 사용자가 읽던 줄이
+움직인다 — 자리를 미리 잡아 레이아웃이 뛰지 않게 한다. 슬롯 표면(반경·그림자)은 골격 상태에서도 유지한다.
+</div>
+</section>
+
+
+<!-- ═════════════════ 4 · 홈 첫 사용자 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 4 · 홈 · 상태 · 빈</div>
+<div class="ab-name">홈 — 첫 사용자 (보유 0 · 관심 0)</div>
+<div class="ab-api">holdings [] · watchlist count 0 · maxCount 50</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div class="cap">총자산</div>
+      <div class="hero" style="margin-top:4px">1,000,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 09:00 기준</div>
+      <div style="height:14px"></div>
+      <div class="kv">
+        <span class="k">예수금</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <b class="v">1,000,000원</b>
+          <span class="linkrow">충전하기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span>
+        </span>
+      </div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">0원</span></div>
+    </div>
+
+    <div class="card tight" style="flex:1;display:flex;min-height:0">
+      <div class="empty">
+        <div class="g"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 14l3-3 2.5 2.5L17 9"/></svg></div>
+        <b>아직 보유한 종목이 없습니다</b>
+        <span>종목을 찾아 첫 주문을 해보세요. 관심 종목을 담아두면 여기에서 시세를 함께 볼 수 있습니다</span>
+        <button class="btn" data-v="primary">종목 찾아보기</button>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>예수금 1,000,000원 · 평가금액 0원은 오류가 아니다.</b> 최초 로그인 시 서버가 계좌와 초기 예수금
+1,000,000원을 함께 만든다 (apiSpec §2.1). 총자산 = 예수금 + 평가금액이므로 두 숫자가 같다.
+<br><br><b>보유 0 과 관심 0 을 두 개의 빈 섹션으로 그리지 않았다.</b> 첫 사용자는 둘이 반드시 함께 비고,
+빈 박스 두 개를 쌓으면 화면이 "고장난 화면" 으로 읽힌다. 하나의 빈 상태로 합치고 <b>보조문에서
+관심 종목을 언급</b>해 그 섹션이 존재한다는 것만 남겼다.
+<br><br><b>AI 브리핑 슬롯을 그리지 않았다.</b> 브리핑은 "내 종목 맞춤" 이고 보유가 없으면 개인화할 대상이
+없다. <code>INSUFFICIENT_DATA</code>(409, 재시도 무의미)가 이 상태의 정상 응답일 가능성이 높지만 확인되지
+않았다 — 그 판정은 AI 파트의 것이고, 여기서 빈 카드를 그려두면 확정 시 버려진다.
+<br><br><b>"종목 찾아보기" 는 <code>/search</code> 로 간다.</b> 눌러서 갈 곳이 있는 버튼만 빈 상태에 둔다
+(<code>sprint-4.dc.html</code> 아트보드 12 가 주문 화면이 없어 버튼을 뺀 것과 반대 방향의 같은 규칙).
+</div>
+</section>
+
+
+<!-- ═════════════════ 5 · 홈 시세 지연 · 슬롯 에러 ═════════════════ -->
+<section class="ab">
+<div class="ab-tag">아트보드 5 · 홈 · 상태 · 에러</div>
+<div class="ab-name">홈 — 시세 지연 · 값 없음 · AI 슬롯 에러 경계</div>
+<div class="ab-api">stale true · currentPrice null · 502 RETRIEVAL_FAILED</div>
+<div class="ph">
+  <div class="nav">
+    <div class="wm">FINCH</div>
+    <div class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg><i class="dot"></i></div>
+  </div>
+  <div class="scroll">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="cap">총자산</span>
+        <span class="stale"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg>시세 지연</span>
+      </div>
+      <div class="hero" style="margin-top:4px">1,985,000원</div>
+      <div class="meta" style="margin-top:6px">2026-09-04 14:12 기준 · 마지막으로 받은 시세입니다</div>
+      <div style="height:14px"></div>
+      <div class="kv"><span class="k">예수금</span><span class="v">1,250,000원</span></div>
+      <div class="kv"><span class="k">평가금액</span><span class="v">735,000원</span></div>
+    </div>
+
+    <div class="aislot">
+      <div class="hd"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7"/></svg>오늘의 브리핑</div>
+      <div class="ferr">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.01"/></svg>
+        <span>브리핑을 불러오지 못했습니다</span>
+      </div>
+      <button class="btn" data-v="secondary" style="min-height:44px">다시 시도</button>
+    </div>
+
+    <div class="sec">보유 종목
+      <span class="more">전체 보기<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></span></div>
+    <div class="rows inset">
+      <div class="row">
+        <span class="l"><b><span class="nm">삼성전자</span></b><span>10주 · 평균 71,200원</span></span>
+        <span class="r"><b>735,000원</b>
+          <span class="chg" data-d="up"><svg viewBox="0 0 10 10"><path d="M5 1l4 8H1z"/></svg>+23,000 (3.23%)</span></span>
+      </div>
+      <div class="row">
+        <span class="l"><b><span class="nm">SK하이닉스</span></b><span>3주 · 평균 198,000원</span></span>
+        <span class="r"><b class="meta" style="font-weight:400">시세 없음</b>
+          <span class="cap">3주 보유</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="tabbar">
+    <a aria-current="page"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>홈</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg>탐색</a>
+    <a><svg viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-6M22 19H2"/></svg>포트폴리오</a>
+    <a><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>내 정보</a>
+  </div>
+</div>
+<div class="note">
+<b>이 한 화면에 서로 다른 세 실패가 겹쳐 있다.</b> 셋이 각각 다른 형태로 나타나야 사용자가 무엇을
+기다리면 되는지 안다.
+<table class="tb" style="margin-top:8px">
+<tr><th>실패</th><th>응답</th><th>화면</th></tr>
+<tr><td>수신 끊김</td><td>가격 3필드 = <b>마지막 수신 값</b>, <code>asOf</code> = 마지막 수신 시각, <code>stale: true</code></td>
+    <td>값을 <b>지우지 않는다</b>. "시세 지연" 칩 + <code>asOf</code> 옆에 "마지막으로 받은 시세입니다"</td></tr>
+<tr><td>값 없음 (캐시 미스)</td><td>가격 3필드와 <code>asOf</code> 가 <b>전부 <code>null</code></b>, <code>stale: true</code></td>
+    <td>가격 영역을 <b>비운다</b> (SK하이닉스 행). 0원으로 그리면 폭락으로 읽힌다. 수량은 원장 값이라 남는다</td></tr>
+<tr><td>AI 슬롯 실패</td><td><code>502 RETRIEVAL_FAILED</code> 등 재시도 가능 코드</td>
+    <td>슬롯 <b>안에서만</b> 에러 + 재시도 버튼. 화면의 나머지는 살아 있다</td></tr>
+</table>
+<b>임계 수치를 화면에 쓰지 않았다.</b> "몇 초 이상 지연" 은 <code>[S0-3]</code>(contracts P10)이고 아직 없다.
+칩은 <code>stale</code> 이 <code>true</code> 인지만 보고 켜진다 — 화면이 <code>asOf</code> 와 현재 시각을
+비교해 스스로 판정하지 않는다. 판정하면 서버와 어긋나 "지연이라는데 값은 최신" 이 된다.
+<br><br><b>지연 칩에 등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크)
++ 시계 아이콘이다. 적색이면 총자산이 떨어진 것으로 읽힌다 (finch-seed §4).
+<br><br><b>다건 조회는 항목별로 판정한다</b> (apiSpec §5.5). 한 종목이 <code>null</code> 이어도 나머지는
+정상 값이므로 목록 전체를 에러로 덮지 않는다. 총자산·평가금액은 <b>서버가 원장에서 계산한 값</b>이라
+행 하나가 비어도 그대로 표시된다 — 화면이 행을 더해 다시 계산하지 않는다.
+<br><br><b>슬롯은 위젯 단위 에러 경계다</b> (ia.md §4, 컨벤션 §8). 재시도 버튼이 <b>주 동작</b>이고 피드백은
+보조로 접는다 — <code>RETRIEVAL_FAILED</code>·<code>LLM_TIMEOUT</code> 은 재시도 가능 분류다 (apiSpec §10.4).
+</div>
+</section>
 </x-dc>
 </body>
 </html>
