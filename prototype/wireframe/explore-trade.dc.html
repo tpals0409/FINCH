@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="../support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+
+<!-- 탐색·거래 축 와이어프레임. ia.md §1 의 17화면 중 6개 —
+     홈 · 종목 검색 · 최근 검색어 · 최근 본 종목 · 종목 상세 · 주문.
+     sprint-4.dc.html 의 형식과 클래스 이름을 그대로 따른다. 두 캔버스가 같은 얼굴이어야
+     다음 사람이 한쪽만 읽고도 다른 쪽을 읽을 수 있다.
+
+     토큰은 여기서 손으로 적지 않는다. 앱이 쓰는 파일을 그대로 불러온다.
+     tokens.css 를 고치면 이 페이지도 같이 바뀐다 (prototype/README.md).
+     상대 경로라 저장소 안에서 열 때만 해석된다. -->
+<link rel="stylesheet" href="../../frontend/src/styles/tokens.css">
+
+<style>
+/* 앱이 서빙하는 서브셋 woff2 를 그대로 쓴다. index.css 의 @font-face 와 같은 굵기 범위. */
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-light.woff2') format('woff2'); font-weight:100 399; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-medium.woff2') format('woff2'); font-weight:400 599; font-display:swap }
+@font-face { font-family:'Gmarket Sans'; src:url('../../frontend/public/fonts/gmarket-sans-bold.woff2') format('woff2'); font-weight:600 900; font-display:swap }
+
+/* 캔버스 바닥색만 여기 적는다 — 앱 색이 아니라 시트 배경이다 (sprint-4.dc.html 과 같은 값).
+   앱에 쓰이는 색·크기·반경·그림자는 전부 토큰에서 온다. */
+body { margin:0; background:#EDEFF3; font-family:var(--finch-font-family-sans);
+  color:var(--finch-color-fg-neutral); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; padding:44px }
+/* 캔버스 런타임 없이 브라우저로 열었을 때의 배치. 런타임이 있으면 런타임 스타일이 이긴다. */
+body > x-dc { display:flex; flex-wrap:wrap; align-items:flex-start; gap:36px }
+
+/* ── 아트보드 ── */
+.ab { width:var(--w,390px); display:flex; flex-direction:column; gap:12px; box-sizing:content-box }
+.ab-wide { width:1240px }
+.ab-tag { font-size:11px; font-weight:600; letter-spacing:.14em; color:var(--finch-color-fg-placeholder) }
+.ab-name { font-size:17px; font-weight:700; letter-spacing:-.015em; margin-top:-4px }
+.ab-api { font-size:12px; line-height:17px; color:var(--finch-color-fg-neutral-subtle); font-family:ui-monospace,SFMono-Regular,Menlo,monospace }
+
+/* 아트보드 밖 주석. 화면 안에 개발 얘기를 쓰지 않기 위한 자리다. */
+.note { background:var(--finch-color-bg-layer-default); border:1px dashed var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:14px 16px; font-size:12px; line-height:1.7;
+  color:var(--finch-color-fg-neutral-subtle) }
+.note b { color:var(--finch-color-fg-neutral) }
+.note code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; color:var(--finch-color-fg-neutral) }
+.note ul { margin:6px 0 0; padding-left:16px }
+
+/* ── 390×844 프레임 ── */
+.ph { width:var(--w,390px); height:844px; box-sizing:border-box; background:var(--finch-color-bg-layer-basement);
+  border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:20px; overflow:hidden;
+  display:flex; flex-direction:column; position:relative;
+  font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2) }
+
+/* 상단 내비 — z-sticky */
+.nav { flex:none; min-height:56px; display:flex; align-items:center; gap:4px; padding:0 8px 0 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.nav .t { flex:1; min-width:0; font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3); letter-spacing:-.015em;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* 홈 상단은 제목 대신 워드마크다. 브랜드 심볼(finch-symbol.svg)은 48px 미만에서 발과 힌지가
+   뭉개지므로 56px 내비에 넣지 않는다 — 잉크 워드마크로 간다. */
+.nav .wm { flex:1; padding-left:12px; font-size:var(--finch-font-size-title-3); font-weight:700; letter-spacing:.04em }
+/* 터치 대상 44×44 (frontConvention §9) */
+.icon { width:44px; height:44px; flex:none; display:grid; place-items:center; color:var(--finch-color-fg-neutral); position:relative }
+.icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+/* 미읽음 점. 모노톤에서 알림은 색이 아니라 잉크 점이다 — 노트 참고 */
+.icon i.dot { position:absolute; top:11px; right:10px; width:7px; height:7px; border-radius:999px;
+  background:var(--finch-color-bg-neutral-solid); box-shadow:0 0 0 2px var(--finch-color-bg-layer-default) }
+
+.scroll { flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; gap:12px; padding:16px 16px 20px }
+.scroll.flush { padding:0 }
+/* 스크롤 잘림을 시안에서 표시한다. 844 를 넘는 부분은 화면 밖이라 그리지 않고 이 선으로 끝을 말한다. */
+.fold { flex:none; height:0; border-top:1px dashed var(--finch-color-stroke-neutral-weak); margin:0 16px; position:relative }
+.fold::after { content:'스크롤 계속'; position:absolute; right:0; top:3px; font-size:10px; color:var(--finch-color-fg-placeholder) }
+
+/* ── 카드 ── */
+.card { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-card); padding:18px 16px }
+.card.tight { padding:0 }
+.sec { display:flex; align-items:center; gap:8px; font-size:var(--finch-font-size-label);
+  line-height:var(--finch-line-height-label); font-weight:var(--finch-font-weight-label);
+  color:var(--finch-color-fg-neutral-muted); padding:0 2px }
+.sec .more { margin-left:auto; font-size:var(--finch-font-size-caption); font-weight:400;
+  color:var(--finch-color-fg-neutral-subtle); display:flex; align-items:center; gap:2px }
+.sec .more svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* 값 행 */
+.kv { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:32px }
+.kv + .kv { border-top:1px solid var(--finch-color-stroke-neutral-subtle); margin-top:10px; padding-top:10px }
+.kv .k { color:var(--finch-color-fg-neutral-subtle); font-size:var(--finch-font-size-body-2) }
+.kv .v { font-weight:600; text-align:right }
+.hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.cap { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.meta { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-placeholder) }
+
+/* 인라인 링크 행 (예수금 → 충전하기) */
+.linkrow { display:flex; align-items:center; gap:2px; min-height:44px; margin:-6px -6px -6px 0; padding:0 6px;
+  border-radius:var(--finch-radius-chip); font-size:var(--finch-font-size-label); font-weight:600;
+  color:var(--finch-color-fg-neutral); background:var(--finch-color-bg-transparent-selected) }
+.linkrow svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 버튼 ── */
+.btn { display:flex; min-height:54px; width:100%; box-sizing:border-box; align-items:center; justify-content:center;
+  gap:8px; border-radius:var(--finch-radius-control); padding:0 16px; border:0; font-family:inherit;
+  font-size:var(--finch-font-size-label); line-height:var(--finch-line-height-label); font-weight:600 }
+.btn[data-v="primary"] { background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted) }
+.btn[data-v="secondary"] { background:var(--finch-color-bg-layer-default); color:var(--finch-color-fg-neutral);
+  border:1px solid var(--finch-color-stroke-neutral-weak) }
+.btn[data-v="disabled"] { background:var(--finch-color-bg-disabled); color:var(--finch-color-fg-disabled) }
+/* 하단 고정 CTA — z-sticky. 노치에서 잘리지 않게 safe-area 를 더한다 */
+.cta { flex:none; background:var(--finch-color-bg-layer-default); border-top:1px solid var(--finch-color-stroke-neutral-subtle);
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; gap:8px;
+  position:relative; z-index:var(--finch-z-sticky); box-shadow:var(--finch-shadow-float) }
+.cta.pair { flex-direction:row; gap:8px }
+
+/* ── 하단 탭바 ── */
+.tabbar { flex:none; display:flex; background:var(--finch-color-bg-layer-default);
+  border-top:1px solid var(--finch-color-stroke-neutral-subtle); padding-bottom:env(safe-area-inset-bottom);
+  position:relative; z-index:var(--finch-z-sticky) }
+.tabbar a { flex:1; min-height:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font-size:11px; color:var(--finch-color-fg-placeholder); text-decoration:none }
+.tabbar a[aria-current] { color:var(--finch-color-fg-neutral); font-weight:600 }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── AI 플로팅 버튼 — z-floating. 브랜드 마크를 붙이지 않는다 (finch-seed §3) ── */
+.fab { position:absolute; right:16px; width:56px; height:56px; border-radius:999px;
+  background:var(--finch-color-bg-neutral-solid); color:var(--finch-color-fg-neutral-inverted);
+  display:grid; place-items:center; box-shadow:var(--finch-shadow-float); z-index:var(--finch-z-floating) }
+.fab svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 시세 행. 검색 · 최근 본 · 관심 · 보유가 같은 형태를 쓴다 (ia.md §5 shared) ── */
+.rows { display:flex; flex-direction:column; background:var(--finch-color-bg-layer-default) }
+.rows.inset { border:1px solid var(--finch-color-stroke-neutral-weak); border-radius:var(--finch-radius-card); overflow:hidden }
+.row { display:flex; align-items:center; gap:12px; padding:12px 16px; min-height:44px; box-sizing:border-box }
+.row + .row { border-top:1px solid var(--finch-color-stroke-neutral-subtle) }
+.row .l { flex:1; min-width:0 }
+.row .l b { display:flex; align-items:center; gap:6px; font-size:var(--finch-font-size-body-2);
+  line-height:var(--finch-line-height-body-2); font-weight:600 }
+.row .l b span.nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0 }
+.row .l > span { display:block; font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle); margin-top:2px }
+.row .r { text-align:right; white-space:nowrap; flex:none }
+.row .r b { display:block; font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+/* 행 오른쪽의 × 삭제. 44×44 를 지키기 위해 행 패딩을 먹고 들어간다 */
+.row .x { width:44px; height:44px; flex:none; margin:-8px -12px -8px 0; display:grid; place-items:center;
+  color:var(--finch-color-fg-placeholder) }
+.row .x svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* 등락 — 부호 + 삼각형 + 숫자. 색만으로 알리지 않는다 (finch-seed §4).
+   본문·행 숫자는 700 단계, 18px 이상 굵은 큰 가격만 -vivid(600). */
+.chg { display:inline-flex; align-items:center; gap:3px; font-size:var(--finch-font-size-caption);
+  line-height:var(--finch-line-height-caption); font-weight:600 }
+.chg svg { width:8px; height:8px; fill:currentColor; stroke:none }
+.chg[data-d="up"] { color:var(--finch-color-fg-up) }
+.chg[data-d="down"] { color:var(--finch-color-fg-down) }
+.chg[data-d="flat"] { color:var(--finch-color-fg-flat) }
+.chg.lg { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1) }
+.chg.lg svg { width:10px; height:10px }
+/* 종목 상세 상단의 큰 가격만 vivid 를 쓴다 */
+.px-hero { font-size:var(--finch-font-size-title-1); line-height:var(--finch-line-height-title-1);
+  font-weight:var(--finch-font-weight-title-1); letter-spacing:-.02em }
+.px-hero[data-d="up"] { color:var(--finch-color-fg-up-vivid) }
+.px-hero[data-d="down"] { color:var(--finch-color-fg-down-vivid) }
+.px-hero[data-d="flat"] { color:var(--finch-color-fg-neutral) }
+
+/* ── 뱃지. 유채색을 쓰지 않는다 — 잉크 테두리와 굵기로 구분한다 ── */
+.badge { flex:none; font-size:11px; line-height:16px; font-weight:700; padding:1px 6px;
+  border-radius:6px; border:1px solid var(--finch-color-stroke-neutral-contrast); color:var(--finch-color-fg-neutral) }
+.badge[data-v="soft"] { border-color:var(--finch-color-stroke-neutral-weak); font-weight:600;
+  color:var(--finch-color-fg-neutral-subtle) }
+/* 시세 지연 칩. 임계 수치를 화면에 쓰지 않는다 (contracts P10 미정) */
+.stale { display:inline-flex; align-items:center; gap:4px; font-size:11px; line-height:16px; font-weight:600;
+  padding:2px 7px; border-radius:var(--finch-radius-chip); background:var(--finch-color-bg-critical-weak);
+  color:var(--finch-color-fg-critical) }
+.stale svg { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* ── 세그먼티드 · 칩 ── */
+.seg { display:flex; gap:6px; padding:3px; border-radius:var(--finch-radius-control);
+  background:var(--finch-color-bg-transparent-pressed) }
+.seg button { flex:1; min-height:44px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:400; color:var(--finch-color-fg-neutral-subtle);
+  background:transparent; border:1px solid transparent }
+.seg button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-layer-default); border-color:var(--finch-color-stroke-neutral-contrast) }
+.chips { display:flex; gap:6px; flex-wrap:wrap }
+.chips button { min-height:36px; padding:0 12px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-caption); font-weight:400; color:var(--finch-color-fg-neutral-subtle);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.chips button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  border-color:var(--finch-color-stroke-neutral-contrast); border-width:2px; padding:0 11px;
+  background:var(--finch-color-bg-transparent-selected) }
+
+/* ── 탭 (종목 상세) ── */
+.tabs { display:flex; background:var(--finch-color-bg-layer-default);
+  border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); position:relative; z-index:var(--finch-z-sticky) }
+.tabs button { flex:1; min-height:48px; font-family:inherit; font-size:var(--finch-font-size-label);
+  font-weight:400; color:var(--finch-color-fg-neutral-subtle); background:transparent;
+  border:0; border-bottom:2px solid transparent }
+.tabs button[aria-selected="true"] { font-weight:700; color:var(--finch-color-fg-neutral);
+  border-bottom-color:var(--finch-color-stroke-neutral-contrast) }
+
+/* ── 검색 입력 ── */
+.searchbar { flex:none; display:flex; align-items:center; gap:8px; padding:8px 8px 8px 4px;
+  background:var(--finch-color-bg-layer-default); border-bottom:1px solid var(--finch-color-stroke-neutral-subtle);
+  position:relative; z-index:var(--finch-z-sticky) }
+.field { flex:1; min-width:0; display:flex; align-items:center; gap:8px; min-height:44px; padding:0 12px;
+  box-sizing:border-box; border-radius:var(--finch-radius-control);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+.field svg { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round; color:var(--finch-color-fg-neutral-subtle) }
+.field input, .field .val { flex:1; min-width:0; border:0; background:transparent; font-family:inherit;
+  font-size:var(--finch-font-size-body-1); color:var(--finch-color-fg-neutral); outline:none }
+.field .ph { color:var(--finch-color-fg-placeholder) }
+.field .clr { width:20px; height:20px; flex:none; border-radius:999px; display:grid; place-items:center;
+  background:var(--finch-color-bg-transparent-selected); color:var(--finch-color-fg-neutral-subtle) }
+.field .clr svg { width:11px; height:11px; stroke-width:2.4 }
+
+/* ── 수량 입력 (주문) ── */
+.amt { display:flex; align-items:baseline; gap:6px; min-height:56px; padding:0 14px; box-sizing:border-box;
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-control) }
+.amt[data-err] { border-color:var(--finch-color-stroke-critical-solid); border-width:2px; padding:0 13px }
+.amt b { flex:1; font-size:var(--finch-font-size-title-2); line-height:56px; font-weight:700; letter-spacing:-.02em;
+  text-align:right }
+.amt b[data-ph] { color:var(--finch-color-fg-placeholder); font-weight:400 }
+.amt span { font-size:var(--finch-font-size-body-1); color:var(--finch-color-fg-neutral-subtle) }
+.amt .lb { flex:none; font-size:var(--finch-font-size-body-2); color:var(--finch-color-fg-neutral-subtle);
+  align-self:center }
+.presets { display:flex; gap:8px }
+.presets button { flex:1; min-height:44px; border-radius:var(--finch-radius-chip); font-family:inherit;
+  font-size:var(--finch-font-size-label); font-weight:600; color:var(--finch-color-fg-neutral);
+  background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak) }
+
+/* ── 위험·에러 알림. 모노톤에서 위험은 색이 아니라 잉크 채움·굵기·형태다 (finch-seed §4) ── */
+.alert { display:flex; gap:10px; padding:14px; border-radius:var(--finch-radius-card);
+  background:var(--finch-color-bg-critical-weak); color:var(--finch-color-fg-critical) }
+.alert svg { width:18px; height:18px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+.alert .m { font-size:var(--finch-font-size-body-2); line-height:var(--finch-line-height-body-2); font-weight:700 }
+.alert .s { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  font-weight:400; margin-top:3px; color:var(--finch-color-fg-neutral-muted) }
+/* 필드 아래 인라인 에러 — 테두리·굵기·아이콘 셋이 함께 움직인다 */
+.ferr { display:flex; gap:6px; align-items:flex-start; color:var(--finch-color-fg-critical);
+  font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption); font-weight:700 }
+.ferr svg { width:15px; height:15px; flex:none; margin-top:1px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round }
+
+/* ── 빈 상태 ── */
+.empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:32px 24px; text-align:center }
+.empty .g { width:56px; height:56px; border-radius:999px; background:var(--finch-color-bg-transparent-selected);
+  display:grid; place-items:center; margin-bottom:6px; color:var(--finch-color-fg-placeholder) }
+.empty .g svg { width:26px; height:26px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
+.empty b { font-size:var(--finch-font-size-body-1); line-height:var(--finch-line-height-body-1); font-weight:600 }
+.empty span { font-size:var(--finch-font-size-caption); line-height:var(--finch-line-height-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+.empty .btn { width:auto; min-height:44px; padding:0 20px; margin-top:10px }
+
+/* ── 로딩 ── */
+.sk { background:var(--finch-color-bg-skeleton); border-radius:var(--finch-radius-chip); height:14px; display:block }
+.spin { width:20px; height:20px; border-radius:999px; border:2px solid var(--finch-color-bg-skeleton);
+  border-top-color:var(--finch-color-fg-neutral); animation:spin 800ms linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
+.loadmore { display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:20px 16px calc(20px + env(safe-area-inset-bottom)); font-size:var(--finch-font-size-caption);
+  color:var(--finch-color-fg-neutral-subtle) }
+
+/* ── AI 슬롯 자리. 획 무게 · 깊이 · 반경 셋이 일반 카드와 한꺼번에 달라진다 (finch-seed §3).
+      브랜드 마크를 붙이지 않는다. 내용 설계는 이 캔버스의 범위가 아니다 — 아트보드 0 참고. ── */
+.aislot { background:var(--finch-color-bg-layer-default); border:1px solid var(--finch-color-stroke-neutral-weak);
+  border-radius:var(--finch-radius-ai); box-shadow:var(--finch-shadow-ai); padding:16px;
+  display:flex; flex-direction:column; gap:10px }
+.aislot .hd { display:flex; align-items:center; gap:8px; font-size:var(--finch-font-size-label);
+  line-height:var(--finch-line-height-label); font-weight:700 }
+.aislot .hd .spin { width:15px; height:15px; border-width:2px }
+.aislot .hd svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
+.aislot .rsv { font-size:11px; line-height:16px; color:var(--finch-color-fg-placeholder); margin-left:auto; font-weight:400 }
+
+/* ── 딤 + 바텀시트 — z-overlay ── */
+.dim { position:absolute; inset:0; background:var(--finch-color-bg-overlay); z-index:var(--finch-z-overlay) }
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:var(--finch-z-overlay);
+  background:var(--finch-color-bg-layer-default); border-radius:var(--finch-radius-sheet) var(--finch-radius-sheet) 0 0;
+  box-shadow:var(--finch-shadow-float); padding:22px 16px calc(16px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:14px }
+.sheet .h { font-size:var(--finch-font-size-title-3); line-height:var(--finch-line-height-title-3);
+  font-weight:var(--finch-font-weight-title-3) }
+
+/* ── 완료 화면 ── */
+.done { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px }
+.done .mark { width:64px; height:64px; border-radius:999px; background:var(--finch-color-bg-neutral-solid);
+  display:grid; place-items:center; color:var(--finch-color-fg-neutral-inverted); margin-bottom:8px }
+.done .mark svg { width:30px; height:30px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round }
+
+/* 진행 단계 표시 */
+.steps { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--finch-color-fg-placeholder); padding:0 2px }
+.steps i { flex:1; height:3px; border-radius:999px; background:var(--finch-color-bg-skeleton) }
+.steps i[data-on] { background:var(--finch-color-bg-neutral-solid) }
+
+/* 표 (범위 문서용) */
+.tb { width:100%; border-collapse:collapse; font-size:12px }
+.tb th, .tb td { text-align:left; padding:7px 10px; border-bottom:1px solid var(--finch-color-stroke-neutral-subtle); vertical-align:top }
+.tb th { color:var(--finch-color-fg-placeholder); font-weight:600; white-space:nowrap }
+.tb code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px }
+</style>
+</helmet>
+
+
+<!-- ═════════════════ 0 · 범위 ═════════════════ -->
+<section class="ab ab-wide">
+<div class="ab-tag">FINCH · SPRINT 5 · WIREFRAME</div>
+<div class="ab-name">탐색·거래 — 화면 범위</div>
+
+<div class="note" style="border-style:solid">
+<b>ia.md §1 의 17화면 중 6개를 그린다.</b> Sprint 4 가 셋(포트폴리오·매매 내역·충전)을
+<code>sprint-4.dc.html</code> 에 그렸고, 나머지 8개(인증 2 · 마이페이지 · 404 · AI 3종 · 브리핑 전체)는
+<code>account-ai.dc.html</code> 이 그린다. <b>세 캔버스가 겹치지 않게 화면 단위로 나눴다.</b>
+<table class="tb" style="margin-top:12px">
+<tr><th>화면</th><th>라우트</th><th>아트보드</th><th>이 캔버스가 쓰는 계약</th></tr>
+<tr><td>홈</td><td><code>/</code></td><td>1 · 2 · 3 · 4 · 5</td>
+    <td><code>GET /account</code> · <code>/portfolio</code> · <code>/watchlist?sort=</code> · <code>/stocks/prices</code></td></tr>
+<tr><td>종목 검색</td><td><code>/search?q=</code></td><td>8 · 9 · 10</td>
+    <td><code>GET /stocks/search?keyword=&amp;size=</code></td></tr>
+<tr><td>최근 검색어</td><td><code>/search</code> 초기 상태</td><td>6 · 7</td>
+    <td><code>GET</code> · <code>DELETE /stocks/search/recent</code> · <code>DELETE .../{keywordId}</code></td></tr>
+<tr><td>최근 본 종목</td><td><code>/recent</code></td><td>11 · 12 · 13</td>
+    <td><code>GET</code> · <code>DELETE /stocks/recent</code> · <code>DELETE .../{stockCode}</code></td></tr>
+<tr><td>종목 상세</td><td><code>/stocks/:stockCode</code></td><td>14 · 15 · 16 · 17</td>
+    <td><code>GET /stocks/{code}</code> · <code>/candles?period=</code> · <code>/price</code> · <code>POST</code>·<code>DELETE /watchlist</code></td></tr>
+<tr><td>주문</td><td><code>/stocks/:stockCode/order?side=</code></td><td>18 ~ 24</td>
+    <td><code>GET /orders/available?stockCode=&amp;side=</code> · <code>POST /orders</code> (<code>Idempotency-Key</code> 필수)</td></tr>
+</table>
+</div>
+
+<div class="note">
+<b>KIS 앱키가 미발급이라 시세 데이터가 없다. 그래도 화면은 그린다 — 계약(apiSpec §5·§7)은 확정이다.</b>
+데이터가 없는 것과 계약이 없는 것은 다르다. 여기 적힌 숫자는 apiSpec 의 응답 예시를 그대로 옮긴 것이고
+새로 만든 값이 아니다 (<code>005930</code> 73,500원 · <code>-900</code> · <code>-1.21</code>).
+<ul>
+<li><b>등락률은 이미 백분율이다.</b> <code>changeRate: -1.21</code> 이 −1.21% 다. 100을 곱하지 않는다.</li>
+<li><b>종목코드는 6자리 문자열이다.</b> 앞 <code>0</code> 을 살려 적는다 — <code>005930</code>·<code>000660</code>.
+    숫자로 다루면 <code>5930</code> 이 된다.</li>
+<li><b>등락은 상승 적색 · 하락 청색.</b> 국내 관례이고 미국식과 반대다. 색은 값이 아니라
+    <code>fg-up</code>·<code>fg-down</code> 으로만 참조한다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>미확정 둘을 시안에 반영했다</b> (<code>frontend/docs/contracts.md</code>).
+<table class="tb" style="margin-top:8px">
+<tr><th>항목</th><th>그린 것</th><th>안 그린 것</th></tr>
+<tr>
+  <td><b>P10</b> — <code>stale</code> 허용 시간과 주문 차단 기준</td>
+  <td>"시세 지연" 칩의 자리와 형태(아트보드 5·16), 주문 버튼 비활성 상태(아트보드 20)</td>
+  <td><b>임계 수치</b>. "○초 이상 지연" 을 화면에 쓰지 않았다 — 몇 초인지 정하는 것은
+      <code>[S0-3]</code> 이고 이 시안의 일이 아니다. 지금 쓰면 확정될 때 화면 문구를 찾아 고쳐야 한다.</td>
+</tr>
+<tr>
+  <td><b>P11</b> — 분봉 제공 여부</td>
+  <td>차트 기간 탭 <b><code>1M</code> · <code>3M</code> · <code>1Y</code> 셋만</b> (전부 일봉).
+      <code>GET /candles</code> 의 <code>interval: "DAY"</code> 와 일치한다</td>
+  <td><code>1D</code>·<code>1W</code> 분봉 탭. 그리면 <code>[S0-4]</code> 가 "분봉 없음" 으로 확정될 때
+      버려진다. 탭 폭도 셋과 다섯이 다르다.</td>
+</tr>
+</table>
+</div>
+
+<div class="note">
+<b>주문 화면의 위험 지점 셋.</b> 돈이 오가는 화면이라 형태가 잘못되면 중복 주문이 된다.
+<code>sprint-4.dc.html</code> 아트보드 9(충전 <code>IDEMPOTENCY_IN_PROGRESS</code>)가 같은 문제를 다뤘고 그 관례를 따른다.
+<ul>
+<li><b><code>Idempotency-Key</code> 는 결과를 아느냐로 갈린다.</b> 아트보드 22·23 에 나눠 그렸다 —
+    <b>결과를 모르면 같은 키</b>(처리 중 · 응답 유실 · 타임아웃), <b>확실히 거부됐으면 새 키</b>(가격 변동 ·
+    예수금 부족 · 수량 부족). 거부는 주문이 원장에 없다는 뜻이라 새 키가 중복을 만들지 않는다.
+    반대로 처리 중인데 새 키를 쓰면 두 번 나간다.</li>
+<li><b>자동 재시도를 그리지 않았다.</b> 주문 뮤테이션은 자동 재시도하지 않는다 (루트 <code>CLAUDE.md</code>).
+    재시도는 전부 사용자가 누르는 버튼이고, 화면에 스피너만 돌면서 뒤에서 재요청하는 자리는 없다.</li>
+<li><b>수량 임의 축소 체결을 그리지 않았다.</b> 예수금이 모자라면 <b>거절</b>이지 "가능한 만큼" 이 아니다
+    (apiSpec §7.2 4번). 그래서 아트보드 21 의 버튼은 "3주로 줄여 주문" 이 아니라 <b>충전</b>과
+    <b>수량 다시 입력</b> 둘뿐이다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>AI 슬롯은 자리와 형태만 그렸다. 내용은 그리지 않았다.</b>
+이 캔버스가 맡은 계약 목록에 AI 경로가 없다 — 슬롯 내용(브리핑 항목 · 종목 분석 7섹션 · 주문 전 점검
+세 덩어리 · 근거 목록 · 피드백)은 <code>account-ai.dc.html</code> 과 AI 전용 화면의 범위다.
+여기서는 <b>그릇</b>만 확정한다: 위치 · 크기 · 획 무게 · 깊이 · 반경, 그리고 로딩·에러 형태.
+<ul>
+<li>슬롯 표면은 <code>bg-layer-default</code> + <code>stroke-neutral-weak</code> + <code>shadow-ai</code> +
+    <code>radius-ai</code>(18px)다. 일반 카드(<code>stroke-neutral-subtle</code>, 그림자 없음, 16px)와
+    <b>획 무게·깊이·반경 셋이 한꺼번에</b> 달라진다 (finch-seed §3). "AI 색" 은 없다.</li>
+<li><b>슬롯은 위젯 단위 에러 경계다</b> (ia.md §4). AI 가 실패해도 화면의 나머지는 살아 있어야 한다 —
+    아트보드 5 가 그 상태다.</li>
+<li>홈의 슬롯 2(수익률 원인 분석)는 ia.md §4 가 "손익 숫자 바로 아래" 로 정했지만
+    <b><code>GET /account</code> 에는 손익 필드가 없다</b> (예수금·평가금액·총자산·<code>asOf</code> 넷뿐,
+    전체 수익률은 MVP 범위 밖 · apiSpec §3.1). 손익 숫자가 실제로 있는 곳은 <code>GET /portfolio</code> 의
+    <code>holdings[].evaluationProfit</code> 이라 <b>보유 종목 섹션 아래</b>에 뒀다 (아트보드 2).</li>
+<li><b>AI 플로팅 버튼은 종목 상세에만 그렸다.</b> PRD 배치(종목 상세·포트폴리오·브리핑·뉴스 상세)와
+    프로토타입 구현(<code>home</code>·<code>detail</code>·<code>portfolio</code>·<code>briefing</code>)이
+    어긋나 있고 확정되지 않았다 (ia.md §3). <b>둘이 일치하는 화면에만</b> 그렸다 — 홈에는 안 그렸다.
+    주문 화면은 양쪽 모두 제외한다 (제출 버튼을 가린다).</li>
+</ul>
+</div>
+
+<div class="note">
+<b>토큰을 새로 만들지 않았다.</b> 판단이 들어간 자리는 넷이다.
+<ul>
+<li><b>등락을 두 단계로 나눠 썼다.</b> 종목 상세 상단의 28px bold 현재가만 <code>-vivid</code>(600단계)이고
+    목록 행·캡션의 숫자는 전부 <code>fg-up</code>·<code>fg-down</code>(700단계)다. 한 값으로 합치면
+    13px 캡션에서 대비가 깨진다 (finch-seed §4).</li>
+<li><b>"시세 지연" 에 등락 적색을 쓰지 않았다.</b> <code>bg-critical-weak</code> 면 + <code>fg-critical</code>(잉크)
+    + 시계 아이콘이다. 적색이면 "떨어졌다" 로 오독된다. 거래정지 뱃지도 같은 이유로 무채색이다.</li>
+<li><b>미읽음 알림을 빨간 점으로 그리지 않았다.</b> PRD 문구는 "메일에 빨간 점" 이지만 모노톤에
+    세 번째 빨강을 들이면 상승 적색·위험과 셋이 섞인다. <b>잉크 점</b> + paper 링(<code>bg-layer-default</code>
+    2px)으로 면 위에서 떨어져 보이게 했다.</li>
+<li><b>관심 종목 담기 실패를 토스트로 그리지 않았다.</b> <code>WATCHLIST_LIMIT_EXCEEDED</code>(409, 50개 초과)는
+    화면 상단 인라인 알림으로 낸다. <b>토스트를 그릴 토큰이 없다</b> — 반전 표면(white-alpha 사다리 ·
+    <code>bg-neutral-inverted</code>)을 만들지 않았고, 그건 앱에 반전 표면이 없기 때문이다 (finch-seed §3).
+    토스트를 도입하려면 토큰이 먼저다.</li>
+</ul>
+</div>
+
+<div class="note">
+<b>도달할 수 없는 상태는 그리지 않았다.</b> 그려두면 다음 사람이 도달 경로를 찾다 시간을 버린다
+(<code>sprint-4.dc.html</code> 의 "<code>type=ALL</code> 은 비어 있을 수 없다" 와 같은 방식).
+<ul>
+<li><b>홈의 "관심 종목 없음" 은 단독으로 나오지 않는다.</b> 관심 종목은 <code>count</code>·<code>maxCount</code> 가
+    같이 오므로 0건이 정상이지만, 보유도 0인 <b>첫 사용자 상태와 한 화면에서 만난다</b> — 그래서 아트보드 4 는
+    두 섹션이 같이 빈 하나의 화면이다. 섹션 하나만 빈 화면을 따로 그리지 않았다.</li>
+<li><b>최근 검색어에는 시세가 없다.</b> <code>GET /stocks/search/recent</code> 응답은
+    <code>keywordId</code>·<code>keyword</code>·<code>searchedAt</code> 셋뿐이다 (apiSpec §6.2 —
+    "검색어는 종목이 아니라 문자열이다"). 최근 검색어 행에 가격·등락을 그리면 없는 필드를 그리는 것이다.</li>
+<li><b>최근 본 종목에는 "시세 지연" 자리를 만들지 않았다.</b> <code>GET /stocks/recent</code> 응답에
+    <code>stale</code>·<code>asOf</code>·<code>changeAmount</code>·<code>suspended</code> 가 없다 —
+    <code>stockName</code>·<code>currentPrice</code>·<code>changeRate</code>·<code>viewedAt</code> 뿐이라
+    검색 행보다 얇다. 지연을 판정할 근거가 응답에 없으므로 표시하지 않는다.</li>
+<li><b>종목 상세 첫 렌더에도 "시세 지연" 을 판정할 수 없다.</b> <code>GET /stocks/{code}</code> 응답에
+    <code>stale</code> 이 없다 (<code>asOf</code> 만 있다). <code>stale</code> 은 이후 갱신을 받는
+    <code>GET /stocks/{code}/price</code>(§5.4)에서만 온다 — 그래서 지연 칩은 <b>첫 렌더가 아니라
+    갱신 후</b> 나타난다 (아트보드 16).</li>
+<li><b><code>IDEMPOTENCY_CONFLICT</code>(같은 키 · 다른 본문)에 화면을 그리지 않았다.</b> 클라이언트 버그
+    신호이고 재시도 금지라 사용자가 할 수 있는 일이 없다 — 일반 오류 화면으로 보낸다
+    (<code>sprint-4.dc.html</code> 아트보드 9 와 같은 판단).</li>
+<li><b>지정가·호가창·미체결 관리를 그리지 않았다.</b> MVP 는 시장가 즉시 체결만 존재하고 접수와 체결이
+    분리되지 않는다 (apiSpec §7.1). <b>가격 입력 필드를 만들지 않는다</b> — 만들면 없는 주문 유형이
+    구현 대상으로 읽힌다.</li>
+</ul>
+</div>
+</section>
+</x-dc>
+</body>
+</html>
