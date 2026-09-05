@@ -43,6 +43,13 @@ export function useToggleWatchlist() {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.stocks.detail(stockCode),
       });
+      /*
+       * 홈의 관심 종목 영역이 이 목록을 읽는다 (ia.md §1 — 독립 화면이 없다).
+       * 빠뜨리면 상세에서 담고 홈으로 돌아왔을 때 목록에 없다.
+       */
+      void queryClient.invalidateQueries({
+        queryKey: [...queryKeys.stocks.all(), 'watchlist'],
+      });
     },
   });
 }

@@ -1,5 +1,5 @@
 import type { TransactionFilter } from '@/shared/types/portfolio';
-import type { CandlePeriod } from '@/shared/types/stock';
+import type { CandlePeriod, WatchlistSort } from '@/shared/types/stock';
 
 /**
  * 쿼리 키 팩토리 (컨벤션 §4).
@@ -38,6 +38,9 @@ export const queryKeys = {
     candles: (stockCode: string, period: CandlePeriod) =>
       [...queryKeys.stocks.all(), 'candles', stockCode, period] as const,
     recent: () => [...queryKeys.stocks.all(), 'recent'] as const,
+    /** 정렬이 키에 들어간다. 서버가 정렬을 하므로 탭을 바꾸면 다른 목록이다. */
+    watchlist: (sort: WatchlistSort) =>
+      [...queryKeys.stocks.all(), 'watchlist', sort] as const,
   },
   transactions: {
     all: () => ['transactions'] as const,
