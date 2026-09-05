@@ -69,6 +69,19 @@ const TransactionsPage = lazyPage(
   () => import('@/pages/TransactionsPage'),
   'TransactionsPage',
 );
+const HomePage = lazyPage(() => import('@/pages/HomePage'), 'HomePage');
+const RecentStocksPage = lazyPage(
+  () => import('@/pages/RecentStocksPage'),
+  'RecentStocksPage',
+);
+const StockSearchPage = lazyPage(
+  () => import('@/pages/StockSearchPage'),
+  'StockSearchPage',
+);
+const StockDetailPage = lazyPage(
+  () => import('@/pages/StockDetailPage'),
+  'StockDetailPage',
+);
 const DepositPage = lazyPage(
   () => import('@/pages/DepositPage'),
   'DepositPage',
@@ -94,10 +107,10 @@ export const router = createBrowserRouter([
             // 보호 + 하단 탭 (ia.md §3).
             element: <TabBarLayout />,
             children: [
-              { path: ROUTES.home, element: <RoutePlaceholder screen="홈" /> },
+              { path: ROUTES.home, element: <HomePage /> },
               {
                 path: ROUTES.search,
-                element: <RoutePlaceholder screen="종목 검색" />,
+                element: <StockSearchPage />,
               },
               {
                 path: ROUTES.portfolio,
@@ -110,7 +123,7 @@ export const router = createBrowserRouter([
           // ── 보호 + 탭 없음 ─────────────────────────────────────────────
           {
             path: ROUTES.recent,
-            element: <RoutePlaceholder screen="최근 본 종목" />,
+            element: <RecentStocksPage />,
           },
           {
             path: ROUTES.transactions,
@@ -146,7 +159,7 @@ export const router = createBrowserRouter([
             children: [
               {
                 path: ROUTE_PATTERNS.stockDetail,
-                element: <RoutePlaceholder screen="종목 상세" />,
+                element: <StockDetailPage />,
               },
               {
                 path: ROUTE_PATTERNS.stockOrder,

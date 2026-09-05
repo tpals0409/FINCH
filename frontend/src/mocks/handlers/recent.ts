@@ -54,8 +54,11 @@ export const recentHandlers = [
           : {
               stockCode: stock.stockCode,
               stockName: stock.stockName,
-              currentPrice: stock.currentPrice,
-              changeRate: changeRateOf(stock),
+              // 검색·상세·관심과 같은 규칙 (apiSpec §6.1 · §5.1).
+              currentPrice:
+                stock.quoteState === 'missing' ? null : stock.currentPrice,
+              changeRate:
+                stock.quoteState === 'missing' ? null : changeRateOf(stock),
               viewedAt: entry.viewedAt,
             };
       })

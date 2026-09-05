@@ -97,7 +97,10 @@ Oracle 같은 중앙 위임자를 두지 않는다. 필요할 때 세민이 직�
 | `infra` | `infra/**`, `.github/workflows/**`, finch-gitops | CI/CD, 컨테이너 이미지, k8s 배포(ArgoCD·Helm), 관측 스택. 배포 SSOT 는 이 저장소가 아니다 |
 | `librarian` | `docs/wiki/**`, ADR 색인, 문서 간 링크 | 문서끼리 어긋나거나 없어진 것을 가리킬 때. "이거 어디 적혀 있어?" 에 답한다 |
 
-토큰은 **디자이너 확정 → 프론트 등록** 순서다. 프론트가 임의로 토큰을 만들지 않는다.
+**`frontend/src/styles/` 는 디자이너가 쓴다. 프론트는 읽어서 쓰기만 한다.** 두 층 모두 그렇다 —
+값을 정하는 것과 그 값을 파일에 적는 것을 나누면 넘기는 구간이 생기고, Sprint 5 에서 실제로
+두 에이전트가 같은 파일을 건드렸다. 쓰는 사람이 하나면 그 일이 안 생긴다.
+프론트는 토큰이 없어 막히면 만들지 말고 무엇이 필요한지 말한다.
 토큰은 2계층이다 — `frontend/src/styles/tokens.css` 가 SEED 토큰(`--finch-*`)을 담는 값의 출처이고,
 `index.css` 의 `@theme static` 별칭 층이 그중 유틸리티로 열 것만 Tailwind 네임스페이스로 옮겨 적는다.
 구조와 규칙은 `docs/design/finch-seed.md` 에 있다.

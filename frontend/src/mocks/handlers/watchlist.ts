@@ -44,6 +44,11 @@ const WATCHLIST_LIMIT_DEMO_STOCK_CODE = '068270';
 
 const WATCHLIST_SORTS = ['REGISTERED', 'NAME', 'CHANGE_RATE'];
 
+/** `quoteState` 판정을 한 곳에 둔다 (catalog 의 MockStock). */
+function quoteMissing(stock: { quoteState: string }): boolean {
+  return stock.quoteState === 'missing';
+}
+
 export const watchlistHandlers = [
   http.get(mockPath(API_PATHS.watchlist.list), ({ request }) => {
     const unauthorized = requireAuth(request);
@@ -69,9 +74,10 @@ export const watchlistHandlers = [
           : {
               stockCode: stock.stockCode,
               stockName: stock.stockName,
-              currentPrice: stock.currentPrice,
-              changeAmount: changeAmountOf(stock),
-              changeRate: changeRateOf(stock),
+              // 검색·상세와 같은 규칙 (apiSpec §6.3 · §5.1). 담아 둔 종목은 시세와 무관하게 남는다.
+              currentPrice: quoteMissing(stock) ? null : stock.currentPrice,
+              changeAmount: quoteMissing(stock) ? null : changeAmountOf(stock),
+              changeRate: quoteMissing(stock) ? null : changeRateOf(stock),
               held: findHolding(stock.stockCode) !== undefined,
               registeredAt: entry.registeredAt,
             };
@@ -84,7 +90,15 @@ export const watchlistHandlers = [
       );
     }
     if (sort === 'CHANGE_RATE') {
-      items.sort((left, right) => right.changeRate - left.changeRate);
+      /*
+       * **시세 없는 종목은 뒤로 보낸다.** null 을 그대로 빼면 NaN 이 되고, NaN 비교는 항상
+       * false 라 정렬이 입력 순서에 따라 제멋대로 달라진다 — 목록이 새로고침마다 바뀐다.
+       */
+      items.sort((left, right) => {
+        if (left.changeRate === null) return right.changeRate === null ? 0 : 1;
+        if (right.changeRate === null) return -1;
+        return right.changeRate - left.changeRate;
+      });
     }
 
     return HttpResponse.json({

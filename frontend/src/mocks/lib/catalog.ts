@@ -160,13 +160,23 @@ export function changeRateOf(stock: MockStock): number {
 
 /** 목록 한 줄 (apiSpec §5.1 `StockSummary`). */
 export function toStockSummary(stock: MockStock) {
+  /*
+   * **`quoteState` 를 목록에서도 존중한다** (apiSpec §5.1). 수신 이력이 없으면 가격 세 개가
+   * `null` 이고, 종목 자체는 존재하므로 목록에서 빼지 않는다.
+   *
+   * 예전에는 `toStockQuote` 만 이 상태를 냈다 — apiSpec 이 "값 없음" 규칙을 §5.4 에만
+   * 적어둬서다. 그 결과 목으로 개발하는 동안 가격 없는 줄을 한 번도 못 보고, 시세 수집이
+   * 붙기 전 운영에서는 **전 종목이 그 상태**인 화면을 마주하게 된다.
+   */
+  const missing = stock.quoteState === 'missing';
+
   return {
     stockCode: stock.stockCode,
     stockName: stock.stockName,
     market: stock.market,
-    currentPrice: stock.currentPrice,
-    changeAmount: changeAmountOf(stock),
-    changeRate: changeRateOf(stock),
+    currentPrice: missing ? null : stock.currentPrice,
+    changeAmount: missing ? null : changeAmountOf(stock),
+    changeRate: missing ? null : changeRateOf(stock),
     suspended: stock.suspended,
   };
 }

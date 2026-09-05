@@ -110,6 +110,7 @@ export const API_PATHS = {
     search: '/stocks/search',
     recentSearchKeywords: '/stocks/search/recent',
     recent: '/stocks/recent',
+    recentItem: (stockCode: string) => `/stocks/recent/${stockCode}`,
     prices: '/stocks/prices',
     detail: (stockCode: string) => `/stocks/${stockCode}`,
     candles: (stockCode: string) => `/stocks/${stockCode}/candles`,

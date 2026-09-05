@@ -34,13 +34,31 @@ export const StockSummarySchema = z.object({
   stockCode: StockCodeSchema,
   stockName: z.string(),
   market: MarketSchema,
-  currentPrice: KrwAmountSchema,
-  changeAmount: KrwAmountSchema,
+  /**
+   * 시세 캐시에 수신 이력이 없으면 `null` 이다 (apiSpec §5.1 · §5.4 "값 없음").
+   * **종목이 없는 게 아니라 가격이 없는 것이므로 목록에서 빼지 않는다** — 이름과 코드는
+   * 그리고 가격 자리만 비운다. 시세 수집이 붙기 전에는 전 종목이 이 상태다.
+   */
+  currentPrice: KrwAmountSchema.nullable(),
+  changeAmount: KrwAmountSchema.nullable(),
   /** 백분율. 100 을 곱하지 않는다 */
-  changeRate: PercentSchema,
+  changeRate: PercentSchema.nullable(),
   suspended: z.boolean(),
 });
 export type StockSummary = z.infer<typeof StockSummarySchema>;
+
+/** 가격 값이 실려 있는 종목 줄. `false` 면 가격 자리를 비운다 (`hasQuoteValues` 와 같은 이유). */
+export function hasSummaryPrice(stock: StockSummary): stock is StockSummary & {
+  currentPrice: KrwAmount;
+  changeAmount: KrwAmount;
+  changeRate: Percent;
+} {
+  return (
+    stock.currentPrice !== null &&
+    stock.changeAmount !== null &&
+    stock.changeRate !== null
+  );
+}
 
 /** `GET /stocks/search` 응답 (apiSpec §5.1). 2글자 이상부터 호출한다. */
 export const StockSearchResponseSchema = createItemsSchema(StockSummarySchema);
@@ -66,15 +84,17 @@ export const StockDetailResponseSchema = z.object({
   stockCode: StockCodeSchema,
   stockName: z.string(),
   market: MarketSchema,
-  currentPrice: KrwAmountSchema,
+  /** §5.1 과 같은 이유로 `null` 일 수 있다 (apiSpec §5.2). */
+  currentPrice: KrwAmountSchema.nullable(),
+  /** 시세가 아니라 종목 마스터의 값이다. 시세와 무관하게 실린다. */
   previousClose: KrwAmountSchema,
-  changeAmount: KrwAmountSchema,
+  changeAmount: KrwAmountSchema.nullable(),
   /** 백분율 */
-  changeRate: PercentSchema,
+  changeRate: PercentSchema.nullable(),
   suspended: z.boolean(),
   suspendedReason: z.string().nullable(),
   watched: z.boolean(),
-  asOf: IsoDateTimeSchema,
+  asOf: IsoDateTimeSchema.nullable(),
   holding: StockHoldingSummarySchema.nullable(),
 });
 export type StockDetailResponse = z.infer<typeof StockDetailResponseSchema>;
@@ -184,9 +204,10 @@ export type StockCodesParam = z.infer<typeof StockCodesParamSchema>;
 export const RecentStockSchema = z.object({
   stockCode: StockCodeSchema,
   stockName: z.string(),
-  currentPrice: KrwAmountSchema,
+  /** §5.1 과 같은 이유로 `null` 일 수 있다 (apiSpec §6.1). */
+  currentPrice: KrwAmountSchema.nullable(),
   /** 백분율 */
-  changeRate: PercentSchema,
+  changeRate: PercentSchema.nullable(),
   viewedAt: IsoDateTimeSchema,
 });
 export type RecentStock = z.infer<typeof RecentStockSchema>;
@@ -207,10 +228,11 @@ export type WatchlistSort = z.infer<typeof WatchlistSortSchema>;
 export const WatchlistItemSchema = z.object({
   stockCode: StockCodeSchema,
   stockName: z.string(),
-  currentPrice: KrwAmountSchema,
-  changeAmount: KrwAmountSchema,
+  /** §5.1 과 같은 이유로 `null` 일 수 있다 (apiSpec §6.3). */
+  currentPrice: KrwAmountSchema.nullable(),
+  changeAmount: KrwAmountSchema.nullable(),
   /** 백분율 */
-  changeRate: PercentSchema,
+  changeRate: PercentSchema.nullable(),
   held: z.boolean(),
   registeredAt: IsoDateTimeSchema,
 });
