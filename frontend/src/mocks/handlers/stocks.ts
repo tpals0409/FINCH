@@ -256,22 +256,35 @@ export const stockHandlers = [
           ? 0
           : (stock.currentPrice - holding.avgBuyPrice) * holding.quantity;
 
+      /*
+       * **`quoteState` 를 상세에서도 존중한다** (apiSpec §5.2). 수신 이력이 없으면 시세 네 개가
+       * `null` 이다. `previousClose` 는 종목 마스터의 값이라 그대로 실린다.
+       *
+       * `holding` 의 평가손익은 마지막으로 알던 가격으로 계속 낸다 — 보유 자체는 원장의
+       * 사실이라 시세가 끊겼다고 사라지지 않는다.
+       */
+      const quoteMissing = stock.quoteState === 'missing';
+
       return HttpResponse.json({
         stockCode: stock.stockCode,
         stockName: stock.stockName,
         market: stock.market,
-        currentPrice: stock.currentPrice,
+        currentPrice: quoteMissing ? null : stock.currentPrice,
         previousClose: stock.previousClose,
-        changeAmount: stock.currentPrice - stock.previousClose,
-        changeRate:
-          Math.round(
-            ((stock.currentPrice - stock.previousClose) / stock.previousClose) *
-              10000,
-          ) / 100,
+        changeAmount: quoteMissing
+          ? null
+          : stock.currentPrice - stock.previousClose,
+        changeRate: quoteMissing
+          ? null
+          : Math.round(
+              ((stock.currentPrice - stock.previousClose) /
+                stock.previousClose) *
+                10000,
+            ) / 100,
         suspended: stock.suspended,
         suspendedReason: stock.suspendedReason,
         watched: store.watchlist.some((entry) => entry.stockCode === stockCode),
-        asOf: nowKstIso(),
+        asOf: quoteMissing ? null : nowKstIso(),
         holding:
           holding === undefined
             ? null
