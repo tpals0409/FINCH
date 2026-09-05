@@ -69,6 +69,7 @@ const TransactionsPage = lazyPage(
   () => import('@/pages/TransactionsPage'),
   'TransactionsPage',
 );
+const HomePage = lazyPage(() => import('@/pages/HomePage'), 'HomePage');
 const StockSearchPage = lazyPage(
   () => import('@/pages/StockSearchPage'),
   'StockSearchPage',
@@ -102,7 +103,7 @@ export const router = createBrowserRouter([
             // 보호 + 하단 탭 (ia.md §3).
             element: <TabBarLayout />,
             children: [
-              { path: ROUTES.home, element: <RoutePlaceholder screen="홈" /> },
+              { path: ROUTES.home, element: <HomePage /> },
               {
                 path: ROUTES.search,
                 element: <StockSearchPage />,

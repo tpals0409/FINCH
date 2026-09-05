@@ -35,7 +35,10 @@ export function StockRow({ stock }: { stock: StockSummary }) {
         </span>
       </span>
 
-      <StockPriceText stock={stock} />
+      <StockPriceText
+        currentPrice={stock.currentPrice}
+        changeRate={stock.changeRate}
+      />
     </Link>
   );
 }

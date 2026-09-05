@@ -227,10 +227,11 @@ export type WatchlistSort = z.infer<typeof WatchlistSortSchema>;
 export const WatchlistItemSchema = z.object({
   stockCode: StockCodeSchema,
   stockName: z.string(),
-  currentPrice: KrwAmountSchema,
-  changeAmount: KrwAmountSchema,
+  /** §5.1 과 같은 이유로 `null` 일 수 있다 (apiSpec §6.3). */
+  currentPrice: KrwAmountSchema.nullable(),
+  changeAmount: KrwAmountSchema.nullable(),
   /** 백분율 */
-  changeRate: PercentSchema,
+  changeRate: PercentSchema.nullable(),
   held: z.boolean(),
   registeredAt: IsoDateTimeSchema,
 });
