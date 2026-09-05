@@ -69,6 +69,10 @@ const TransactionsPage = lazyPage(
   () => import('@/pages/TransactionsPage'),
   'TransactionsPage',
 );
+const StockSearchPage = lazyPage(
+  () => import('@/pages/StockSearchPage'),
+  'StockSearchPage',
+);
 const DepositPage = lazyPage(
   () => import('@/pages/DepositPage'),
   'DepositPage',
@@ -97,7 +101,7 @@ export const router = createBrowserRouter([
               { path: ROUTES.home, element: <RoutePlaceholder screen="홈" /> },
               {
                 path: ROUTES.search,
-                element: <RoutePlaceholder screen="종목 검색" />,
+                element: <StockSearchPage />,
               },
               {
                 path: ROUTES.portfolio,
