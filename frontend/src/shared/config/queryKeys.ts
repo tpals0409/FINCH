@@ -1,4 +1,5 @@
 import type { TransactionFilter } from '@/shared/types/portfolio';
+import type { CandlePeriod } from '@/shared/types/stock';
 
 /**
  * 쿼리 키 팩토리 (컨벤션 §4).
@@ -23,6 +24,20 @@ export const queryKeys = {
   deposits: {
     all: () => ['deposits'] as const,
     limit: () => [...queryKeys.deposits.all(), 'limit'] as const,
+  },
+  stocks: {
+    all: () => ['stocks'] as const,
+    /**
+     * 검색어가 키에 들어간다. 글자를 지웠다 다시 치면 이전 결과가 캐시에서 즉시 뜬다 —
+     * 그게 검색창에서 가장 흔한 동작이다.
+     */
+    search: (keyword: string) =>
+      [...queryKeys.stocks.all(), 'search', keyword] as const,
+    detail: (stockCode: string) =>
+      [...queryKeys.stocks.all(), 'detail', stockCode] as const,
+    candles: (stockCode: string, period: CandlePeriod) =>
+      [...queryKeys.stocks.all(), 'candles', stockCode, period] as const,
+    recent: () => [...queryKeys.stocks.all(), 'recent'] as const,
   },
   transactions: {
     all: () => ['transactions'] as const,
