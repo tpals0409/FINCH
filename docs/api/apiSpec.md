@@ -418,6 +418,11 @@ GET /api/v1/stocks/search?keyword={검색어}&size=10
 `market`: `KOSPI` | `KOSDAQ`
 `suspended`: 거래정지 여부. `true`면 화면에 뱃지를 노출하고 매수를 막는다.
 
+**`currentPrice`·`changeAmount`·`changeRate` 는 `null` 일 수 있다.** 시세 캐시에 그 종목의
+수신 이력이 없을 때이고, §5.4 의 "값 없음" 줄과 같은 상황이다. 종목 자체는 존재하므로
+목록에서 빼지 않는다 — **이름과 코드는 그리고 가격 자리만 비운다.** 시세 수집이 붙기 전에는
+전 종목이 이 상태다.
+
 **상장폐지 종목(`stock.is_active = false`)은 검색 결과에서 제외한다.** 응답에 구분 필드는 없다.
 보유 중인 종목이 상장폐지되는 상황은 MVP 범위에서 발생하지 않으므로(종목 마스터는 프로젝트 기간 중 고정 적재)
 종목 상세(§5.2)·보유 목록(§8.1) 응답에도 구분 필드를 두지 않는다. (이슈 #19)
@@ -453,6 +458,8 @@ GET /api/v1/stocks/{stockCode}
 }
 ```
 
+- **`currentPrice`·`changeAmount`·`changeRate`·`asOf` 는 `null` 일 수 있다** — §5.1 과 같은 이유다.
+  `previousClose` 는 시세가 아니라 종목 마스터의 값이라 시세와 무관하게 실린다.
 - `watched`: 관심 종목 등록 여부 (토글 초기 상태)
 - `holding`: 보유하지 않으면 `null`. **전량 매도로 `quantity = 0`인 행이 남아 있는 경우도 `null`이다** —
   잔존 행은 재매수 시 INSERT 경합을 막기 위한 내부 구현(ERD §2.6)이고 API로 노출하지 않는다.
