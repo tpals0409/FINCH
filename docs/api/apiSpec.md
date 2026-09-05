@@ -616,6 +616,9 @@ GET /api/v1/stocks/prices?stockCodes=005930,000660,035720
 
 최대 30건 FIFO, 중복 시 최상단 갱신. 계정 기준 서버 저장.
 
+**`currentPrice`·`changeRate` 는 `null` 일 수 있다** — §5.1 과 같은 이유다. 본 적이 있다는
+사실은 시세와 무관하므로 목록에서 빼지 않는다.
+
 ```
 GET    /api/v1/stocks/recent
 DELETE /api/v1/stocks/recent/{stockCode}

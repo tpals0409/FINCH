@@ -70,6 +70,10 @@ const TransactionsPage = lazyPage(
   'TransactionsPage',
 );
 const HomePage = lazyPage(() => import('@/pages/HomePage'), 'HomePage');
+const RecentStocksPage = lazyPage(
+  () => import('@/pages/RecentStocksPage'),
+  'RecentStocksPage',
+);
 const StockSearchPage = lazyPage(
   () => import('@/pages/StockSearchPage'),
   'StockSearchPage',
@@ -119,7 +123,7 @@ export const router = createBrowserRouter([
           // ── 보호 + 탭 없음 ─────────────────────────────────────────────
           {
             path: ROUTES.recent,
-            element: <RoutePlaceholder screen="최근 본 종목" />,
+            element: <RecentStocksPage />,
           },
           {
             path: ROUTES.transactions,

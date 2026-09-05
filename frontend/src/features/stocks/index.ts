@@ -1,3 +1,4 @@
+export { useRecentStocks, useRemoveRecentStock } from './api/useRecentStocks';
 export { useStockDetail } from './api/useStockDetail';
 export {
   MIN_SEARCH_KEYWORD_LENGTH,
