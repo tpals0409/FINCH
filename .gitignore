@@ -100,3 +100,7 @@ _inbox/
 .claude/*
 !.claude/commands/
 !.claude/agents/
+
+# serena(MCP) 의 로컬 프로젝트 설정. 도구가 알아서 만들고 사람마다 다르다.
+# .claude/* 와 같은 이유로 통째로 뺀다 — SSOT 가 될 것이 하나도 없다.
+.serena/
