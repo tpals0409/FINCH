@@ -673,12 +673,16 @@ DELETE /api/v1/stocks/search/recent
 GET    /api/v1/watchlist?sort=REGISTERED
 POST   /api/v1/watchlist
 DELETE /api/v1/watchlist/{stockCode}
+```
 
 **`currentPrice`·`changeAmount`·`changeRate` 는 `null` 일 수 있다** — §5.1 과 같은 이유다
 (시세 캐시에 수신 이력 없음). 담아 둔 종목은 시세와 무관하게 목록에 남는다.
-```
 
 `sort`: `REGISTERED`(기본) | `NAME` | `CHANGE_RATE`
+
+- `REGISTERED` 는 **담은 순서의 역순이다 — 최근에 담은 것이 위다.**
+- `CHANGE_RATE` 는 내림차순이고 **시세 없는 종목(`changeRate: null`)은 맨 뒤다.**
+  `null` 을 0 으로 보고 섞으면 하락한 종목보다 위에 서서 "안 떨어졌다" 로 읽힌다.
 
 **GET Response `200 OK`**
 ```json

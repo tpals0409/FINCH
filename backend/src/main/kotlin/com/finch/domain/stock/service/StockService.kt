@@ -79,6 +79,24 @@ class StockService(
 		return CandlesRes.of(stockCode, period, candles)
 	}
 
+	/**
+	 * 코드 목록으로 종목 요약을 찾는다. 관심 종목·최근 본 종목처럼 **코드만 들고 있는 도메인**이
+	 * 이름과 시세를 얻는 창구다 — 그쪽이 `Stock` 엔티티를 직접 읽으면 도메인 경계를 넘는다
+	 * (backConvention 2.4 규칙 3).
+	 *
+	 * `StockSearchRes.Item` 을 그대로 돌려준다. 검색 결과 한 줄과 필요한 필드가 같아서
+	 * (코드·이름·시장·시세·거래정지) 타입을 새로 만들면 같은 모양이 두 벌 생긴다.
+	 *
+	 * **없는 코드는 결과에서 빠진다.** 호출자가 그 코드를 목록에서 뺄지 남길지 스스로 정한다.
+	 */
+	@Transactional(readOnly = true)
+	fun getSummaries(stockCodes: Collection<String>): Map<String, StockSearchRes.Item> {
+		if (stockCodes.isEmpty()) return emptyMap()
+
+		val stocks = stockRepository.findByStockCodeIn(stockCodes.distinct())
+		return StockSearchRes.of(stocks, pricesOf(stocks)).items.associateBy { it.stockCode }
+	}
+
 	/** 전일 종가는 `stock` 이 갖고 있으므로 여기서 붙여 넘긴다 (`PriceService.getAll` 주석). */
 	private fun pricesOf(stocks: List<Stock>): Map<String, PriceRes> =
 		priceService.getAll(
