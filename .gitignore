@@ -68,6 +68,9 @@ env/
 .terraform/
 *.pem
 *.key
+# Cloudflare Origin Certificate. 인증서 자체는 비밀이 아니지만 개인키와 짝이라 같이 둔다 —
+# 한쪽만 무시하면 짝이 갈려 커밋되고, 그때 "인증서는 공개값이니 괜찮다" 로 넘어가게 된다.
+*.crt
 *.p12
 *.jks
 
