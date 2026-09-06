@@ -1,7 +1,9 @@
 package com.finch.domain.watchlist.service
 
 import com.finch.domain.stock.service.StockService
+import com.finch.domain.watchlist.dto.response.WatchlistRes
 import com.finch.domain.watchlist.entity.WatchlistItem
+import com.finch.domain.watchlist.entity.WatchlistSort
 import com.finch.domain.watchlist.exception.WatchlistErrorCode
 import com.finch.domain.watchlist.repository.WatchlistItemRepository
 import com.finch.global.exception.CustomException
@@ -12,17 +14,39 @@ import org.springframework.transaction.annotation.Transactional
 /**
  * 관심 종목 (apiSpec 6.3). watchlist 는 4층이고 `stock`(1층)을 참조한다.
  *
- * ⚠️ **목록 조회(`GET /watchlist`)가 아직 없다.** 응답이 `currentPrice`·`changeAmount`·
- * `changeRate` 를 요구하는데 `price` 도메인이 없어 그 값을 만들 수 없다. 0 을 채우면 값이
- * 있는 종목에 0원을 그리는 거짓이 되고, `sort=CHANGE_RATE` 는 기준 값 자체가 없어 정렬이
- * 성립하지 않는다. **담기·빼기와 `watched` 판정은 그 값이 필요 없어 지금 완결된다** —
- * 시세가 붙는 스프린트가 목록을 더한다.
+ * 시세는 `price` 를 거쳐 얻는다. 수신 이력이 없으면 세 값이 `null` 이고, 그건 고장이 아니라
+ * apiSpec 5.4 의 "값 없음" 이다 — **담아 둔 종목은 시세와 무관하게 목록에 남는다.**
  */
 @Service
 class WatchlistService(
 	private val watchlistItemRepository: WatchlistItemRepository,
 	private val stockService: StockService,
 ) {
+
+	/**
+	 * 목록 (apiSpec 6.3).
+	 *
+	 * 종목이 사라지면 그 줄을 뺀다(`mapNotNull`). 종목 마스터는 고정 적재라 실제로는 안 생기지만,
+	 * 생겼을 때 목록 전체를 500 으로 만들 이유가 없다 — 나머지 49개는 멀쩡하다.
+	 *
+	 * `count` 는 응답에 실린 줄 수다. 한도 판정은 서버가 `countByUserId` 로 따로 하므로,
+	 * 빠진 줄이 있어도 사용자가 볼 숫자와 화면에 그려진 줄 수는 어긋나지 않는다.
+	 */
+	@Transactional(readOnly = true)
+	fun list(userId: Long, sort: WatchlistSort): WatchlistRes {
+		val entries = watchlistItemRepository.findByUserIdOrderByCreatedAtDesc(userId)
+		val summaries = stockService.getSummaries(entries.map { it.stockCode })
+
+		val items = entries.mapNotNull { entry ->
+			summaries[entry.stockCode]?.let { WatchlistRes.item(it, entry.createdAt) }
+		}
+
+		return WatchlistRes(
+			count = items.size,
+			maxCount = MAX_COUNT.toInt(),
+			items = sort.sort(items),
+		)
+	}
 
 	/**
 	 * 담는다.
