@@ -3,7 +3,7 @@
 **이 문서는 인벤토리가 아니라 지금 배포를 막고 있는 것의 체크리스트다.**
 전체 비밀값 목록은 `docs/spec/secrets.md` 에 있다.
 
-코드 쪽 작업은 전부 끝났다. 아래 다섯만 채우면 배포가 돈다.
+코드 쪽 작업은 전부 끝났다. **다섯 중 하나는 해결됐고 넷 남았다.**
 
 > 🔴 = 없으면 배포가 실패한다 · 🟡 = 배포는 되는데 일부 기능이 죽는다
 
@@ -70,28 +70,13 @@ Vite 가 빌드 시점에 값을 박기 때문이고, 프론트는 값이 없으
 
 ---
 
-## 4. ArgoCD 가 `finch-gitops` 를 읽을 방법 🔴 **이게 없으면 아무것도 안 돈다**
+## 4. ArgoCD 가 `finch-gitops` 를 읽을 방법 ✅ **해결됨**
 
-`finch-gitops` 가 **비공개**인데 ArgoCD 에 그 저장소 자격증명이 없다. 루트 앱을 apply 해도
-`repository not accessible` 로 즉시 멈춘다 — 배포가 시작조차 못 한다.
+저장소를 **public 으로 돌렸다** (2026-09-06). ArgoCD 가 자격증명 없이 읽는다.
 
-### (권장) `finch-gitops` 를 public 으로
-
-GitHub → `tpals0409/finch-gitops` → Settings → Change visibility → Public
-
-**SealedSecret 은 공개 저장소에 두라고 만들어진 물건이다.** 클러스터의 개인키 없이는 못 열고,
-그 개인키는 서버 밖으로 나가지 않는다. 이 저장소에 평문 비밀값은 하나도 없다.
-
-공개하면 드러나는 것은 배포 구조와 `app.finchapp.org` 라는 호스트명뿐이다. 호스트명은 DNS 로
-어차피 공개고, 구조는 취약점이 아니다. **대신 자격증명 관리가 통째로 사라진다.**
-
-### (대안) ArgoCD 에 읽기 자격증명 등록
-
-`repo` 스코프(읽기)의 PAT 를 만들어 Pico 에게 넘긴다. `argocd` 네임스페이스에
-`argocd.argoproj.io/secret-type: repository` Secret 을 만드는 일이다.
-
-**이 경로를 고르면 PAT 평문이 서버 에이전트를 거친다.** 봉인으로 피할 수 없다 — ArgoCD 가
-저장소를 읽어야 SealedSecret 을 가져오는데, 그 읽기 권한 자체를 얻으려는 참이라 순환이다.
+공개 직후 감사했고 남으면 안 될 것은 없었다 — 평문 `Secret` 0개, `stringData` 0개,
+서버 IP 0개, 토큰·PAT 0개, 개인키 0개. 들어 있는 것은 암호화된 SealedSecret 과
+봉인 **공개**키(`scripts/sealing-cert.pem`)뿐이고, 둘 다 공개 저장소에 두라고 만들어진 것이다.
 
 ---
 
