@@ -1,0 +1,166 @@
+# 배포에 필요한 비밀값
+
+**이 문서는 인벤토리가 아니라 지금 배포를 막고 있는 것의 체크리스트다.**
+전체 비밀값 목록은 `docs/spec/secrets.md` 에 있다.
+
+코드 쪽 작업은 전부 끝났다. 아래 다섯만 채우면 배포가 돈다.
+
+> 🔴 = 없으면 배포가 실패한다 · 🟡 = 배포는 되는데 일부 기능이 죽는다
+
+---
+
+## 1. Cloudflare Origin Certificate 🔴
+
+**없으면**: Ingress 가 참조하는 `finch-origin-tls` Secret 이 없어 Traefik 이 self-signed 로
+떨어진다. Cloudflare SSL 을 Full (strict) 로 두면 브라우저에 **`526`** 이 뜬다.
+
+**받는 곳**: Cloudflare 대시보드 → `finchapp.org` → SSL/TLS → **Origin Server** →
+Create Certificate
+
+- 호스트명에 **`finchapp.org` 와 `*.finchapp.org` 둘 다** 넣는다.
+  와일드카드로 받아두면 나중에 `www` 든 `admin` 이든 붙일 때 재발급이 없다.
+- 유효기간은 기본값(15년) 그대로. 갱신 작업이 사라진다.
+- **인증서와 개인키가 화면에 한 번만 뜬다.** 둘 다 저장한다.
+
+**둘 곳**:
+```
+~/Desktop/FINCH/backend/origin.crt   ← Origin Certificate
+~/Desktop/FINCH/backend/origin.key   ← Private Key
+```
+
+> `backend/.env` 와 `origin.*` 는 `.gitignore` 에 걸려 있다. 커밋되지 않는다.
+
+**같이 할 것**: SSL/TLS → Overview → **Full (strict)** 로 바꾼다.
+Flexible 은 Cloudflare→원본 구간이 평문이고, Full 은 원본 인증서를 검증하지 않는다.
+
+---
+
+## 2. 카카오 로그인 키 2종 🔴
+
+**없으면**: `application.yaml` 이 비밀값에 기본값을 두지 않으므로 **백엔드 파드가 기동에
+실패한다.** 조용히가 아니라 요란하게 죽는다 — 그건 다행이다.
+
+**받는 곳**: [카카오 개발자 콘솔](https://developers.kakao.com) → 내 애플리케이션 →
+앱 키의 **REST API 키** (JavaScript 키가 아니다) · 보안의 **Client Secret**
+
+**둘 곳**: `~/Desktop/FINCH/backend/.env`
+```
+KAKAO_CLIENT_ID=<REST API 키>
+KAKAO_CLIENT_SECRET=<Client Secret>
+```
+
+**같이 할 것 — 이거 빠뜨리면 로그인이 `KOE006` 으로 막힌다**:
+카카오 콘솔 → 카카오 로그인 → Redirect URI 에 아래를 등록한다. **문자 단위로 같아야 한다.**
+```
+https://app.finchapp.org/oauth/kakao
+```
+
+---
+
+## 3. GitHub Actions 시크릿 `KAKAO_CLIENT_ID` 🟡
+
+**없으면**: 빌드도 배포도 **성공하고 로그인 버튼만 비활성으로 뜬다.**
+Vite 가 빌드 시점에 값을 박기 때문이고, 프론트는 값이 없으면 버튼을 스스로 잠근다
+(`shared/config/env.ts`). **조용히 실패하는 종류라 배포 후에 알아채기 어렵다.**
+
+**할 것**: GitHub → `tpals0409/FINCH` → Settings → Secrets and variables → Actions →
+`KAKAO_CLIENT_ID` 에 **2번과 같은 REST API 키**를 넣는다.
+
+등록한 뒤 `master` 에 아무 커밋이나 올라가야 프론트 이미지가 그 값으로 다시 빌드된다.
+
+---
+
+## 4. ArgoCD 가 `finch-gitops` 를 읽을 방법 🔴 **이게 없으면 아무것도 안 돈다**
+
+`finch-gitops` 가 **비공개**인데 ArgoCD 에 그 저장소 자격증명이 없다. 루트 앱을 apply 해도
+`repository not accessible` 로 즉시 멈춘다 — 배포가 시작조차 못 한다.
+
+### (권장) `finch-gitops` 를 public 으로
+
+GitHub → `tpals0409/finch-gitops` → Settings → Change visibility → Public
+
+**SealedSecret 은 공개 저장소에 두라고 만들어진 물건이다.** 클러스터의 개인키 없이는 못 열고,
+그 개인키는 서버 밖으로 나가지 않는다. 이 저장소에 평문 비밀값은 하나도 없다.
+
+공개하면 드러나는 것은 배포 구조와 `app.finchapp.org` 라는 호스트명뿐이다. 호스트명은 DNS 로
+어차피 공개고, 구조는 취약점이 아니다. **대신 자격증명 관리가 통째로 사라진다.**
+
+### (대안) ArgoCD 에 읽기 자격증명 등록
+
+`repo` 스코프(읽기)의 PAT 를 만들어 Pico 에게 넘긴다. `argocd` 네임스페이스에
+`argocd.argoproj.io/secret-type: repository` Secret 을 만드는 일이다.
+
+**이 경로를 고르면 PAT 평문이 서버 에이전트를 거친다.** 봉인으로 피할 수 없다 — ArgoCD 가
+저장소를 읽어야 SealedSecret 을 가져오는데, 그 읽기 권한 자체를 얻으려는 참이라 순환이다.
+
+---
+
+## 5. GHCR 이미지 접근 🟡
+
+지금 `ghcr.io/tpals0409/finch-*` 가 **`401`** 이다. 둘 중 하나를 고른다.
+
+### (권장) 패키지를 public 으로
+
+GitHub → 프로필 → Packages → `finch-backend` · `finch-frontend` · `finch-ai` 각각 →
+Package settings → Change visibility → Public
+
+저장소가 이미 공개고 이미지 안에 든 건 같은 코드다. 프론트 이미지에 `KAKAO_CLIENT_ID` 가
+빌드타임에 박히지만 그건 어차피 브라우저 번들에 실려 나가는 공개값이고, Client Secret 은
+백엔드 런타임 환경변수라 이미지에 없다.
+
+**PAT 만료로 새벽에 `ImagePullBackOff` 를 보는 실패 모드가 통째로 사라진다.**
+
+⚠️ **다만 파드 이벤트에 경고가 하나 남는다.** values 가 `imagePullSecrets: [ghcr-pull]` 을
+참조하는데 그 Secret 이 없기 때문이다 — `FailedToRetrieveImagePullSecret` 이 뜨고,
+**이미지는 정상적으로 당겨진다**(공개 이미지라 자격증명 없이 받는다). 경고가 거슬리면
+`apps/prod/{backend,frontend,ai}/values.yaml` 에서 그 두 줄을 지운다. 지우지 않아도 배포는 된다.
+
+### (대안) `ghcr-pull` Secret
+
+`read:packages` 스코프의 PAT 를 만들어 봉인한다.
+```bash
+GHCR_PAT=<PAT> FINCH=~/Desktop/FINCH ~/Desktop/finch-gitops/scripts/seal.sh
+```
+
+---
+
+## 다 채운 뒤 — 세 단계
+
+### ① 봉인 (내 노트북에서, 1분)
+
+```bash
+cd ~/Desktop/finch-gitops
+FINCH=~/Desktop/FINCH ./scripts/seal.sh
+```
+
+클러스터에 접속하지 않는다. 봉인 공개키가 저장소에 있어(`scripts/sealing-cert.pem`,
+지문 `8B:DF:00:C0:…`) 오프라인으로 봉인되고, **평문이 서버를 거치지 않는다.**
+
+만들어지는 것 — `postgres-backend-secret` · `backend-secrets` · `finch-origin-tls`
+(+ PAT 를 줬으면 `ghcr-pull`). 앞의 둘은 **같은 DB 비밀번호로 한 번에** 만들어진다.
+따로 만들면 봉인된 값을 되읽을 수 없어 반드시 어긋난다.
+
+그다음 커밋하고 `main` 에 머지한다. (열려 있는 PR: `tpals0409/finch-gitops#1`)
+
+### ② Pico 에게 시킬 것
+
+`docs/ops/deploy-runbook.md` 를 그대로 넘긴다. 요약하면 루트 앱 한 번 apply 다.
+
+### ③ 확인
+
+```bash
+curl -I https://app.finchapp.org/
+curl -s -o /dev/null -w "%{http_code}\n" "https://app.finchapp.org/api/v1/stocks/search?keyword=삼성"
+```
+
+`401` 이 나오면 성공이다 — 인증이 필요한 엔드포인트가 인증을 요구한다는 건
+백엔드가 살아서 응답하고 있다는 뜻이다.
+
+---
+
+## 이번 배포에 필요 없는 것
+
+- **AI 서버 키 전부** (`GMS_KEY` · DART · NAVER · ECOS · KRX) — 첫 배포에서 AI 를 껐다.
+  `apps/prod/ai/values.yaml` 의 `application.enabled: false` 를 `true` 로 돌릴 때 필요해진다
+- **`ai-secrets`** — 위와 같은 이유. 켤 때 `DATABASE_URL` 을 `postgres-ai` 주소로 다시 쓴다
+- **`KIS_ACCOUNT_NO` 의 나머지 2자리** — 시세에는 안 쓰이고 주문·잔고에서 필요해진다
