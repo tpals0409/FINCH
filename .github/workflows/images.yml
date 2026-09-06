@@ -125,6 +125,30 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # KAKAO_CLIENT_ID 가 비어 있으면 프론트 이미지가 로그인 없이 만들어진다. 빌드도 배포도
+      # 성공하고 로그인 버튼만 비활성으로 뜬다 — 조용히 실패하는 종류라 배포 후에 알아채기 어렵다.
+      #
+      # 빌드를 막지는 않는다. 나머지 기능은 정상이고, 배포 자체를 세울 이유가 없다.
+      # 대신 실행 요약에 남겨 그 이미지가 어떤 상태인지 로그를 뒤지지 않고 보이게 한다.
+      #
+      # 판정을 if: 가 아니라 run: 안에서 하는 이유 — secrets 컨텍스트는 스텝 if 에서 쓸 수 없다.
+      # 거기 쓰면 조건이 항상 거짓이 되어 경고가 영영 안 뜬다.
+      - name: 카카오 키 누락 경고
+        if: matrix.service == 'frontend'
+        env:
+          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+        run: |
+          if [ -n "$KAKAO_CLIENT_ID" ]; then exit 0; fi
+          echo "::warning title=KAKAO_CLIENT_ID 없음::프론트 이미지가 로그인 없이 빌드된다"
+          {
+            echo "### 이 프론트 이미지는 로그인이 죽어 있다"
+            echo
+            echo "저장소 시크릿 KAKAO_CLIENT_ID 가 비어 있다. Vite 가 빌드 시점에 값을 박으므로"
+            echo "런타임에 고칠 수 없고, 시크릿을 넣은 뒤 master 에 커밋이 올라가야 다시 빌드된다."
+            echo
+            echo "자세한 것은 루트 keys.md 의 3번."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - uses: docker/build-push-action@v6
         with:
           # 세 Dockerfile 모두 COPY 를 backend/ · frontend/ · ai/ 로 시작한다. 컨텍스트는 저장소 루트다.
