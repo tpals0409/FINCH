@@ -84,6 +84,16 @@ logging:
     # 기본 패턴에서 바꾼 것은 이 한 토큰뿐이다 — 로컬에서 읽는 형식은 그대로 둔다.
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%X{requestId:-}] --- [%15.15t] %-40.40logger{39} : %m%n%wEx"
 
+finch:
+  price:
+    # 마지막 수신이 이보다 오래되면 stale 로 본다 (apiSpec 5.4).
+    #
+    # ⚠️ **잠정값이다.** 확정하려면 `[S0-3]` 실측이 필요하고, 그건 KIS 에 실제로 붙어
+    # 수신 간격을 재야 나온다 — 로컬 유선망이 KIS 를 막아 아직 못 쟀다. 폴링 주기를
+    # 가정한 어림값을 넣어두고, 서버 배포 후 실측으로 바꾼다. 시안이 비워둔 "시세 지연"
+    # 임계 수치도 같은 값을 쓴다.
+    stale-after: 15s
+
 ---
 # 운영 프로파일(SPRING_PROFILES_ACTIVE=prod)에서만 로그를 JSON 한 줄로 찍는다.
 # Loki 든 다른 수집기든 문장을 정규식으로 쪼개지 않고 level·requestId 로 바로 거르게 하기 위해서다.
@@ -97,3 +107,4 @@ logging:
   structured:
     format:
       console: ecs
+
