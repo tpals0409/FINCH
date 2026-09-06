@@ -18,10 +18,13 @@
 | `kubectl -n kube-system get deploy sealed-secrets-controller` | Running |
 | `kubectl get crd sealedsecrets.bitnami.com` | 있음 |
 | `kubectl get crd servicemonitors.monitoring.coreos.com` | 있음 |
-| `finch-gitops` 저장소 | ArgoCD 가 읽을 수 있음 (public 이거나 자격증명 등록됨) |
+| `finch-gitops` 저장소 | **public 이다** (2026-09-06 전환). 자격증명이 필요 없다 |
+| `kubectl get storageclass` | 기본 StorageClass 가 있음 (k3s 는 `local-path`) |
 
-**마지막 줄이 특히 중요하다.** 저장소를 못 읽으면 루트 앱이 `repository not accessible` 로
-즉시 멈추고, 그 상태는 다른 문제처럼 보인다.
+**StorageClass 가 특히 조용히 막는 자리다.** postgres 두 대가 각각 10Gi PVC 를 요구하는데
+기본 StorageClass 가 없으면 PVC 가 `Pending` 에 머물고 파드는 영원히 `ContainerCreating` 이다.
+에러가 아니라 정지라서 뭘 기다리는지 보이지 않는다 — `kubectl -n finch-prod describe pvc` 가
+그때 답을 준다.
 
 또 하나 — `platform/data/` 에 아래 봉인본이 다 있어야 한다. 없으면 그 Secret 을 기다리는
 파드가 `CreateContainerConfigError` 로 멈춘다.
@@ -35,6 +38,18 @@ sealed-origin-tls.yaml
 `sealed-ghcr-pull.yaml` 은 GHCR 패키지가 public 이면 없어도 된다.
 
 ---
+
+> ## ⚠️ 봉인 전에 apply 하지 마라
+>
+> "일단 postgres 만 띄워서 파이프라인을 시험해보자" 가 안 되는 이유가 있다.
+>
+> `seal.sh` 는 `postgres-backend-secret` 과 `backend-secrets` 를 **같은 비밀번호로 새로**
+> 만든다. 봉인된 값은 되읽을 수 없어서 그 방법밖에 없다. 그런데 postgres 가 이미 한 번
+> 떴다면 **PVC 안의 DB 는 그때 받은 옛 비밀번호를 그대로 들고 있다** — 새 Secret 이 와도
+> DB 자신의 비밀번호는 안 바뀐다. 그때부터 백엔드가 `password authentication failed` 로
+> 붙지 못하고, 고치려면 PVC 를 지워야 한다(= 데이터를 버린다).
+>
+> **`keys.md` 를 다 채우고 `seal.sh` 를 돌린 뒤에 시작한다.**
 
 ## 1. AppProject 를 먼저 apply 한다
 
