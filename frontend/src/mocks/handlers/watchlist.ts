@@ -66,7 +66,12 @@ export const watchlistHandlers = [
       );
     }
 
-    const items = store.watchlist
+    /*
+     * **최근에 담은 것이 위다** (apiSpec §6.3). store 는 담은 순서로 쌓이므로 뒤집는다.
+     * 서버가 createdAt 내림차순으로 주는 것과 같은 순서다.
+     */
+    const items = [...store.watchlist]
+      .reverse()
       .map((entry) => {
         const stock = findStock(entry.stockCode);
         return stock === undefined
