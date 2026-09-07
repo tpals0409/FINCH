@@ -134,6 +134,13 @@ export const API_PATHS = {
     orderPreview: '/ai/orders/preview',
     briefing: '/ai/briefing',
     feedback: '/ai/feedback',
+    /**
+     * 위키 3종 (contracts C80). `POST /ai/wiki/theses` 는 여기 없다 —
+     * AI 서비스가 내부에서 스스로 부르는 경로라 프론트 호출 경로가 아니다.
+     */
+    wiki: '/ai/wiki',
+    wikiThesis: (stockCode: string) => `/ai/wiki/theses/${stockCode}`,
+    wikiFact: (factId: string) => `/ai/wiki/facts/${factId}`,
   },
 } as const;
 

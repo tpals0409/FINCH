@@ -49,6 +49,17 @@ export const queryKeys = {
     available: (stockCode: string, side: OrderSide) =>
       [...queryKeys.orders.all(), 'available', stockCode, side] as const,
   },
+  ai: {
+    all: () => ['ai'] as const,
+    /**
+     * 날짜가 키에 들어간다. `null` 은 "당일" 이고 서버가 기준 거래일을 잡으므로
+     * 날짜를 지정한 조회와 같은 캐시를 쓸 수 없다.
+     */
+    briefing: (date: string | null) =>
+      [...queryKeys.ai.all(), 'briefing', date] as const,
+    /** 위키는 사용자당 하나다. 식별자를 넣지 않는 이유는 users.me 와 같다. */
+    wiki: () => [...queryKeys.ai.all(), 'wiki'] as const,
+  },
   transactions: {
     all: () => ['transactions'] as const,
     /**

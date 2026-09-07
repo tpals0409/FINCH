@@ -11,3 +11,8 @@ jwt:
 kakao:
   client-id: test-client-id
   client-secret: test-client-secret
+
+finch:
+  ai:
+    # 테스트는 AI 서버를 부르지 않는다. 값이 없으면 컨텍스트가 안 뜨므로 자리만 채운다.
+    internal-token: test-internal-token

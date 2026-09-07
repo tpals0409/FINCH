@@ -75,6 +75,29 @@ export interface MockAiFeedback {
   submittedAt: string;
 }
 
+/** 위키 사실 한 줄 (AI 명세 §9 `WikiFactOut`). `editable` 이 false 면 지우기 버튼이 없다 */
+interface MockWikiFact {
+  id: string;
+  text: string;
+  source: string;
+  confidence: string;
+  asOf: string;
+  evidence: Record<string, unknown>;
+  editable: boolean;
+}
+
+/** 투자 논지 한 줄 (`WikiThesisOut`). 필드 이름은 AI 원본 그대로 `ticker` 다 (apiSpec §10.3) */
+interface MockWikiThesis {
+  id: string;
+  ticker: string;
+  text: string;
+  horizon: string | null;
+  source: string;
+  status: string;
+  linkedTradeId: string | null;
+  recordedAt: string;
+}
+
 interface MockStore {
   cashBalance: number;
   /** 계정 전체 누적 충전액. 되돌릴 경로가 없다 (apiSpec §4.1) */
@@ -87,6 +110,12 @@ interface MockStore {
   nextSearchKeywordId: number;
   /** `requestId` → 마지막 평가. 누적하지 않고 덮어쓴다 (contracts C66) */
   aiFeedback: Record<string, MockAiFeedback>;
+  /**
+   * 사용자 위키. **삭제와 수정이 실제로 이 배열을 바꾼다** — 고정 픽스처로 두면
+   * 지우기를 눌러도 목록이 그대로라 화면이 무효화를 제대로 거는지 확인할 수 없다.
+   */
+  aiWikiFacts: MockWikiFact[];
+  aiWikiTheses: MockWikiThesis[];
   /** 최신순이다. `GET /transactions` 는 이 순서를 그대로 쓴다 */
   transactions: MockTransaction[];
   nextTransactionId: number;
@@ -127,6 +156,59 @@ export const store: MockStore = {
   ],
   nextSearchKeywordId: 43,
   aiFeedback: {},
+  aiWikiFacts: [
+    {
+      id: 'fact_1',
+      text: '반도체 비중을 절반 아래로 유지하고 싶어 하시는군요',
+      source: 'user_stated',
+      confidence: 'high',
+      asOf: '2026-08-27T21:12:00+09:00',
+      evidence: { origin: 'chat' },
+      editable: true,
+    },
+    {
+      // ai_inferred 는 단정투로 렌더링하면 안 된다 (AI 응답 정책 §4.2). 화면이 물음표를 붙인다
+      id: 'fact_2',
+      text: '변동성이 큰 날에는 거래를 줄이시는 편이에요',
+      source: 'ai_inferred',
+      confidence: 'medium',
+      asOf: '2026-09-01T18:40:00+09:00',
+      evidence: { tradeCount: 14 },
+      editable: true,
+    },
+    {
+      // editable: false 갈래. 화면이 이 항목에는 지우기 버튼을 붙이지 않아야 한다
+      id: 'fact_3',
+      text: '지금까지 3개 종목을 보유하셨어요',
+      source: 'derived_from_trades',
+      confidence: 'high',
+      asOf: '2026-09-05T09:00:00+09:00',
+      evidence: { holdingCount: 3 },
+      editable: false,
+    },
+  ],
+  aiWikiTheses: [
+    {
+      id: 'thesis_1',
+      ticker: '005930',
+      text: 'HBM 수요가 이어지는 동안은 들고 간다',
+      horizon: 'mid',
+      source: 'user_stated',
+      status: 'active',
+      linkedTradeId: null,
+      recordedAt: '2026-08-27T21:12:00+09:00',
+    },
+    {
+      id: 'thesis_2',
+      ticker: '035720',
+      text: '광고 매출이 회복되는지 분기마다 확인한다',
+      horizon: null,
+      source: 'user_stated',
+      status: 'active',
+      linkedTradeId: 'trade_301',
+      recordedAt: '2026-08-30T10:05:00+09:00',
+    },
+  ],
   transactions: [
     {
       transactionId: 305,

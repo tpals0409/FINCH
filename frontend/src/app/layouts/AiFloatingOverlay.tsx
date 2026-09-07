@@ -1,5 +1,6 @@
 import { matchPath, useLocation } from 'react-router-dom';
 
+import { AiFloatingButton } from '@/features/ai';
 import {
   ROUTES,
   ROUTE_PATTERNS,
@@ -64,16 +65,9 @@ function showsAiFloatingButton(pathname: string) {
  * 모두 떠야 하므로 `TabBarLayout` 안이 아니라 라우트 트리 최상단에 자리를 둔다.
  * `TabBarLayout` 안에 두면 탭 밖 화면에서 사라진다.
  *
- * **버튼 UI 는 여기서 그리지 않는다.** 공통 컴포넌트 티켓의 몫이고 이 파일은
- * 자리와 노출 판정만 갖는다. 버튼을 넣는 사람이 할 일은 둘이다.
- *
- * - 아래 주석 자리에 버튼을 렌더한다. 버튼 자신은 `pointer-events-auto` 를 켠다
- *   (이 컨테이너는 `pointer-events-none` 이라 빈 자리가 본문 터치를 막지 않는다)
- * - **탭 바에 가리지 않게 하단 여백을 잡는다.** 탭 바 컴포넌트가 아직 없어서
- *   높이 값이 정해지지 않았다. 탭 바가 `fixed` 로 들어오면 그 높이 +
- *   `env(safe-area-inset-bottom)` 만큼을 이 컨테이너 하단에 더한다. 탭이 없는
- *   화면(종목 상세·브리핑)에서는 safe-area 만 남는다 — 두 경우가 갈리므로
- *   여백 값도 `BOTTOM_TAB_ROUTES` 매칭으로 갈라야 한다.
+ * **버튼 UI 는 여기서 그리지 않는다.** 이 파일은 자리와 노출 판정만 갖고,
+ * 모양과 여백은 `AiFloatingButton` 이 갖는다. 컨테이너가 `pointer-events-none` 이라
+ * 버튼이 자기 것만 다시 켠다 — 빈 자리가 본문 터치를 막지 않게 하려는 구조다.
  */
 export function AiFloatingOverlay() {
   const location = useLocation();
@@ -87,7 +81,7 @@ export function AiFloatingOverlay() {
       className="pointer-events-none fixed inset-x-0 bottom-0 z-(--z-floating) flex justify-end"
       data-testid="ai-floating-slot"
     >
-      {/* 여기에 AI 플로팅 버튼이 들어온다. 공통 컴포넌트 티켓 범위다. */}
+      <AiFloatingButton />
     </div>
   );
 }

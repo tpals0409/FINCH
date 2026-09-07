@@ -713,4 +713,101 @@ export const aiHandlers = [
      */
     return HttpResponse.json(aiResponse({ recorded: true }, requestId));
   }),
+
+  /*
+   * 위키 3종 (contracts C80). **`POST /ai/wiki/theses` 는 없다** — AI 서비스가 내부에서
+   * 스스로 부르는 경로라 프론트 호출 경로가 아니다. 목에 만들어 두면 없는 계약이 생긴다.
+   *
+   * 삭제·수정이 `store` 를 실제로 바꾼다. 고정 픽스처면 화면이 무효화를 거는지 확인할 수 없다.
+   */
+  http.get(mockPath(API_PATHS.ai.wiki), ({ request }) => {
+    const unauthorized = requireAuth(request);
+    if (unauthorized !== null) {
+      return unauthorized;
+    }
+
+    return HttpResponse.json(
+      aiResponse(
+        { profile: store.aiWikiFacts, theses: store.aiWikiTheses },
+        nextAiRequestId(),
+        { portfolio: nowKstIso() },
+      ),
+    );
+  }),
+
+  http.put(
+    mockPath(API_PATHS.ai.wikiThesis(':stockCode')),
+    async ({ request, params }) => {
+      const unauthorized = requireAuth(request);
+      if (unauthorized !== null) {
+        return unauthorized;
+      }
+
+      const body = await readJsonBody(request);
+      const text = typeof body?.text === 'string' ? body.text.trim() : '';
+
+      if (text === '' || text.length > 500) {
+        return errorResponse(
+          AI_SERVICE_ERROR_CODES.INVALID_REQUEST,
+          '투자 이유를 확인해 주세요',
+          400,
+          { text: '1자 이상 500자 이하여야 합니다' },
+        );
+      }
+
+      // **경로의 종목코드가 기준이다. 본문의 ticker 는 무시한다** (contracts C60).
+      const stockCode = String(params.stockCode);
+      const thesis = store.aiWikiTheses.find(
+        (row) => row.ticker === stockCode && row.status === 'active',
+      );
+
+      if (thesis === undefined) {
+        return aiErrorResponse(
+          AI_SERVICE_ERROR_CODES.INSTRUMENT_NOT_FOUND,
+          '수정할 논지를 찾을 수 없어요',
+          404,
+          nextAiRequestId(),
+        );
+      }
+
+      thesis.text = text;
+      thesis.horizon = typeof body?.horizon === 'string' ? body.horizon : null;
+      thesis.recordedAt = nowKstIso();
+
+      // content 는 갱신된 논지 전체다 (contracts C61).
+      return HttpResponse.json(aiResponse({ ...thesis }, nextAiRequestId()));
+    },
+  ),
+
+  http.delete(
+    mockPath(API_PATHS.ai.wikiFact(':factId')),
+    ({ request, params }) => {
+      const unauthorized = requireAuth(request);
+      if (unauthorized !== null) {
+        return unauthorized;
+      }
+
+      const factId = String(params.factId);
+      const index = store.aiWikiFacts.findIndex((fact) => fact.id === factId);
+
+      if (index === -1) {
+        return aiErrorResponse(
+          AI_SERVICE_ERROR_CODES.INVALID_REQUEST,
+          '지울 항목을 찾을 수 없어요',
+          400,
+          nextAiRequestId(),
+        );
+      }
+
+      /*
+       * **소프트 삭제다** — 서버는 행을 남기고 읽기 경로에서만 뺀다. 목에는 읽기 경로가
+       * 하나뿐이라 배열에서 빼는 것으로 같은 결과를 만든다. `deletedAt` 은 응답에 실린다.
+       */
+      store.aiWikiFacts.splice(index, 1);
+
+      return HttpResponse.json(
+        aiResponse({ id: factId, deletedAt: nowKstIso() }, nextAiRequestId()),
+      );
+    },
+  ),
 ];

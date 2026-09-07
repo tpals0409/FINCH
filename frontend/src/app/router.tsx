@@ -87,6 +87,12 @@ const DepositPage = lazyPage(
   () => import('@/pages/DepositPage'),
   'DepositPage',
 );
+const BriefingPage = lazyPage(
+  () => import('@/pages/BriefingPage'),
+  'BriefingPage',
+);
+const ChatPage = lazyPage(() => import('@/pages/ChatPage'), 'ChatPage');
+const MyWikiPage = lazyPage(() => import('@/pages/MyWikiPage'), 'MyWikiPage');
 
 export const router = createBrowserRouter([
   {
@@ -133,7 +139,7 @@ export const router = createBrowserRouter([
           {
             // 경로 미확정. `ROUTES.briefing` 주석과 ia.md §7 을 본다.
             path: ROUTES.briefing,
-            element: <RoutePlaceholder screen="브리핑 전체" />,
+            element: <BriefingPage />,
           },
           {
             path: ROUTES.deposit,
@@ -147,11 +153,11 @@ export const router = createBrowserRouter([
           },
           {
             path: ROUTES.chat,
-            element: <RoutePlaceholder screen="AI 채팅" />,
+            element: <ChatPage />,
           },
           {
             path: ROUTES.myWiki,
-            element: <RoutePlaceholder screen="AI가 이해한 나" />,
+            element: <MyWikiPage />,
           },
 
           {
