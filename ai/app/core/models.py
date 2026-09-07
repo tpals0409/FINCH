@@ -214,6 +214,13 @@ class DocumentChunk(Base):
         UniqueConstraint("document_id", "chunk_index", name="uq_chunk_doc_index"),
         # 어휘 경로(@@)가 쓰는 인덱스. raw SQL 로 만든 것과 이름을 맞춘다.
         Index("ix_chunks_text_tsv", "text_tsv", postgresql_using="gin"),
+        Index(
+            "ix_document_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
 
