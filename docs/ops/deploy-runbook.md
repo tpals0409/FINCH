@@ -174,7 +174,14 @@ kubectl -n finch-prod exec deploy/backend -- sh -c 'rm -f /tmp/kis.json'
 사람 것은 담지 않았다. 약 67MB, 커스텀 포맷(`pg_dump -Fc --data-only`).
 
 **스키마는 옮기지 않는다.** AI 이미지가 기동할 때 alembic 이 만든다. 그래서 데이터만 있는
-덤프이고, **복원은 AI 파드가 한 번 떠서 마이그레이션을 끝낸 뒤**여야 한다.
+덤프이고, **AI 를 먼저 켜야 복원할 수 있다** — 빈 DB 에는 넣을 테이블이 없다.
+
+순서가 뒤집혀 보이지만 그게 맞다.
+
+1. `apps/prod/ai/values.yaml` 의 `application.enabled` 를 `true` 로 올리는 커밋이 나간다
+2. AI 파드가 뜨면서 alembic 이 스키마를 만든다. 이때 코퍼스가 비어 있어도 고장은 아니다 —
+   검색이 빈 결과를 돌려주고 AI 는 "관련 자료를 찾지 못했습니다" 로 답한다 (AI 명세 §3)
+3. 아래 절차로 코퍼스를 넣는다. 넣는 즉시 다음 질문부터 근거가 붙는다
 
 **파일은 GitHub Release 에 있다.** 이 노트북에서 서버로 가는 SSH 가 닫혀 있어(22 차단)
 서버가 직접 받는 편이 유일한 경로다. 인증 없이 받아진다.
@@ -210,8 +217,8 @@ rm -f /tmp/corpus.dump
 (ivfflat·hnsw 둘 다). 행 수가 이 정도면 순차 스캔으로도 답이 나오고, 인덱스를 언제 붙일지는
 검색 지연을 실측한 뒤에 정한다.
 
-복원이 끝나면 `apps/prod/ai/values.yaml` 의 `application.enabled` 를 `true` 로 올리는
-커밋이 나간다. **그건 저장소에서 하는 일이지 클러스터에서 하는 일이 아니다.**
+복원이 끝나면 AI 배포가 완결된다. **`application.enabled` 를 포함해 어떤 설정도 클러스터에서
+고치지 않는다** — ArgoCD 가 self-heal 로 되돌린다. 고칠 것이 있으면 저장소를 고친다.
 
 ## 막혔을 때
 
