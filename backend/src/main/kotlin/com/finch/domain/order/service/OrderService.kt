@@ -82,26 +82,41 @@ class OrderService(
 	}
 
 	/**
-	 * `GET /orders/available` (apiSpec 7.3). 주문 화면이 최대 수량을 그리는 데 쓴다.
+	 * `GET /orders/available` (apiSpec 7.3).
 	 *
-	 * **여기 값으로 체결을 보장하지 않는다.** 조회와 체결 사이에 가격이 움직이거나 다른 주문이
-	 * 끼어들 수 있어, 체결 직전에 다시 판정한다. 그래서 잠금 없이 읽는다.
+	 * 체결과 **같은 판정을 같은 순서로** 돌리되 예외를 던지지 않고 이유를 값으로 돌려준다.
+	 * 화면이 주문 버튼을 미리 잠그기 위한 것이고, 판정 자체는 체결 직전에 다시 한다.
+	 *
+	 * 잠금 없이 읽는다 — 표시용이라 그 사이에 값이 바뀌어도 체결이 다시 본다.
 	 */
 	@Transactional(readOnly = true)
-	fun getAvailable(userId: Long, stockCode: String): OrderAvailableRes {
+	fun getAvailable(userId: Long, stockCode: String, side: OrderSide): OrderAvailableRes {
 		val stock = stockService.getOrThrow(stockCode)
-		val price = priceOf(stock).currentPrice
-		val balance = accountService.getBalance(userId)
-		val accountId = accountService.getAccountId(userId)
+		val price = priceOf(stock)
+		val cash = accountService.getBalance(userId).cashBalance
+		val holding = portfolioService.getQuantity(accountService.getAccountId(userId), stock.stockCode)
+
+		// 순서가 apiSpec 7.2 와 같다. 먼저 걸리는 것이 사용자가 먼저 고쳐야 하는 것이다.
+		val reason = when {
+			!isMarketOpen() -> OrderErrorCode.ORDER_MARKET_CLOSED
+			stock.suspended -> OrderErrorCode.ORDER_STOCK_SUSPENDED
+			price.stale || price.currentPrice == null || price.currentPrice <= 0 ->
+				OrderErrorCode.ORDER_PRICE_UNAVAILABLE
+			else -> null
+		}
 
 		return OrderAvailableRes(
-				stockCode = stock.stockCode,
-			currentPrice = price,
-			cashBalance = balance.cashBalance,
-			// 시세가 없으면 0 이다. 살 수 있는 수량을 셀 근거가 없어서고, 전일 종가로 대신
-			// 세면 화면이 살 수 있다고 말한 뒤 체결이 ORDER_PRICE_UNAVAILABLE 로 거절된다.
-			maxBuyQuantity = if (price == null || price <= 0) 0 else balance.cashBalance / price,
-			maxSellQuantity = portfolioService.getQuantity(accountId, stock.stockCode),
+			tradable = reason == null,
+			reason = reason?.name,
+			currentPrice = price.currentPrice,
+			availableCash = cash,
+			// 주문할 수 없는 상태면 0 이다. 살 수 있다고 말한 뒤 체결에서 거절하지 않는다.
+			maxQuantity = when {
+				reason != null -> 0
+				side == OrderSide.BUY -> cash / price.currentPrice!!
+				else -> holding
+			},
+			holdingQuantity = holding,
 		)
 	}
 
@@ -217,8 +232,13 @@ class OrderService(
 	 * 없는 근거로 막으면 열려 있어야 할 날에 막힌다. 실장이 아니라 모의투자다.
 	 */
 	private fun requireMarketOpen() {
+		if (!isMarketOpen()) throw CustomException(OrderErrorCode.ORDER_MARKET_CLOSED)
+	}
+
+	/** 판정만 한다. 조회(7.3)는 예외 대신 이유를 값으로 돌려줘야 해서 둘을 갈랐다. */
+	private fun isMarketOpen(): Boolean {
 		val now = ZonedDateTime.now(KST).toLocalTime()
-		if (now < OPEN || now > CLOSE) throw CustomException(OrderErrorCode.ORDER_MARKET_CLOSED)
+		return now >= OPEN && now <= CLOSE
 	}
 
 	companion object {

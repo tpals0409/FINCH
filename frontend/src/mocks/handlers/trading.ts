@@ -134,16 +134,27 @@ export const tradingHandlers = [
 
     const holdingQuantity = findHolding(stockCode)?.quantity ?? 0;
 
+    const tradable = stock.orderRejection === null;
+    // 시세 수신 이력이 없으면 가격이 null 이다 (apiSpec §7.3 · §5.1).
+    const currentPrice =
+      stock.quoteState === 'missing' ? null : stock.currentPrice;
+
     // tradable: false 도 HTTP 200 이다 (apiSpec §7.3). 화면은 reason 으로 버튼을 잠근다.
     return HttpResponse.json({
-      tradable: stock.orderRejection === null,
+      tradable,
       reason: stock.orderRejection,
-      currentPrice: stock.currentPrice,
+      currentPrice,
       availableCash: store.cashBalance,
+      /*
+       * **주문할 수 없으면 0 이다.** 살 수 있다고 말한 뒤 체결에서 거절하면 사용자가
+       * 비율 버튼을 눌러 수량을 채운 다음에야 막힌다. 서버도 같은 규칙이다.
+       */
       maxQuantity:
-        side === 'BUY'
-          ? Math.floor(store.cashBalance / stock.currentPrice)
-          : holdingQuantity,
+        !tradable || currentPrice === null || currentPrice <= 0
+          ? 0
+          : side === 'BUY'
+            ? Math.floor(store.cashBalance / currentPrice)
+            : holdingQuantity,
       holdingQuantity,
     });
   }),

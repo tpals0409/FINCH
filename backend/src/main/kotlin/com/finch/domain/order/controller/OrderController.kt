@@ -3,6 +3,7 @@ package com.finch.domain.order.controller
 import com.finch.domain.order.dto.request.OrderCreateReq
 import com.finch.domain.order.dto.response.OrderAvailableRes
 import com.finch.domain.order.dto.response.OrderRes
+import com.finch.domain.order.entity.OrderSide
 import com.finch.domain.order.service.OrderService
 import com.finch.global.idempotency.IdempotencyGuard
 import com.finch.global.security.LoginUser
@@ -38,9 +39,11 @@ class OrderController(
 		return ResponseEntity.status(response.status).body(response.body)
 	}
 
+	/** `side` 에 따라 `maxQuantity` 의 뜻이 달라진다 — 매수는 살 수 있는 수, 매도는 보유 수다. */
 	@GetMapping("/available")
 	fun available(
 		@LoginUser userId: Long,
 		@RequestParam stockCode: String,
-	): OrderAvailableRes = orderService.getAvailable(userId, stockCode)
+		@RequestParam side: OrderSide,
+	): OrderAvailableRes = orderService.getAvailable(userId, stockCode, side)
 }

@@ -805,6 +805,10 @@ GET /api/v1/orders/available?stockCode=005930&side=BUY
 
 `tradable`이 `false`면 `reason`에 위 에러 코드 중 하나가 담긴다. 화면은 이 값으로 주문 버튼을 비활성화한다.
 
+**`currentPrice` 는 `null` 일 수 있다** — §5.1 과 같은 이유다(시세 캐시에 수신 이력 없음).
+그때는 `tradable: false` · `reason: "ORDER_PRICE_UNAVAILABLE"` 이고 `maxQuantity` 는 `0` 이다.
+살 수 있다고 말한 뒤 체결에서 거절하지 않기 위해서다.
+
 ---
 
 ## 8. 잔고 · 매매 내역 API

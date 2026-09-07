@@ -62,7 +62,11 @@ export type OrderResponse = z.infer<typeof OrderResponseSchema>;
 export const OrderAvailableResponseSchema = z.object({
   tradable: z.boolean(),
   reason: z.string().nullable(),
-  currentPrice: KrwAmountSchema,
+  /**
+   * §5.1 과 같은 이유로 `null` 일 수 있다 (apiSpec §7.3). 그때는 `tradable` 이 `false` 이고
+   * `reason` 이 `ORDER_PRICE_UNAVAILABLE`, `maxQuantity` 가 `0` 이다.
+   */
+  currentPrice: KrwAmountSchema.nullable(),
   availableCash: KrwAmountSchema,
   maxQuantity: QuantitySchema,
   holdingQuantity: QuantitySchema,
