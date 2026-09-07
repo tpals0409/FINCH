@@ -3,7 +3,10 @@
 **이 문서는 인벤토리가 아니라 지금 배포를 막고 있는 것의 체크리스트다.**
 전체 비밀값 목록은 `docs/spec/secrets.md` 에 있다.
 
-코드 쪽 작업은 전부 끝났다. **다섯 중 하나는 해결됐고 넷 남았다.**
+코드 쪽 작업은 전부 끝났다. **다섯 중 넷이 해결됐고 둘 남았다** — 1번(Origin Certificate)과 3번(GitHub 시크릿).
+
+> 3번은 2번과 **같은 REST API 키**를 GitHub 시크릿에도 넣는 일이다. `.env` 는 백엔드용이고
+> 프론트는 빌드 시점에 그 시크릿에서 값을 받는다 — 둘 다 있어야 로그인이 산다.
 
 > 🔴 = 없으면 배포가 실패한다 · 🟡 = 배포는 되는데 일부 기능이 죽는다
 
@@ -35,7 +38,14 @@ Flexible 은 Cloudflare→원본 구간이 평문이고, Full 은 원본 인증�
 
 ---
 
-## 2. 카카오 로그인 키 2종 🔴
+## 2. 카카오 로그인 키 2종 ✅ **해결됨**
+
+`backend/.env` 에 채워 넣고 `backend-secrets` 로 봉인했다 (2026-09-07, gitops `7c3033a`).
+콘솔 설정(플랫폼 · Redirect URI · 동의항목 · Client Secret · 아이콘)도 끝났다.
+
+아래는 다시 할 일이 생겼을 때를 위한 기록이다.
+
+### (기록) 원래 안내
 
 **없으면**: `application.yaml` 이 비밀값에 기본값을 두지 않으므로 **백엔드 파드가 기동에
 실패한다.** 조용히가 아니라 요란하게 죽는다 — 그건 다행이다.
@@ -122,32 +132,28 @@ Vite 가 빌드 시점에 값을 박기 때문이고, 프론트는 값이 없으
 
 ---
 
-## 5. GHCR 이미지 접근 🟡
+## 5. GHCR 이미지 접근 ✅ **해결됨**
 
-지금 `ghcr.io/tpals0409/finch-*` 가 **`401`** 이다. 둘 중 하나를 고른다.
+세 패키지(`finch-backend` · `finch-frontend` · `finch-ai`)를 **public 으로 돌렸다**
+(2026-09-07). 자격증명이 필요 없어 `ghcr-pull` 도, values 의 `imagePullSecrets` 도 없앴다.
 
-### (권장) 패키지를 public 으로
+**확인 방법을 적어둔다 — 틀리기 쉽다.** GHCR 은 공개 이미지도 익명 토큰을 먼저 요구해서,
+토큰 없이 `/v2/.../tags/list` 를 부르면 공개인데도 `401` 이 온다. 그걸 보고 비공개로
+오독한 적이 있다. 토큰을 받아서 물어야 한다.
 
-GitHub → 프로필 → Packages → `finch-backend` · `finch-frontend` · `finch-ai` 각각 →
-Package settings → Change visibility → Public
-
-저장소가 이미 공개고 이미지 안에 든 건 같은 코드다. 프론트 이미지에 `KAKAO_CLIENT_ID` 가
-빌드타임에 박히지만 그건 어차피 브라우저 번들에 실려 나가는 공개값이고, Client Secret 은
-백엔드 런타임 환경변수라 이미지에 없다.
-
-**PAT 만료로 새벽에 `ImagePullBackOff` 를 보는 실패 모드가 통째로 사라진다.**
-
-⚠️ **다만 파드 이벤트에 경고가 하나 남는다.** values 가 `imagePullSecrets: [ghcr-pull]` 을
-참조하는데 그 Secret 이 없기 때문이다 — `FailedToRetrieveImagePullSecret` 이 뜨고,
-**이미지는 정상적으로 당겨진다**(공개 이미지라 자격증명 없이 받는다). 경고가 거슬리면
-`apps/prod/{backend,frontend,ai}/values.yaml` 에서 그 두 줄을 지운다. 지우지 않아도 배포는 된다.
-
-### (대안) `ghcr-pull` Secret
-
-`read:packages` 스코프의 PAT 를 만들어 봉인한다.
 ```bash
-GHCR_PAT=<PAT> FINCH=~/Desktop/FINCH ~/Desktop/finch-gitops/scripts/seal.sh
+p=finch-backend
+tok=$(curl -s "https://ghcr.io/token?scope=repository:tpals0409/$p:pull&service=ghcr.io" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $tok" \
+  "https://ghcr.io/v2/tpals0409/$p/tags/list"
 ```
+
+`200` 이면 공개다. 익명 토큰 발급 자체가 실패하면 비공개다.
+
+다시 비공개로 돌리려면 `read:packages` PAT 로 `ghcr-pull` 을 봉인하고
+(`GHCR_PAT=<PAT> ./scripts/seal.sh`) `apps/prod/*/values.yaml` 의 `imagePullSecrets` 를
+되돌려 적는다.
 
 ---
 
