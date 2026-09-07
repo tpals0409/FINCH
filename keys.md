@@ -49,11 +49,48 @@ KAKAO_CLIENT_ID=<REST API 키>
 KAKAO_CLIENT_SECRET=<Client Secret>
 ```
 
-**같이 할 것 — 이거 빠뜨리면 로그인이 `KOE006` 으로 막힌다**:
-카카오 콘솔 → 카카오 로그인 → Redirect URI 에 아래를 등록한다. **문자 단위로 같아야 한다.**
-```
-https://app.finchapp.org/oauth/kakao
-```
+### 콘솔 설정 — 키보다 이게 먼저다
+
+키가 다 맞아도 아래가 빠지면 로그인이 안 된다. **순서대로 하는 편이 왔다갔다 안 한다** —
+①~⑤ 가 설정이고 ⑥ 만 값을 꺼내오는 일이다.
+
+| | 위치 | 넣을 것 |
+|---|---|---|
+| ① | 앱 설정 → **플랫폼** → Web | `https://app.finchapp.org` |
+| ② | 제품 설정 → 카카오 로그인 | 활성화 **ON** |
+| ③ | 〃 → Redirect URI | `https://app.finchapp.org/oauth/kakao` |
+| ④ | 〃 → 동의항목 | **닉네임: 필수 동의** |
+| ⑤ | 〃 → 보안 | Client Secret 생성 + **활성화** |
+| ⑥ | 앱 설정 → **앱 키** | REST API 키를 복사 |
+
+**① 플랫폼이 ③ 보다 먼저다.** 카카오는 Redirect URI 가 **등록된 사이트 도메인 아래**일 것을
+요구한다. 도메인 없이 Redirect URI 부터 넣으면 저장이 안 되거나, 저장돼도 인가에서 거절된다.
+
+**③ 은 문자 단위로 같아야 한다.** 끝에 `/` 를 붙이거나 `http` 로 쓰면 `KOE006` 이다.
+이 주소는 프론트가 `window.location.origin + /oauth/kakao` 로 만들기 때문에 저 형태로 고정이다.
+
+**④ 를 제일 많이 놓친다.** 백엔드가 닉네임 없는 응답을 받으면 **이름 없는 계정을 만들지 않고
+로그인을 실패시킨다**(`AuthErrorCode.AUTH_KAKAO_FAILED`). 프로필 사진은 선택이어도 되고
+없으면 `null` 로 처리한다.
+
+**⑥ 은 REST API 키다.** 키가 네 개 뜬다. 이름이 `CLIENT_ID` 인 것은 OAuth 표준 용어라서고
+카카오는 그걸 REST API 키라고 부른다.
+
+| 키 | 쓰는 곳 | 우리 |
+|---|---|---|
+| 네이티브 앱 키 | Android·iOS SDK | ✗ |
+| **REST API 키** | 서버·REST 호출 | **✅** |
+| JavaScript 키 | 웹 JS SDK | ✗ — SDK 없이 `authorize` 로 직접 이동한다 |
+| Admin 키 | 앱 전체 관리 (사용자 강제 탈퇴 등) | ✗ **절대 안 된다** |
+
+🔴 **Admin 키를 넣으면 안 되는 이유.** 이 값은 `KAKAO_CLIENT_ID` 로 들어가고 CI 가 그걸
+**프론트 번들에 박는다**(`VITE_KAKAO_REST_API_KEY`). 브라우저로 나가서 누구나 본다.
+
+REST API 키는 그래도 된다 — OAuth 의 `client_id` 는 원래 공개값이고, 알아도 인가 코드를
+토큰으로 바꾸려면 Client Secret 이 필요한데 그건 백엔드만 갖는다(`env.ts` 주석).
+**Admin 키는 앱 전체를 조작하는 마스터 키라** 공개되면 남이 사용자를 강제 탈퇴시킬 수 있다.
+
+**앱 아이콘**(앱 설정 → 일반)도 같이 올린다. 정사각 PNG, 250KB 이하.
 
 ---
 
