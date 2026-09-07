@@ -127,14 +127,40 @@ echo | openssl s_client -connect app.finchapp.org:443 -servername app.finchapp.o
 **이번 배포의 진짜 목적이다.** 이 서버에서 한국투자증권 API 에 토큰을 발급해
 **IP 화이트리스트가 필요한지 판명한다.** 로컬에서는 망이 막혀 한 번도 확인하지 못했다.
 
-백엔드 파드 안에서 모의투자 토큰 엔드포인트(`/oauth2/tokenP`)를 호출한다.
-성공하면 화이트리스트가 필요 없는 것이고, 거절되면 egress IP `223.130.147.160` 을
-증권사에 등록해야 한다.
+키는 `backend-secrets` 에 들어 있어 파드 안에 환경변수로 있다. `curl` 도 이미지에 있다.
 
-**응답 본문에 토큰이 실려 있다. 로그에도 보고에도 옮겨 적지 말 것** — 성공/실패와
-상태 코드만 알려주면 된다.
+```bash
+kubectl -n finch-prod exec deploy/backend -- sh -c '
+  curl -sS -o /tmp/kis.json -w "%{http_code}\n" \
+    -X POST https://openapivts.koreainvestment.com:29443/oauth2/tokenP \
+    -H "content-type: application/json" \
+    -d "{\"grant_type\":\"client_credentials\",\"appkey\":\"$KIS_APP_KEY\",\"appsecret\":\"$KIS_APP_SECRET\"}"
+'
+```
 
----
+**본문을 `/tmp` 로 빼고 상태 코드만 찍는 이유** — 성공 응답 본문에는 **접근 토큰이 들어 있다.**
+로그에도 보고에도 남기면 안 된다.
+
+| 결과 | 뜻 | 다음 |
+|---|---|---|
+| `200` | 발급 성공. **화이트리스트가 필요 없다** | 이 스프린트의 미지수가 풀렸다. 시세 수집을 만들 수 있다 |
+| `403` 계열 | IP 가 막혔을 가능성 | 아래 명령으로 **오류 코드만** 꺼내서 알려줘 |
+| `401` 계열 | 키가 틀렸거나 만료 | 〃 |
+
+실패했을 때만 본문을 본다. **실패 응답에는 토큰이 없고 오류 코드만 있다.**
+
+```bash
+kubectl -n finch-prod exec deploy/backend -- sh -c 'cat /tmp/kis.json'
+```
+
+성공했다면 본문을 보지 말고 지우면 된다.
+
+```bash
+kubectl -n finch-prod exec deploy/backend -- sh -c 'rm -f /tmp/kis.json'
+```
+
+화이트리스트가 필요하다고 나오면 egress IP `223.130.147.160` 을 증권사에 등록해야 한다.
+그건 사람이 하는 일이니 결과만 알려주면 된다.
 
 ## 막혔을 때
 
