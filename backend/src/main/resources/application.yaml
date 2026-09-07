@@ -98,7 +98,8 @@ finch:
       # 수집 워커는 KIS_BASE_URL·키·호출량 실측값이 모두 주입된 환경에서만 켠다.
       # 모의·실전 URL을 기본값으로 고르지 않는다. URL과 자격증명 환경이 갈리면 토큰부터 실패한다.
       enabled: ${KIS_PRICE_ENABLED:false}
-      # apiSpec 5.6의 백엔드 REST 순회 목표값. 호출 건수는 KIS_PRICE_BATCH_SIZE로 별도 주입한다.
+      # KIS_MIN_REQUEST_INTERVAL과 KIS_PRICE_BATCH_SIZE는 같은 배포 변경으로 주입한다.
+      # 초기 운영값은 보수적으로 선택한 500ms·6건이며, fixed-rate 배치는 주기 ÷ 호출 간격 이하이어야 한다.
       cycle-interval: 3s
 
   ai:

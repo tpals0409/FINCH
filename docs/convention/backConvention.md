@@ -248,11 +248,17 @@ domain/order/
 ### 8. 외부 연동 규약
 
 - KIS 시세: 실시간 등록 한도 관리 방식(서버 전체 LRU 배정)과 초과분 REST 폴링 전환 로직의 위치. **한도 수치는 `[S0-1]` 실측 대기이고 41은 가정값이다** — 상수로 분리하고 수치에 의존하는 로직을 만들지 않는다 (apiSpec.md 5.6)
-- KIS REST 수집은 `price` 도메인의 `KisPriceCollector`가 맡는다. 활성 종목은 `stock` Entity·Repository를
-  import하지 않고 규칙 4의 조회 전용 예외인 `PriceCollectionTargetRepository` 문자열 프로젝션으로
-  순회한다. 이 예외는 `stock_code` 식별자 선정까지만 허용하며 가격 계산용 `previous_close`는 읽지 않는다.
-  backend 복제본은 Redis 임대로 단일 수집자만 KIS 호출량을 소비한다. 순회 주기는 apiSpec 5.6의 3초이고,
-  한 주기 호출 수는 `[S0-1]` 실측 전 코드 상수로 두지 않고 `KIS_PRICE_BATCH_SIZE`로 주입한다.
+- KIS REST 수집은 `price` 도메인의 `KisPriceCollector`가 맡는다. 대상은 보유(`quantity > 0`)·관심·최근 본
+  종목의 합집합이다. `PriceCollectionTargetRepository`가 규칙 4의 조회 전용 문자열 프로젝션으로 네 테이블을
+  읽되, 각 도메인의 Entity·Repository는 import하지 않는다. 별도 등록 테이블은 핫셋 변경과의 동기화 실패
+  지점을 추가하므로 두지 않는다. 이 예외는 `stock_code` 선정까지만 허용하며 가격 계산 값은 읽지 않는다.
+  최근 본 종목은 계약상 사용자당 30건 FIFO라 별도 시간 필터를 두지 않는다. backend 복제본은 Redis 임대로
+  단일 수집자만 KIS 호출량을 소비한다.
+- KIS REST 호출 간격은 `KIS_MIN_REQUEST_INTERVAL`로 주입하고 전역 페이서로 지킨다. 초기 운영은 모의
+  한도에도 안전한 500ms와 `KIS_PRICE_BATCH_SIZE=6`을 같은 배포 변경으로 주입한다. 두 수치는 한도
+  실측값이 아니라 보수적으로 선택한 값이며, 핫셋이 30종목을 넘으면 `[S0-1]` 실측 뒤 조정한다. 순회
+  스케줄은 fixed rate 3초이고 배치 크기는 `floor(주기 / 호출 간격)` 이하여야 한다. 한 바퀴 예상 시간
+  `ceil(핫셋 크기 / 배치 크기) × 주기`가 `stale-after`를 넘으면 WARN을 남긴다.
 - 수집은 KST 평일 정규장 `09:00~15:30`에만 돈다. 장외·주말 종가를 새 수신 시각으로 계속 덮어써
   `stale: false`로 보이게 하거나 호출량을 소비하지 않는다. 공휴일은 유지되는 KRX 휴장일 데이터가
   필요하므로 정적 규칙에 넣지 않고 후속 운영 과제로 둔다.
