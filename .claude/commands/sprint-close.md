@@ -7,6 +7,10 @@
 2. [2] 섹션의 `start_commit` 을 확인하고 `git log --oneline {start_commit}..HEAD` 실행 (없으면 `git log --oneline -10`)
 3. `git -C ~/Desktop/finch-gitops log @{upstream}..HEAD --oneline` 실행
    - 미푸시 커밋이 있으면 경고: "finch-gitops 에 미푸시 커밋 {N}건이 있습니다. push 후 진행하세요."
+4. [2] 의 `thread_root` 로 Buzz 스프린트 스레드 읽기
+   - `buzz messages thread --channel <UUID> --event <thread_root>`
+   - **커밋만으로는 결정·인시던트가 안 보인다.** 왜 그렇게 했고 무엇이 터졌는지는 스레드에 있다
+   - `thread_root` 가 없으면(스레드 없이 진행된 스프린트) 이 단계를 건너뛴다
 
 ### 상태 가드
 - `status: active` → 정상, 2단계로
@@ -22,7 +26,8 @@ git log 가 비어 있으면:
 
 ## 2단계: 자동 초안 + 사용자 확인
 
-[2] 섹션과 git log 를 기반으로 **초안을 자동 생성**해 제시하세요:
+[2] 섹션 · git log · **Buzz 스레드**를 기반으로 **초안을 자동 생성**해 제시하세요.
+결정과 인시던트는 스레드에서 뽑는다 — 커밋 메시지에는 안 남는 것들이다.
 
 ```
 ## 스프린트 종료 초안
@@ -51,6 +56,7 @@ date: "{YYYY-MM-DD}"
 status: completed
 parts: [{backend|frontend|ai|infra 중 건드린 것}]
 related_adrs: ["sprint-{N-1}"]
+buzz_thread: "{thread_root event id — 없으면 생략}"
 topics: [{키워드 3~6개}]
 tldr: "{한 문단. 무엇을 왜 어떻게 했고 결과가 뭔지. 본문을 안 읽어도 검색되게}"
 ---
@@ -124,6 +130,7 @@ status: active
 
 ## [2] 다음 — Sprint {N+1}: {제목}
 - **start_commit**: (미정 — /sprint-open 실행 시 기록)
+- **thread_root**: (미정 — /sprint-open 5.2단계에서 기록)
 - **목표**: {1~2문장}
 - **계획 작업**:
   - [ ] {작업-1}: {한 줄}
@@ -148,6 +155,21 @@ status: active
 모든 검증 통과 후 `status` 를 `idle` 로 바꾸세요.
 
 > **핵심**: idle 전환은 반드시 마지막입니다. 그래야 중단돼도 1단계 가드가 복구합니다.
+
+## 5.5단계: 스레드 닫기
+
+스프린트 스레드에 종료를 게시한다. **`--reply-to {thread_root}`** 로 그 스레드 안에.
+
+```
+[완료] Sprint {N} — {제목} 종료
+
+- **결과:** {한 줄}
+- **근거:** ADR `docs/adr/sprints/sprint-{N}.md` · 커밋 {N}건 · {검증 수치}
+- **이월:** {다음으로 넘긴 것, 없으면 "없음"}
+- **다음:** Sprint {N+1} — {제목}
+```
+
+이 메시지가 스레드의 마지막이다. 이후 보고는 다음 스프린트 스레드로 간다.
 
 ## 6단계: 완료 보고
 
