@@ -109,6 +109,16 @@ class AccountService(
 		)
 	}
 
+	/**
+	 * 계좌 식별자. `holding` 처럼 계좌를 키로 갖는 테이블을 읽는 도메인이 쓴다.
+	 *
+	 * **응답으로는 절대 나가지 않는다** (apiSpec 1.6 — 계좌 식별자를 내려주지 않는다).
+	 * 이걸 열지 않으면 portfolio 가 `Account` 엔티티를 직접 import 하게 된다
+	 * (`CashPosting.accountId` 주석과 같은 이유).
+	 */
+	@Transactional(readOnly = true)
+	fun getAccountId(userId: Long): Long = requireAccount(accountRepository.findByUserId(userId)).id!!
+
 	/** 잠금 없이 읽는다. `GET /deposits/limit` 처럼 판단에 쓰지 않고 보여주기만 하는 자리용이다. */
 	@Transactional(readOnly = true)
 	fun getBalance(userId: Long): AccountBalance =
