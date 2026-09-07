@@ -84,6 +84,7 @@ internal class KisPriceCollectorTest {
 			lease,
 			pacer,
 			batchSize = 2,
+			minRequestInterval = Duration.ofMillis(50),
 			cycleInterval = Duration.ofSeconds(3),
 			staleAfter = Duration.ofSeconds(15),
 			clock = afterClose,
@@ -104,6 +105,7 @@ internal class KisPriceCollectorTest {
 			lease,
 			pacer,
 			batchSize = 2,
+			minRequestInterval = Duration.ofMillis(50),
 			cycleInterval = Duration.ofSeconds(3),
 			staleAfter = Duration.ofSeconds(15),
 			clock = saturdayNoon,
@@ -126,6 +128,7 @@ internal class KisPriceCollectorTest {
 			lease,
 			pacer,
 			batchSize = 60,
+			minRequestInterval = Duration.ofMillis(50),
 			cycleInterval = Duration.ofSeconds(3),
 			staleAfter = Duration.ofSeconds(15),
 			clock = clock,
@@ -137,7 +140,7 @@ internal class KisPriceCollectorTest {
 	}
 
 	@Test
-	fun `3초 주기에서 공식 50ms 간격을 넘는 배치 크기는 거부한다`() {
+	fun `3초 주기에서 주입된 50ms 간격을 넘는 배치 크기는 거부한다`() {
 		assertThatThrownBy {
 			KisPriceCollector(
 				client,
@@ -146,6 +149,7 @@ internal class KisPriceCollectorTest {
 				lease,
 				pacer,
 				batchSize = 61,
+				minRequestInterval = Duration.ofMillis(50),
 				cycleInterval = Duration.ofSeconds(3),
 				staleAfter = Duration.ofSeconds(15),
 				clock = clock,
@@ -163,6 +167,7 @@ internal class KisPriceCollectorTest {
 			lease,
 			pacer,
 			batchSize = 2,
+			minRequestInterval = Duration.ofMillis(50),
 			cycleInterval = Duration.ofSeconds(3),
 			staleAfter = Duration.ofSeconds(15),
 			clock = clock,

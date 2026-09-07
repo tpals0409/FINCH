@@ -27,6 +27,7 @@ internal class KisPriceCollector internal constructor(
 	private val lease: PriceCollectorLease,
 	private val pacer: KisRequestPacer,
 	private val batchSize: Int,
+	private val minRequestInterval: Duration,
 	private val cycleInterval: Duration,
 	private val staleAfter: Duration,
 	private val clock: Clock,
@@ -40,18 +41,31 @@ internal class KisPriceCollector internal constructor(
 		lease: PriceCollectorLease,
 		pacer: KisRequestPacer,
 		@Value("\${KIS_PRICE_BATCH_SIZE}") batchSize: Int,
+		@Value("\${KIS_MIN_REQUEST_INTERVAL}") minRequestInterval: Duration,
 		@Value("\${finch.price.kis.cycle-interval}") cycleInterval: Duration,
 		@Value("\${finch.price.stale-after}") staleAfter: Duration,
-	) : this(client, targetRepository, cacheWriter, lease, pacer, batchSize, cycleInterval, staleAfter, Clock.systemUTC())
+	) : this(
+		client,
+		targetRepository,
+		cacheWriter,
+		lease,
+		pacer,
+		batchSize,
+		minRequestInterval,
+		cycleInterval,
+		staleAfter,
+		Clock.systemUTC(),
+	)
 
 	private var cursor = ""
 	private var pausedUntil = Instant.MIN
 
 	init {
 		require(batchSize > 0) { "KIS_PRICE_BATCH_SIZE는 1 이상이어야 합니다" }
-		val maxBatchSize = cycleInterval.dividedBy(KisRequestPacer.MIN_INTERVAL)
+		require(minRequestInterval.isPositive) { "KIS_MIN_REQUEST_INTERVAL은 0보다 커야 합니다" }
+		val maxBatchSize = cycleInterval.dividedBy(minRequestInterval)
 		require(batchSize <= maxBatchSize) {
-			"KIS_PRICE_BATCH_SIZE는 현재 주기와 50ms 호출 간격에서 $maxBatchSize 이하여야 합니다"
+			"KIS_PRICE_BATCH_SIZE는 현재 주기와 호출 간격에서 $maxBatchSize 이하여야 합니다"
 		}
 	}
 

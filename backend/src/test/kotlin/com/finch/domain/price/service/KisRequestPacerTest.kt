@@ -7,10 +7,11 @@ import org.junit.jupiter.api.Test
 internal class KisRequestPacerTest {
 
 	@Test
-	fun `연속 요청 시작 시각 사이에 부족한 50ms를 기다린다`() {
+	fun `연속 요청 시작 시각 사이에 주입된 50ms를 기다린다`() {
 		var now = 0L
 		val waits = mutableListOf<Long>()
 		val pacer = KisRequestPacer(
+			minInterval = Duration.ofMillis(50),
 			nanoTime = { now },
 			sleepNanos = {
 				waits += it

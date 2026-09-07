@@ -18,7 +18,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 @SpringBootTest(
 	properties = [
 		"finch.price.kis.enabled=true",
-		"KIS_PRICE_BATCH_SIZE=60",
+		"KIS_PRICE_BATCH_SIZE=6",
+		"KIS_MIN_REQUEST_INTERVAL=500ms",
 		"KIS_BASE_URL=http://localhost",
 		"KIS_APP_KEY=test-app-key",
 		"KIS_APP_SECRET=test-app-secret",

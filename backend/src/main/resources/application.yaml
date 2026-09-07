@@ -98,8 +98,8 @@ finch:
       # 수집 워커는 KIS_BASE_URL·키·호출량 실측값이 모두 주입된 환경에서만 켠다.
       # 모의·실전 URL을 기본값으로 고르지 않는다. URL과 자격증명 환경이 갈리면 토큰부터 실패한다.
       enabled: ${KIS_PRICE_ENABLED:false}
-      # 공식 SDK 실전 한도 20건/초에 맞춰 50ms 간격으로 호출한다. KIS_PRICE_BATCH_SIZE는 60을 주입한다.
-      # fixed-rate 3초 × 20건/초라 한 주기 상한이 60이다.
+      # KIS_MIN_REQUEST_INTERVAL과 KIS_PRICE_BATCH_SIZE는 같은 배포 변경으로 주입한다.
+      # 초기 운영값은 보수적으로 선택한 500ms·6건이며, fixed-rate 배치는 주기 ÷ 호출 간격 이하이어야 한다.
       cycle-interval: 3s
 
   ai:
