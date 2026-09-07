@@ -94,6 +94,13 @@ finch:
     # 임계 수치도 같은 값을 쓴다.
     stale-after: 15s
 
+    kis:
+      # 수집 워커는 KIS_BASE_URL·키·호출량 실측값이 모두 주입된 환경에서만 켠다.
+      # 모의·실전 URL을 기본값으로 고르지 않는다. URL과 자격증명 환경이 갈리면 토큰부터 실패한다.
+      enabled: ${KIS_PRICE_ENABLED:false}
+      # apiSpec 5.6의 백엔드 REST 순회 목표값. 호출 건수는 KIS_PRICE_BATCH_SIZE로 별도 주입한다.
+      cycle-interval: 3s
+
   ai:
     # 클러스터 안의 AI 서비스. 외부에 노출되지 않으므로 평문 http 다 (aiApiSpec 4장 배포 조건).
     base-url: ${AI_BASE_URL:http://ai:8000}
@@ -117,4 +124,3 @@ logging:
   structured:
     format:
       console: ecs
-
