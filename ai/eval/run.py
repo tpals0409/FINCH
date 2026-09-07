@@ -101,7 +101,7 @@ def _to_case(d: dict) -> RetrievalCase:
     )
 
 
-async def run_retrieval(top_k: int = 5) -> int:
+async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
     from app.core.db import engine
     from app.rag.embedding import NullEmbedder, get_embedder
     from app.rag.search import search_with_vector
@@ -109,28 +109,50 @@ async def run_retrieval(top_k: int = 5) -> int:
     if isinstance(get_embedder(), NullEmbedder):
         print("임베딩 키가 없어 검색 평가를 건너뛴다. GMS_KEY를 설정하라.")
         return 0
+    if repeats < 1:
+        raise ValueError("검색 반복 횟수는 1 이상이어야 한다")
 
     cases = _load_cases()
     vectors = await asyncio.to_thread(get_embedder().embed, [case.query for case in cases])
     hits = graded = 0
     search_latencies_ms: list[float] = []
+    case_latencies_ms: dict[str, list[float]] = {case.id: [] for case in cases}
+    first_results: dict[str, list[dict]] = {}
     try:
         for c, vector in zip(cases, vectors, strict=True):
             if vector is None:
                 print(f"  [FAIL] {c.id:<22} 질의 임베딩 실패")
                 return 1
-            started_at = perf_counter()
-            found = await search_with_vector(
-                c.query, vector, top_k=top_k, ticker=c.ticker
-            )
-            elapsed_ms = (perf_counter() - started_at) * 1000
-            search_latencies_ms.append(elapsed_ms)
+
+        print(f"워밍업: {len(cases)}질의 1회 (지연 표본에서 제외)")
+        for c, vector in zip(cases, vectors, strict=True):
+            await search_with_vector(c.query, vector, top_k=top_k, ticker=c.ticker)
+
+        for repeat_index in range(repeats):
+            for c, vector in zip(cases, vectors, strict=True):
+                started_at = perf_counter()
+                found = await search_with_vector(
+                    c.query, vector, top_k=top_k, ticker=c.ticker
+                )
+                elapsed_ms = (perf_counter() - started_at) * 1000
+                search_latencies_ms.append(elapsed_ms)
+                case_latencies_ms[c.id].append(elapsed_ms)
+                if repeat_index == 0:
+                    first_results[c.id] = found
+
+        print(
+            f"측정: {len(cases)}질의 × {repeats}회"
+            f" = {len(search_latencies_ms)}건"
+        )
+        for c in cases:
+            found = first_results[c.id]
+            case_latency = _summarize_latency_ms(case_latencies_ms[c.id])
             titles = " | ".join(h["title"] for h in found)
             if c.expect_empty:
                 # 오탐 관찰용. 지금은 top-k만 쓰므로 항상 무언가 나온다.
                 print(
                     f"  [관찰] {c.id:<22} 상위 {len(found)}건"
-                    f" · {elapsed_ms:.1f} ms — {titles[:60]}"
+                    f" · 중앙값 {case_latency.median_ms:.1f} ms — {titles[:60]}"
                 )
                 continue
             graded += 1
@@ -140,7 +162,7 @@ async def run_retrieval(top_k: int = 5) -> int:
             hits += ok
             print(
                 f"  [{'HIT ' if ok else 'MISS'}] {c.id:<22}"
-                f" {elapsed_ms:.1f} ms · {titles[:60]}"
+                f" 중앙값 {case_latency.median_ms:.1f} ms · {titles[:60]}"
             )
         if graded:
             recall = hits / graded
@@ -229,6 +251,7 @@ def main() -> int:
     p.add_argument("--retrieval", action="store_true", help="검색 정확도 (키 필요)")
     p.add_argument("--metrics", action="store_true", help="지표 자체 점검")
     p.add_argument("--top-k", type=int, default=5)
+    p.add_argument("--repeat", type=int, default=5, help="검색 질의 반복 횟수 (기본 5)")
     p.add_argument("--list", action="store_true", help="평가셋 요약")
     p.add_argument("--feedback", action="store_true", help="프롬프트 버전별 피드백 통계")
     p.add_argument("--days", type=int, default=30, help="피드백 집계 기간 (기본 30일)")
@@ -269,7 +292,9 @@ def main() -> int:
         )
         return 0
     if a.retrieval:
-        return asyncio.run(run_retrieval(a.top_k))
+        if a.repeat < 1:
+            p.error("--repeat는 1 이상이어야 한다")
+        return asyncio.run(run_retrieval(a.top_k, repeats=a.repeat))
     p.print_help()
     return 0
 

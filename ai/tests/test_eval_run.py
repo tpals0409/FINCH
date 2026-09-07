@@ -31,7 +31,11 @@ async def test_검색_평가는_검색_호출_지연을_결과에_출력한다(
         async def dispose(self) -> None:
             pass
 
+    search_calls = 0
+
     async def fake_search(*args, **kwargs) -> list[dict[str, str]]:
+        nonlocal search_calls
+        search_calls += 1
         return [{"title": "주식소각결정"}]
 
     monkeypatch.setattr(
@@ -49,10 +53,13 @@ async def test_검색_평가는_검색_호출_지연을_결과에_출력한다(
     monkeypatch.setattr("app.rag.embedding.get_embedder", lambda: FakeEmbedder())
     monkeypatch.setattr("app.rag.search.search_with_vector", fake_search)
     monkeypatch.setattr("app.core.db.engine", FakeEngine())
-    times = iter([10.0, 10.012])
+    times = iter([10.0, 10.012, 20.0, 20.024])
     monkeypatch.setattr(eval_run, "perf_counter", lambda: next(times))
 
-    assert await eval_run.run_retrieval() == 0
+    assert await eval_run.run_retrieval(repeats=2) == 0
     output = capsys.readouterr().out
+    assert search_calls == 3
+    assert "워밍업: 1질의 1회 (지연 표본에서 제외)" in output
+    assert "측정: 1질의 × 2회 = 2건" in output
     assert "Recall@5: 1/1 = 1.000" in output
-    assert "검색 지연 (1건): 중앙값 12.0 ms · p95(nearest-rank) 12.0 ms" in output
+    assert "검색 지연 (2건): 중앙값 18.0 ms · p95(nearest-rank) 24.0 ms" in output
