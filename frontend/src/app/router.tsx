@@ -78,6 +78,7 @@ const StockSearchPage = lazyPage(
   () => import('@/pages/StockSearchPage'),
   'StockSearchPage',
 );
+const OrderPage = lazyPage(() => import('@/pages/OrderPage'), 'OrderPage');
 const StockDetailPage = lazyPage(
   () => import('@/pages/StockDetailPage'),
   'StockDetailPage',
@@ -163,7 +164,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: ROUTE_PATTERNS.stockOrder,
-                element: <RoutePlaceholder screen="주문" />,
+                element: <OrderPage />,
               },
             ],
           },
