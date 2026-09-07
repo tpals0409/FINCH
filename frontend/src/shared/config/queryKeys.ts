@@ -1,3 +1,4 @@
+import type { OrderSide } from '@/shared/types/order';
 import type { TransactionFilter } from '@/shared/types/portfolio';
 import type { CandlePeriod, WatchlistSort } from '@/shared/types/stock';
 
@@ -41,6 +42,12 @@ export const queryKeys = {
     /** 정렬이 키에 들어간다. 서버가 정렬을 하므로 탭을 바꾸면 다른 목록이다. */
     watchlist: (sort: WatchlistSort) =>
       [...queryKeys.stocks.all(), 'watchlist', sort] as const,
+  },
+  orders: {
+    all: () => ['orders'] as const,
+    /** `side` 가 키에 들어간다. 매수·매도는 maxQuantity 의 뜻이 달라 캐시를 나눈다. */
+    available: (stockCode: string, side: OrderSide) =>
+      [...queryKeys.orders.all(), 'available', stockCode, side] as const,
   },
   transactions: {
     all: () => ['transactions'] as const,
