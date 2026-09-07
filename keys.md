@@ -3,16 +3,26 @@
 **이 문서는 인벤토리가 아니라 지금 배포를 막고 있는 것의 체크리스트다.**
 전체 비밀값 목록은 `docs/spec/secrets.md` 에 있다.
 
-코드 쪽 작업은 전부 끝났다. **다섯 중 넷이 해결됐고 둘 남았다** — 1번(Origin Certificate)과 3번(GitHub 시크릿).
+# ✅ 다섯 항목 전부 해결됐다 (2026-09-07)
 
-> 3번은 2번과 **같은 REST API 키**를 GitHub 시크릿에도 넣는 일이다. `.env` 는 백엔드용이고
-> 프론트는 빌드 시점에 그 시크릿에서 값을 받는다 — 둘 다 있어야 로그인이 산다.
+**사람이 채울 것은 남지 않았다.** 남은 것은 Pico 가 루트 앱을 apply 하는 것 하나이고,
+절차는 `docs/ops/deploy-runbook.md` 에 있다.
+
+아래는 각 항목을 어떻게 처리했는지의 기록이다. 다시 할 일이 생기면 그대로 따르면 된다.
 
 > 🔴 = 없으면 배포가 실패한다 · 🟡 = 배포는 되는데 일부 기능이 죽는다
 
 ---
 
-## 1. Cloudflare Origin Certificate 🔴
+## 1. Cloudflare Origin Certificate ✅ **해결됨**
+
+발급해 `finch-origin-tls` 로 봉인했다 (2026-09-07, gitops `0d25015`).
+SAN 에 `*.finchapp.org` 와 `finchapp.org` 가 둘 다 있고, 인증서와 개인키가 짝임을 확인했다.
+유효기간 2041-09-03 이라 갱신 작업이 없다.
+
+아래는 다시 할 일이 생겼을 때를 위한 기록이다.
+
+### (기록) 원래 안내
 
 **없으면**: Ingress 가 참조하는 `finch-origin-tls` Secret 이 없어 Traefik 이 self-signed 로
 떨어진다. Cloudflare SSL 을 Full (strict) 로 두면 브라우저에 **`526`** 이 뜬다.
@@ -109,7 +119,17 @@ REST API 키는 그래도 된다 — OAuth 의 `client_id` 는 원래 공개값�
 
 ---
 
-## 3. GitHub Actions 시크릿 `KAKAO_CLIENT_ID` 🟡
+## 3. GitHub Actions 시크릿 `KAKAO_CLIENT_ID` ✅ **해결됨**
+
+등록했고, 그 뒤 프론트 이미지를 다시 빌드해 값이 실제로 들어간 것까지 확인했다
+(`sha-c14e14067d5b`). CI 실행 로그의 env 에 `KAKAO_CLIENT_ID: ***` 로 마스킹돼 나오고
+누락 경고는 뜨지 않았다.
+
+⚠️ **시크릿만 넣으면 안 된다.** Vite 가 빌드 시점에 값을 박으므로, 등록 뒤 `frontend/**`
+아래가 바뀌는 커밋이 `master` 에 올라가야 새 값으로 이미지가 만들어진다. 등록 전에
+빌드된 이미지에는 키가 없고, 그대로 배포하면 로그인 버튼만 죽는다.
+
+### (기록) 원래 안내
 
 **없으면**: 빌드도 배포도 **성공하고 로그인 버튼만 비활성으로 뜬다.**
 Vite 가 빌드 시점에 값을 박기 때문이고, 프론트는 값이 없으면 버튼을 스스로 잠근다
@@ -157,39 +177,30 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $tok" \
 
 ---
 
-## 다 채운 뒤 — 세 단계
+## 남은 단계 — Pico 가 하는 것 하나
 
-### ① 봉인 (내 노트북에서, 1분)
+봉인은 끝났고 `main` 에 머지돼 있다. 이제 `docs/ops/deploy-runbook.md` 를 Pico 에게 넘긴다.
+요약하면 AppProject 를 apply 하고 루트 앱을 apply 하는 두 번이다.
 
-```bash
-cd ~/Desktop/finch-gitops
-FINCH=~/Desktop/FINCH ./scripts/seal.sh
-```
-
-클러스터에 접속하지 않는다. 봉인 공개키가 저장소에 있어(`scripts/sealing-cert.pem`,
-지문 `8B:DF:00:C0:…`) 오프라인으로 봉인되고, **평문이 서버를 거치지 않는다.**
-
-만들어지는 것 — `postgres-backend-secret` · `backend-secrets` · `finch-origin-tls`
-(+ PAT 를 줬으면 `ghcr-pull`). 앞의 둘은 **같은 DB 비밀번호로 한 번에** 만들어진다.
-따로 만들면 봉인된 값을 되읽을 수 없어 반드시 어긋난다.
-
-그다음 커밋하고 `main` 에 머지한다. (열려 있는 PR: `tpals0409/finch-gitops#1`)
-
-### ② Pico 에게 시킬 것
-
-`docs/ops/deploy-runbook.md` 를 그대로 넘긴다. 요약하면 루트 앱 한 번 apply 다.
-
-### ③ 확인
+확인은 이렇게 한다.
 
 ```bash
-curl -I https://app.finchapp.org/
+curl -sI https://app.finchapp.org/
 curl -s -o /dev/null -w "%{http_code}\n" "https://app.finchapp.org/api/v1/stocks/search?keyword=삼성"
 ```
 
-`401` 이 나오면 성공이다 — 인증이 필요한 엔드포인트가 인증을 요구한다는 건
-백엔드가 살아서 응답하고 있다는 뜻이다.
+마지막이 **`401` 이면 성공이다.** 인증이 필요한 엔드포인트가 인증을 요구한다는 것은
+백엔드가 살아서 응답한다는 뜻이다. `200` 이 아니라 `401` 을 기대한다.
 
----
+인증서도 본다 — issuer 가 `TRAEFIK DEFAULT CERT` 가 아니라 Cloudflare Origin CA 여야 한다.
+
+```bash
+echo | openssl s_client -connect app.finchapp.org:443 -servername app.finchapp.org 2>/dev/null \
+  | openssl x509 -noout -issuer
+```
+
+⚠️ **`seal.sh` 를 다시 돌리지 마라.** 배포 뒤에 돌리면 postgres 비밀번호가 새로 만들어지는데
+PVC 안의 DB 는 옛 것을 들고 있어 붙지 못한다. 근거는 런북의 경고 블록.
 
 ## 이번 배포에 필요 없는 것
 
