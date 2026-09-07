@@ -186,7 +186,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $tok" \
 
 ```bash
 curl -sI https://app.finchapp.org/
-curl -s -o /dev/null -w "%{http_code}\n" "https://app.finchapp.org/api/v1/stocks/search?keyword=삼성"
+curl -s -o /dev/null -w "%{http_code}\n" "https://app.finchapp.org/api/v1/stocks/search?keyword=005930"
 ```
 
 마지막이 **`401` 이면 성공이다.** 인증이 필요한 엔드포인트가 인증을 요구한다는 것은
