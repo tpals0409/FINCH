@@ -98,11 +98,15 @@ _inbox/
 ### 빈 디렉토리 유지용 (절대 무시하지 말 것) ###
 !.gitkeep
 
-# .claude/commands/** 와 .claude/agents/** 는 tracked — 스프린트 명령·역할 에이전트의 SSOT
+# .claude/commands/** · .claude/agents/** · .claude/skills/** 는 tracked —
+# 스프린트 명령·역할 에이전트·팀 규약의 SSOT.
+# skills/ 가 여기 있는 이유: Pico 는 다른 서버라 로컬 nest 배포가 닿지 않는다.
+# 레포가 환경을 넘는 유일한 공유 지점이라 원본을 여기 둔다 (docs/ops/pico.md 와 같은 이유).
 # 나머지 .claude/* 는 untracked — 로컬 세션·설정
 .claude/*
 !.claude/commands/
 !.claude/agents/
+!.claude/skills/
 
 # serena(MCP) 의 로컬 프로젝트 설정. 도구가 알아서 만들고 사람마다 다르다.
 # .claude/* 와 같은 이유로 통째로 뺀다 — SSOT 가 될 것이 하나도 없다.
