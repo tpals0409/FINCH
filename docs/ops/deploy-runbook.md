@@ -104,11 +104,15 @@ kubectl -n finch-prod get pods -w
 ```bash
 kubectl -n finch-prod get pods
 curl -sI https://app.finchapp.org/
-curl -s -o /dev/null -w "%{http_code}\n" "https://app.finchapp.org/api/v1/stocks/search?keyword=삼성"
+curl -s -o /dev/null -w "%{http_code}\n" "https://app.finchapp.org/api/v1/stocks/search?keyword=005930"
 ```
 
 마지막이 **`401` 이면 성공이다.** 인증이 필요한 엔드포인트가 인증을 요구한다는 것은
 백엔드가 살아서 응답한다는 뜻이다. `200` 이 아니라 `401` 을 기대한다.
+
+**검색어를 종목코드로 쓰는 이유** — 한글을 인코딩 없이 URL 에 넣으면 **Tomcat 이 스프링에
+닿기 전에 `400` 으로 거절한다**(로컬 실측). 배포가 멀쩡해도 실패로 읽힌다. 한글로 확인하려면
+`curl -G --data-urlencode "keyword=삼성"` 처럼 인코딩해서 보낸다.
 
 인증서도 본다 — issuer 가 `TRAEFIK DEFAULT CERT` 가 아니라 Cloudflare Origin CA 여야 한다.
 ```bash
