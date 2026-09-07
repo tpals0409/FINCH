@@ -162,6 +162,57 @@ kubectl -n finch-prod exec deploy/backend -- sh -c 'rm -f /tmp/kis.json'
 화이트리스트가 필요하다고 나오면 egress IP `223.130.147.160` 을 증권사에 등록해야 한다.
 그건 사람이 하는 일이니 결과만 알려주면 된다.
 
+## 6. AI 코퍼스 복원
+
+**AI 를 켜기 전 마지막 단계다.** `postgres-ai` 는 initdb 직후라 비어 있고, 임베딩
+10,198청크는 다시 만들 수 없다 — 일일 토큰 예산(500,000)의 몇 배가 든다. 백업본 복원이
+유일한 길이다.
+
+옮기는 파일은 **`ai-corpus-20260907.dump`** 다. 사용자 데이터를 뺀 코퍼스 전용 덤프이고
+`documents`(219) · `document_chunks`(10,198) · `index_daily`(271) · `price_daily`(8,594) ·
+`instruments`(2,598) · `events`(1,197) · `financial_annual` 만 들어 있다. 위키·논지·AI 응답 등
+사람 것은 담지 않았다. 약 67MB, 커스텀 포맷(`pg_dump -Fc --data-only`).
+
+**스키마는 옮기지 않는다.** AI 이미지가 기동할 때 alembic 이 만든다. 그래서 데이터만 있는
+덤프이고, **복원은 AI 파드가 한 번 떠서 마이그레이션을 끝낸 뒤**여야 한다.
+
+**파일은 GitHub Release 에 있다.** 이 노트북에서 서버로 가는 SSH 가 닫혀 있어(22 차단)
+서버가 직접 받는 편이 유일한 경로다. 인증 없이 받아진다.
+
+```bash
+# 1) 서버에서 받아 파드 안으로 넣는다
+curl -fsSL -o /tmp/corpus.dump \
+  https://github.com/tpals0409/FINCH/releases/download/ai-corpus-20260907/ai-corpus-20260907.dump
+
+# 받은 파일이 온전한지 본다. 다르면 다시 받는다 — 깨진 덤프는 중간까지 복원하고 멈춘다
+echo "8ca0204cd801bc3aa49981cd6b5e4dccbca5101b9b04c7b639e0449bddb55778  /tmp/corpus.dump" | sha256sum -c
+
+kubectl -n finch-prod cp /tmp/corpus.dump postgres-ai-0:/tmp/corpus.dump
+
+# 2) 복원. --disable-triggers 는 FK 순서를 신경 쓰지 않기 위한 것이다
+kubectl -n finch-prod exec postgres-ai-0 -- sh -c '
+  pg_restore -U ai_invest -d ai_invest --data-only --disable-triggers /tmp/corpus.dump
+'
+
+# 3) 확인 — 아래 숫자가 나와야 한다
+kubectl -n finch-prod exec postgres-ai-0 -- psql -U ai_invest -d ai_invest -Atc "
+  select (select count(*) from documents), (select count(*) from document_chunks),
+         (select count(*) from index_daily), (select count(*) from instruments);
+"
+# 기대값: 219|10198|271|2598
+
+# 4) 파일을 지운다. 파드 디스크에도 서버에도 남길 이유가 없다
+kubectl -n finch-prod exec postgres-ai-0 -- rm -f /tmp/corpus.dump
+rm -f /tmp/corpus.dump
+```
+
+`document_chunks` 는 1024차원 벡터 10,198행이라 복원에 몇 분 걸린다. **벡터 인덱스는 없다**
+(ivfflat·hnsw 둘 다). 행 수가 이 정도면 순차 스캔으로도 답이 나오고, 인덱스를 언제 붙일지는
+검색 지연을 실측한 뒤에 정한다.
+
+복원이 끝나면 `apps/prod/ai/values.yaml` 의 `application.enabled` 를 `true` 로 올리는
+커밋이 나간다. **그건 저장소에서 하는 일이지 클러스터에서 하는 일이 아니다.**
+
 ## 막혔을 때
 
 | 증상 | 원인 | 할 일 |
@@ -173,6 +224,7 @@ kubectl -n finch-prod exec deploy/backend -- sh -c 'rm -f /tmp/kis.json'
 | 브라우저에 `526` | 원본 인증서 | `finch-origin-tls` 가 있는지, Cloudflare 가 Full (strict) 인지 |
 | 브라우저에 `52x` | 원본에 못 닿음 | Traefik 과 Ingress 확인 |
 | backend `CrashLoopBackOff` | 비밀값 누락 | 로그에 어느 환경변수인지 나온다. **값은 옮겨 적지 말고 이름만** |
+| `pg_restore` 가 `relation ... does not exist` | AI 파드가 아직 안 떠서 alembic 이 스키마를 안 만들었다 | 6번은 AI 파드가 한 번 뜬 뒤에 한다 |
 | Grafana 에 지표가 안 보임 | **우리 문제 아니다** | Grafana·Alertmanager 가 누락 Secret 으로 비정상이다. 지표는 Prometheus 쿼리로 본다 |
 
 **어느 경우에도 `kubectl edit` 으로 고치지 않는다.** ArgoCD 가 self-heal 로 되돌리고,
