@@ -94,6 +94,16 @@ finch:
     # 임계 수치도 같은 값을 쓴다.
     stale-after: 15s
 
+  ai:
+    # 클러스터 안의 AI 서비스. 외부에 노출되지 않으므로 평문 http 다 (aiApiSpec 4장 배포 조건).
+    base-url: ${AI_BASE_URL:http://ai:8000}
+    # AI 가 `X-Internal-Token` 으로 대조하는 서비스 간 공유 토큰. 두 봉인이 같은 값을 써야 한다.
+    # 기본값을 두지 않는다 — 빈 값으로 기동하면 모든 AI 호출이 401 로만 보이고 원인이 안 드러난다.
+    internal-token: ${BACKEND_SERVICE_TOKEN}
+    # AI 의 llm_timeout_s(30) 보다 길게 잡는다. 우리가 먼저 끊으면 AI 가 돌려주는 LLM_TIMEOUT 이
+    # 프론트에 닿지 못하고 전부 AI_UPSTREAM_TIMEOUT 으로 뭉개진다 (apiSpec 10.4).
+    timeout: 60s
+
 ---
 # 운영 프로파일(SPRING_PROFILES_ACTIVE=prod)에서만 로그를 JSON 한 줄로 찍는다.
 # Loki 든 다른 수집기든 문장을 정규식으로 쪼개지 않고 level·requestId 로 바로 거르게 하기 위해서다.
