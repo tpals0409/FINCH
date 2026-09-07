@@ -12,9 +12,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import re
+import statistics
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 
 EVAL_DIR = Path(__file__).resolve().parent
 RETRIEVAL_SET = EVAL_DIR / "retrieval.yaml"
@@ -27,6 +30,26 @@ class RetrievalCase:
     ticker: str | None
     expect_title_contains: list[str]
     expect_empty: bool = False
+
+
+@dataclass(frozen=True)
+class LatencySummary:
+    samples: int
+    median_ms: float
+    p95_ms: float
+
+
+def _summarize_latency_ms(samples: list[float]) -> LatencySummary:
+    """검색 지연 표본을 중앙값과 nearest-rank p95로 요약한다."""
+    if not samples:
+        raise ValueError("지연 표본이 비어 있다")
+    ordered = sorted(samples)
+    p95_index = math.ceil(len(ordered) * 0.95) - 1
+    return LatencySummary(
+        samples=len(ordered),
+        median_ms=statistics.median(ordered),
+        p95_ms=ordered[p95_index],
+    )
 
 
 def _load_cases(path: Path = RETRIEVAL_SET) -> list[RetrievalCase]:
@@ -90,30 +113,45 @@ async def run_retrieval(top_k: int = 5) -> int:
     cases = _load_cases()
     vectors = await asyncio.to_thread(get_embedder().embed, [case.query for case in cases])
     hits = graded = 0
+    search_latencies_ms: list[float] = []
     try:
         for c, vector in zip(cases, vectors, strict=True):
             if vector is None:
                 print(f"  [FAIL] {c.id:<22} 질의 임베딩 실패")
                 return 1
+            started_at = perf_counter()
             found = await search_with_vector(
                 c.query, vector, top_k=top_k, ticker=c.ticker
             )
+            elapsed_ms = (perf_counter() - started_at) * 1000
+            search_latencies_ms.append(elapsed_ms)
             titles = " | ".join(h["title"] for h in found)
             if c.expect_empty:
                 # 오탐 관찰용. 지금은 top-k만 쓰므로 항상 무언가 나온다.
-                print(f"  [관찰] {c.id:<22} 상위 {len(found)}건 — {titles[:60]}")
+                print(
+                    f"  [관찰] {c.id:<22} 상위 {len(found)}건"
+                    f" · {elapsed_ms:.1f} ms — {titles[:60]}"
+                )
                 continue
             graded += 1
             ok = any(
                 any(want in h["title"] for want in c.expect_title_contains) for h in found
             )
             hits += ok
-            print(f"  [{'HIT ' if ok else 'MISS'}] {c.id:<22} {titles[:60]}")
+            print(
+                f"  [{'HIT ' if ok else 'MISS'}] {c.id:<22}"
+                f" {elapsed_ms:.1f} ms · {titles[:60]}"
+            )
         if graded:
             recall = hits / graded
             minimum = _minimum_recall(top_k=top_k)
             gate = f" · 최소 {minimum:.3f}" if minimum is not None else ""
             print(f"\nRecall@{top_k}: {hits}/{graded} = {recall:.3f}{gate}")
+            latency = _summarize_latency_ms(search_latencies_ms)
+            print(
+                f"검색 지연 ({latency.samples}건): 중앙값 {latency.median_ms:.1f} ms"
+                f" · p95(nearest-rank) {latency.p95_ms:.1f} ms"
+            )
             if minimum is not None and recall < minimum:
                 print("검색 품질 기준을 통과하지 못했다.")
                 return 1
