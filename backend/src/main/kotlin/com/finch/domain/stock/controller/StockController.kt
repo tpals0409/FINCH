@@ -50,7 +50,7 @@ class StockController(
 
 	@GetMapping("/{stockCode}")
 	fun detail(@LoginUser userId: Long, @PathVariable stockCode: String): StockDetailRes =
-		stockService.getDetail(stockCode, watchlistService.isWatched(userId, stockCode))
+		stockService.getDetail(userId, stockCode, watchlistService.isWatched(userId, stockCode))
 
 	@GetMapping("/{stockCode}/candles")
 	fun candles(

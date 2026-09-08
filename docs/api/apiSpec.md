@@ -319,6 +319,10 @@ GET /api/v1/account
 | `totalAsset` | 총자산 = 예수금 + 평가금액 |
 | `asOf` | 시세 기준 시각. 화면에 "갱신 시각"으로 표시 |
 
+보유 종목 중 현재가가 하나라도 없으면 `evaluationAmount`·`totalAsset`·`asOf`는 `null`이다. 일부 종목만
+빼고 합산한 값을 총자산처럼 내려보내지 않는다. 보유 종목이 없으면 평가금액은 `0`, 총자산은 예수금이며
+`asOf`는 응답 생성 시각이다.
+
 > 포트폴리오 전체 수익률과 총자산 추이는 MVP 범위 밖이다. (명세 9.1)
 
 > **`POST /account/reset`(계좌 리셋)과 `GET /rounds`(회차 목록)는 v0.7 에서 삭제됐다.** 실제 투자
@@ -468,6 +472,8 @@ GET /api/v1/stocks/{stockCode}
 - `holding`: 보유하지 않으면 `null`. **전량 매도로 `quantity = 0`인 행이 남아 있는 경우도 `null`이다** —
   잔존 행은 재매수 시 INSERT 경합을 막기 위한 내부 구현(ERD §2.6)이고 API로 노출하지 않는다.
   프론트는 `holding !== null`로 보유 여부를 판단한다. (이슈 #19)
+- 보유 중이지만 현재가 수신 이력이 없으면 `holding`은 유지하고 그 안의 `evaluationProfit`·
+  `evaluationProfitRate`만 `null`이다. 보유 자체를 숨기거나 현재가를 0원으로 간주하지 않는다.
 
 | 에러 | 상태 |
 |---|---|
@@ -853,6 +859,12 @@ GET /api/v1/portfolio?sort=EVALUATION
 - `evaluationAmount` = 보유 수량 × 현재가
 - `evaluationProfit` = (현재가 − 평균 매수가) × 보유 수량
 - `evaluationProfitRate` = 평가손익 ÷ (평균 매수가 × 보유 수량) × 100
+
+현재가 수신 이력이 없는 보유 종목도 `holdings`에 남고, 그 항목의 `currentPrice`·`evaluationAmount`·
+`evaluationProfit`·`evaluationProfitRate`는 `null`이다. 하나라도 이런 항목이 있으면 상단
+`evaluationAmount`·`totalAsset`·`asOf`도 `null`이다. 값 없음과 0원 평가를 구분하고, 일부 종목만 합산한
+금액을 전체 평가금액처럼 보이지 않게 하기 위해서다. `EVALUATION`·`PROFIT_RATE` 정렬에서 평가값이 없는
+항목은 항상 뒤에 둔다. 보유가 없으면 `holdings`는 빈 배열, 평가금액은 `0`이다.
 
 ### 8.2 매매 내역 (명세 8장)
 
