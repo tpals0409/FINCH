@@ -3,6 +3,7 @@ import { PAYMENT_METHOD_LABEL } from '@/shared/lib/paymentMethod';
 import type { PaymentMethod } from '@/shared/types/deposit';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 3/3 확인 (featureSpec §3.2 · 와이어프레임 아트보드 5·8).
@@ -43,7 +44,7 @@ export function ConfirmStep({
 
   return (
     <Card>
-      <p className="text-caption text-fg-neutral-subtle">3 / 3</p>
+      <SupportingText size="caption">3 / 3</SupportingText>
       <h2 className="mt-1 text-title-3 text-fg-neutral">충전 확인</h2>
 
       {errorMessage !== null ? (
@@ -52,21 +53,23 @@ export function ConfirmStep({
 
       <dl className="mt-5 space-y-3">
         <div>
-          <dt className="text-caption text-fg-neutral-subtle">충전 금액</dt>
+          <SupportingText as="dt" size="caption">
+            충전 금액
+          </SupportingText>
           <dd className="mt-1 text-display text-fg-neutral">
             {formatKrw(amount)}
           </dd>
         </div>
         <div className="flex justify-between border-t border-stroke-neutral-subtle pt-3">
-          <dt className="text-body-2 text-fg-neutral-subtle">결제 수단</dt>
+          <SupportingText as="dt">결제 수단</SupportingText>
           <dd className="text-body-2 text-fg-neutral">
             {PAYMENT_METHOD_LABEL[paymentMethod]}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-body-2 text-fg-neutral-subtle">
+          <SupportingText as="dt">
             {exceeded ? '잔여 한도' : '충전 후 예수금'}
-          </dt>
+          </SupportingText>
           <dd className="text-body-2 text-fg-neutral">
             {formatKrw(
               exceeded ? limitExceededRemaining : cashBalance + amount,
@@ -75,9 +78,12 @@ export function ConfirmStep({
         </div>
       </dl>
 
-      <p className="mt-5 border-t border-stroke-neutral-subtle pt-4 text-caption text-fg-neutral-subtle">
+      <SupportingText
+        size="caption"
+        className="mt-5 border-t border-stroke-neutral-subtle pt-4"
+      >
         충전은 취소할 수 없습니다
-      </p>
+      </SupportingText>
 
       {exceeded ? (
         <div className="mt-5 space-y-2">

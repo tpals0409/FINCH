@@ -2,6 +2,7 @@ import { formatKstHourMinute } from '@/shared/lib/formatDate';
 import { formatKrw } from '@/shared/lib/formatNumber';
 import { PAYMENT_METHOD_LABEL } from '@/shared/lib/paymentMethod';
 import type { Transaction, TransactionType } from '@/shared/types/portfolio';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 원장 유형의 표시 이름 (featureSpec §8).
@@ -43,10 +44,10 @@ export function TransactionRow({ transaction }: Props) {
         <p className="text-body-2 text-fg-neutral">
           {TYPE_LABEL[transaction.type]}
         </p>
-        <p className="mt-0.5 truncate text-caption text-fg-neutral-subtle">
+        <SupportingText size="caption" className="mt-0.5 truncate">
           {formatKstHourMinute(transaction.occurredAt)} ·{' '}
           {describe(transaction)}
-        </p>
+        </SupportingText>
       </div>
 
       <p className="shrink-0 text-body-2 text-fg-neutral">

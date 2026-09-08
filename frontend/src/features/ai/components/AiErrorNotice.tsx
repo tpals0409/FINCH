@@ -4,6 +4,7 @@ import {
   AI_SERVICE_ERROR_CODES,
 } from '@/shared/types/errorCodes';
 import { Button } from '@/shared/ui/Button';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * AI 실패를 화면 문구로 옮긴다. **분기는 상태 코드가 아니라 `code` 로 한다** —
@@ -40,11 +41,11 @@ export function AiErrorNotice({
 
   return (
     <div role="alert">
-      <p className="text-body-2 text-fg-neutral-subtle">{message}</p>
+      <SupportingText>{message}</SupportingText>
       {code === AI_SERVICE_ERROR_CODES.INSUFFICIENT_DATA ? (
-        <p className="mt-1 text-caption text-fg-neutral-subtle">
+        <SupportingText size="caption" className="mt-1">
           거래가 쌓이면 다시 볼 수 있어요
-        </p>
+        </SupportingText>
       ) : null}
       {retryable && onRetry !== undefined ? (
         <Button onClick={onRetry} className="mt-3">

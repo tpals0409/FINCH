@@ -4,6 +4,7 @@ import { formatKrw } from '@/shared/lib/formatNumber';
 import { DEPOSIT_ERROR_CODES } from '@/shared/types/errorCodes';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 import {
   AMOUNT_PRESETS,
@@ -46,7 +47,7 @@ export function AmountStep({
 
   return (
     <Card>
-      <p className="text-caption text-fg-neutral-subtle">2 / 3</p>
+      <SupportingText size="caption">2 / 3</SupportingText>
       <h2 className="mt-1 text-title-3 text-fg-neutral">
         충전 금액을 입력하세요
       </h2>
@@ -79,7 +80,7 @@ export function AmountStep({
             key={preset}
             type="button"
             onClick={() => setAmount((current) => current + preset)}
-            className="min-h-[44px] flex-1 rounded-sm border border-stroke-neutral-weak text-label text-fg-neutral"
+            className="min-h-touch-min flex-1 rounded-sm border border-stroke-neutral-weak text-label text-fg-neutral"
           >
             +{(preset / 10_000).toLocaleString('ko-KR')}만
           </button>

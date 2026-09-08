@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '@/shared/config/routes';
 import { Card } from '@/shared/ui/Card';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 import { useWatchlist } from '../api/useWatchlist';
 
@@ -26,9 +27,9 @@ export function WatchlistSection() {
       <h2 className="text-title-3 text-fg-neutral">
         관심 종목
         {data ? (
-          <span className="ml-1.5 text-body-2 text-fg-neutral-subtle tabular-nums">
+          <SupportingText as="span" className="ml-1.5 tabular-nums">
             {data.count}/{data.maxCount}
-          </span>
+          </SupportingText>
         ) : null}
       </h2>
 
@@ -39,15 +40,11 @@ export function WatchlistSection() {
         </div>
       ) : isError ? (
         <Card className="mt-2">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            관심 종목을 불러오지 못했습니다
-          </p>
+          <SupportingText>관심 종목을 불러오지 못했습니다</SupportingText>
         </Card>
       ) : data.items.length === 0 ? (
         <Card className="mt-2">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            아직 담아 둔 종목이 없습니다
-          </p>
+          <SupportingText>아직 담아 둔 종목이 없습니다</SupportingText>
           <Link
             to={ROUTES.search}
             viewTransition
@@ -69,10 +66,10 @@ export function WatchlistSection() {
                   <span className="truncate text-body-1 text-fg-neutral">
                     {item.stockName}
                   </span>
-                  <span className="text-body-2 text-fg-neutral-subtle tabular-nums">
+                  <SupportingText as="span" className="tabular-nums">
                     {item.stockCode}
                     {item.held ? ' · 보유' : ''}
-                  </span>
+                  </SupportingText>
                 </span>
                 <StockPriceText
                   currentPrice={item.currentPrice}

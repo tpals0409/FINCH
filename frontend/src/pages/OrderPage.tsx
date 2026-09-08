@@ -10,8 +10,10 @@ import { StockCodeSchema } from '@/shared/types/primitives';
 import type { IdempotencyKey } from '@/shared/types/primitives';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { NumericValue } from '@/shared/ui/NumericValue';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 const RATIOS = [10, 25, 50, 100] as const;
 
@@ -78,9 +80,7 @@ export function OrderPage() {
     return (
       <PageMain>
         <Card>
-          <p className="text-body-2 text-fg-neutral-subtle">
-            주문 정보를 불러오지 못했습니다
-          </p>
+          <SupportingText>주문 정보를 불러오지 못했습니다</SupportingText>
           <Button onClick={() => void available.refetch()} className="mt-3">
             다시 시도
           </Button>
@@ -123,24 +123,20 @@ export function OrderPage() {
       <Card className="mt-4">
         <dl className="grid grid-cols-2 gap-y-2 text-body-2">
           <dt className="text-fg-neutral-subtle">현재가</dt>
-          <dd className="text-right text-fg-neutral tabular-nums">
+          <NumericValue>
             {price === null ? '시세 없음' : formatKrw(price)}
-          </dd>
+          </NumericValue>
           <dt className="text-fg-neutral-subtle">예수금</dt>
-          <dd className="text-right text-fg-neutral tabular-nums">
-            {formatKrw(info.availableCash)}
-          </dd>
+          <NumericValue>{formatKrw(info.availableCash)}</NumericValue>
           <dt className="text-fg-neutral-subtle">
             {side === 'BUY' ? '최대 매수' : '보유 수량'}
           </dt>
-          <dd className="text-right text-fg-neutral tabular-nums">
-            {info.maxQuantity}주
-          </dd>
+          <NumericValue>{info.maxQuantity}주</NumericValue>
         </dl>
       </Card>
 
       <label className="mt-4 block">
-        <span className="text-body-2 text-fg-neutral-subtle">수량</span>
+        <SupportingText as="span">수량</SupportingText>
         <input
           type="number"
           inputMode="numeric"
@@ -162,7 +158,7 @@ export function OrderPage() {
             onClick={() =>
               setQuantity(Math.floor((info.maxQuantity * ratio) / 100))
             }
-            className="flex-1 rounded-card border border-stroke-neutral-weak py-2 text-body-2 text-fg-neutral-subtle disabled:text-fg-disabled"
+            className="text-supporting flex-1 rounded-card border border-stroke-neutral-weak py-2 disabled:text-fg-disabled"
           >
             {ratio === 100 ? '최대' : `${ratio}%`}
           </button>
@@ -178,13 +174,9 @@ export function OrderPage() {
 
       {!info.tradable ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            지금은 주문할 수 없습니다
-          </p>
+          <SupportingText>지금은 주문할 수 없습니다</SupportingText>
           {/* 코드를 그대로 보여준다. 문구 매핑은 서버 메시지가 오는 실패 응답에서만 한다. */}
-          <p className="mt-1 text-body-2 text-fg-neutral-subtle">
-            {info.reason}
-          </p>
+          <SupportingText className="mt-1">{info.reason}</SupportingText>
         </Card>
       ) : null}
 
@@ -196,9 +188,9 @@ export function OrderPage() {
 
       {order.isError ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
+          <SupportingText>
             주문이 처리되지 않았습니다. 다시 시도해 주세요
-          </p>
+          </SupportingText>
         </Card>
       ) : null}
 
@@ -207,10 +199,10 @@ export function OrderPage() {
           <p className="text-body-1 text-fg-neutral">
             {order.data.side === 'BUY' ? '매수' : '매도'} 체결됐습니다
           </p>
-          <p className="mt-1 text-body-2 text-fg-neutral-subtle tabular-nums">
+          <SupportingText className="mt-1 tabular-nums">
             {order.data.quantity}주 · {formatKrw(order.data.executedPrice)} · 총{' '}
             {formatKrw(order.data.executedAmount)}
-          </p>
+          </SupportingText>
           <Button
             onClick={() =>
               void navigate(ROUTES.stockDetail(stockCode), {

@@ -22,6 +22,7 @@ import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 모의 충전 (apiSpec §4 · featureSpec §3 · 와이어프레임 아트보드 3~9).
@@ -153,9 +154,7 @@ export function DepositPage() {
             </Card>
           ) : limit.isError ? (
             <Card>
-              <p className="text-body-2 text-fg-neutral-subtle">
-                충전 한도를 불러오지 못했습니다
-              </p>
+              <SupportingText>충전 한도를 불러오지 못했습니다</SupportingText>
               <Button
                 onClick={() => void limit.refetch()}
                 disabled={limit.isFetching}

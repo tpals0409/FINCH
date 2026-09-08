@@ -10,6 +10,7 @@ import type { AiChatResponse } from '@/shared/types/ai/chat';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 const MESSAGE_MAX_LENGTH = 2000;
 
@@ -66,12 +67,12 @@ export function ChatPage() {
         {turns.length === 0 ? (
           <li>
             <Card>
-              <p className="text-body-2 text-fg-neutral-subtle">
+              <SupportingText>
                 보유 종목이나 투자 용어를 물어보세요
-              </p>
-              <p className="mt-1 text-caption text-fg-neutral-subtle">
+              </SupportingText>
+              <SupportingText size="caption" className="mt-1">
                 가격을 예측하거나 사고팔라고 권하지는 않아요
-              </p>
+              </SupportingText>
             </Card>
           </li>
         ) : null}
@@ -103,9 +104,7 @@ export function ChatPage() {
         {chat.isPending ? (
           <li>
             <Card>
-              <p className="text-body-2 text-fg-neutral-subtle">
-                답을 만들고 있어요
-              </p>
+              <SupportingText>답을 만들고 있어요</SupportingText>
             </Card>
           </li>
         ) : null}
@@ -134,7 +133,7 @@ export function ChatPage() {
           maxLength={MESSAGE_MAX_LENGTH}
           disabled={chat.isPending}
           placeholder="무엇이든 물어보세요"
-          className="min-h-[54px] flex-1 rounded-md border border-stroke-neutral-weak bg-bg-layer-default px-4 text-body-1 text-fg-neutral placeholder:text-fg-placeholder disabled:bg-bg-disabled"
+          className="min-h-control-height flex-1 rounded-md border border-stroke-neutral-weak bg-bg-layer-default px-4 text-body-1 text-fg-neutral placeholder:text-fg-placeholder disabled:bg-bg-disabled"
         />
         <Button
           type="submit"

@@ -19,8 +19,10 @@ import {
 } from '@/shared/types/stock';
 import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { NumericValue } from '@/shared/ui/NumericValue';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 종목 상세 (apiSpec §5.2 · featureSpec §7.1).
@@ -59,9 +61,7 @@ export function StockDetailPage() {
     return (
       <PageMain>
         <Card>
-          <p className="text-body-2 text-fg-neutral-subtle">
-            종목을 불러오지 못했습니다
-          </p>
+          <SupportingText>종목을 불러오지 못했습니다</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
@@ -77,17 +77,17 @@ export function StockDetailPage() {
   return (
     <PageMain>
       <h1 className="text-title-2 text-fg-neutral">{data.stockName}</h1>
-      <p className="mt-1 text-body-2 text-fg-neutral-subtle tabular-nums">
+      <SupportingText className="mt-1 tabular-nums">
         {data.stockCode} · {data.market}
-      </p>
+      </SupportingText>
 
       {data.suspended ? (
         <Card className="mt-4">
           <p className="text-body-1 text-fg-neutral">거래정지 종목입니다</p>
           {data.suspendedReason ? (
-            <p className="mt-1 text-body-2 text-fg-neutral-subtle">
+            <SupportingText className="mt-1">
               {data.suspendedReason}
-            </p>
+            </SupportingText>
           ) : null}
         </Card>
       ) : null}
@@ -139,13 +139,9 @@ function HoldingCard({ holding }: { holding: StockHoldingSummary }) {
       <h2 className="text-title-3 text-fg-neutral">내 보유</h2>
       <dl className="mt-3 grid grid-cols-2 gap-y-2 text-body-2">
         <dt className="text-fg-neutral-subtle">수량</dt>
-        <dd className="text-right text-fg-neutral tabular-nums">
-          {holding.quantity}주
-        </dd>
+        <NumericValue>{holding.quantity}주</NumericValue>
         <dt className="text-fg-neutral-subtle">평균 매입가</dt>
-        <dd className="text-right text-fg-neutral tabular-nums">
-          {formatKrw(holding.avgBuyPrice)}
-        </dd>
+        <NumericValue>{formatKrw(holding.avgBuyPrice)}</NumericValue>
         <dt className="text-fg-neutral-subtle">평가 손익</dt>
         <dd className={`text-right tabular-nums ${profitClass}`}>
           {hasEvaluation ? (

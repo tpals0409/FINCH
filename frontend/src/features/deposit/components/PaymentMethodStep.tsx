@@ -2,6 +2,7 @@ import { PAYMENT_METHOD_LABEL } from '@/shared/lib/paymentMethod';
 import type { PaymentMethod } from '@/shared/types/deposit';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 1/3 결제 수단 선택 (featureSpec §3.1 · 와이어프레임 아트보드 3).
@@ -16,7 +17,7 @@ type Props = { onSelect: (method: PaymentMethod) => void };
 export function PaymentMethodStep({ onSelect }: Props) {
   return (
     <Card>
-      <p className="text-caption text-fg-neutral-subtle">1 / 3</p>
+      <SupportingText size="caption">1 / 3</SupportingText>
       <h2 className="mt-1 text-title-3 text-fg-neutral">
         결제 수단을 선택하세요
       </h2>

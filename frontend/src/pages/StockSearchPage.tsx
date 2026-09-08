@@ -9,6 +9,7 @@ import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 종목 검색 (apiSpec §5.1 · featureSpec §4 · ia.md).
@@ -42,14 +43,12 @@ export function StockSearchPage() {
       />
 
       {!isReady ? (
-        <p className="mt-8 text-center text-body-2 text-fg-neutral-subtle">
+        <SupportingText className="mt-8 text-center">
           두 글자 이상 입력해 주세요
-        </p>
+        </SupportingText>
       ) : isError ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            검색에 실패했습니다
-          </p>
+          <SupportingText>검색에 실패했습니다</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}

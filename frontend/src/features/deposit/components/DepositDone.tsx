@@ -5,6 +5,8 @@ import { PAYMENT_METHOD_LABEL } from '@/shared/lib/paymentMethod';
 import type { DepositResponse } from '@/shared/types/deposit';
 import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { SeparatedGroup } from '@/shared/ui/SeparatedGroup';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 완료 (와이어프레임 아트보드 6).
@@ -20,31 +22,31 @@ type Props = { deposit: DepositResponse; onDepositAgain: () => void };
 export function DepositDone({ deposit, onDepositAgain }: Props) {
   return (
     <Card>
-      <p className="text-caption text-fg-neutral-subtle">충전 완료</p>
+      <SupportingText size="caption">충전 완료</SupportingText>
       <p className="mt-1 text-display text-fg-neutral">
         {formatKrw(deposit.amount)}
       </p>
 
-      <dl className="mt-5 space-y-3 border-t border-stroke-neutral-subtle pt-4">
+      <SeparatedGroup as="dl">
         <div className="flex justify-between">
-          <dt className="text-body-2 text-fg-neutral-subtle">결제 수단</dt>
+          <SupportingText as="dt">결제 수단</SupportingText>
           <dd className="text-body-2 text-fg-neutral">
             {PAYMENT_METHOD_LABEL[deposit.paymentMethod]}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-body-2 text-fg-neutral-subtle">충전 후 예수금</dt>
+          <SupportingText as="dt">충전 후 예수금</SupportingText>
           <dd className="text-body-2 text-fg-neutral">
             {formatKrw(deposit.cashBalanceAfter)}
           </dd>
         </div>
         <div className="flex justify-between">
-          <dt className="text-body-2 text-fg-neutral-subtle">일시</dt>
+          <SupportingText as="dt">일시</SupportingText>
           <dd className="text-body-2 text-fg-neutral">
             {formatKstDateTime(deposit.depositedAt)}
           </dd>
         </div>
-      </dl>
+      </SeparatedGroup>
 
       <div className="mt-5 space-y-2">
         <Button onClick={onDepositAgain} variant="secondary">

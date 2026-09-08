@@ -9,6 +9,7 @@ import {
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 브리핑 전체 (ia.md §1 · AI 명세 §8).
@@ -43,12 +44,10 @@ export function BriefingPage() {
         </Card>
       ) : data.content.items.length === 0 ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            오늘 알려드릴 소식이 없어요
-          </p>
-          <p className="mt-1 text-caption text-fg-neutral-subtle">
+          <SupportingText>오늘 알려드릴 소식이 없어요</SupportingText>
+          <SupportingText size="caption" className="mt-1">
             종목을 담으면 그 종목의 소식을 모아 드려요
-          </p>
+          </SupportingText>
         </Card>
       ) : (
         <div className="finch-content-reveal">

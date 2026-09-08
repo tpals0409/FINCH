@@ -5,6 +5,7 @@ import {
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
 import type { StockDetailResponse } from '@/shared/types/stock';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 const DIRECTION_CLASS = {
   rise: 'text-fg-up',
@@ -41,13 +42,13 @@ export function StockDetailPrice({ stock }: { stock: StockDetailResponse }) {
         <p className="text-title-2 text-fg-neutral-subtle">시세 없음</p>
       )}
 
-      <p className="mt-2 text-body-2 text-fg-neutral-subtle tabular-nums">
+      <SupportingText className="mt-2 tabular-nums">
         전일 종가 {formatKrw(stock.previousClose)}
-      </p>
+      </SupportingText>
       {stock.asOf ? (
-        <p className="mt-1 text-caption text-fg-neutral-subtle tabular-nums">
+        <SupportingText size="caption" className="mt-1 tabular-nums">
           {formatKstTime(stock.asOf)} 갱신
-        </p>
+        </SupportingText>
       ) : null}
     </div>
   );

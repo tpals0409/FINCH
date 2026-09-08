@@ -4,6 +4,7 @@ import {
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
 import type { KrwAmount, Percent } from '@/shared/types/primitives';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 const DIRECTION_CLASS = {
   rise: 'text-fg-up',
@@ -32,9 +33,7 @@ export function StockPriceText({
   changeRate: Percent | null;
 }) {
   if (currentPrice === null || changeRate === null) {
-    return (
-      <span className="text-body-2 text-fg-neutral-subtle">시세 없음</span>
-    );
+    return <SupportingText as="span">시세 없음</SupportingText>;
   }
 
   return (

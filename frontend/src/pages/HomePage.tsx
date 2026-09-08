@@ -7,6 +7,7 @@ import { WatchlistSection } from '@/features/stocks';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 홈 (ia.md §1 · featureSpec §2).
@@ -30,9 +31,7 @@ export function HomePage() {
         <AccountSummaryCardSkeleton />
       ) : isError ? (
         <Card>
-          <p className="text-body-2 text-fg-neutral-subtle">
-            자산을 불러오지 못했습니다
-          </p>
+          <SupportingText>자산을 불러오지 못했습니다</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
