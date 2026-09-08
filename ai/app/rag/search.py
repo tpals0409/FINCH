@@ -15,7 +15,11 @@ import argparse
 import asyncio
 import logging
 import math
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from time import perf_counter
 
 from sqlalchemy import Float, bindparam, case, cast, func, literal_column, or_, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -55,6 +59,35 @@ FRESHNESS_HALF_LIFE_DAYS = {
     DocumentType.FINANCIAL.value: 180,
     DocumentType.MACRO.value: 30,
 }
+
+
+@dataclass(slots=True)
+class SearchTrace:
+    """검색 한 번 안에서 순차 구간별 벽시계 시간을 합산한다."""
+
+    elapsed_ms: dict[str, float] = field(default_factory=dict)
+    path_elapsed_ms: dict[str, float] = field(default_factory=dict)
+
+    def add(self, stage: str, value: float) -> None:
+        self.elapsed_ms[stage] = self.elapsed_ms.get(stage, 0.0) + value
+
+
+@contextmanager
+def _measure(
+    trace: SearchTrace | None, stage: str, *, path: str | None = None
+) -> Iterator[None]:
+    if trace is None:
+        yield
+        return
+    started_at = perf_counter()
+    try:
+        yield
+    finally:
+        elapsed_ms = (perf_counter() - started_at) * 1_000
+        trace.add(stage, elapsed_ms)
+        if path is not None:
+            key = f"{path}.{stage}"
+            trace.path_elapsed_ms[key] = trace.path_elapsed_ms.get(key, 0.0) + elapsed_ms
 
 
 def _source_weight(source: str | None) -> float:
@@ -213,7 +246,12 @@ def fuse(
 
 
 async def _dense_candidates(
-    query_vec, *, ticker: str | None, doc_type: DocumentType | None, limit: int
+    query_vec,
+    *,
+    ticker: str | None,
+    doc_type: DocumentType | None,
+    limit: int,
+    trace: SearchTrace | None = None,
 ):
     """밀집(벡터) 경로 후보."""
     distance = DocumentChunk.embedding.cosine_distance(query_vec)
@@ -240,8 +278,7 @@ async def _dense_candidates(
     stmt = stmt.order_by(distance).limit(limit)
 
     try:
-        async with SessionFactory() as session:
-            return (await session.execute(stmt)).all()
+        return await _run(stmt, trace=trace, path="dense")
     except SQLAlchemyError as exc:
         # 벡터 저장소가 흔들린 것도 근거 검색 실패다. 500으로 새어 나가면
         # 프런트가 재시도 가능한 실패인지 알 수 없다(§2.6).
@@ -249,12 +286,29 @@ async def _dense_candidates(
         raise RetrievalFailed("근거 검색에 실패했습니다.") from exc
 
 
-async def _run(stmt):
-    async with SessionFactory() as session:
-        return (await session.execute(stmt)).all()
+async def _run(
+    stmt, *, trace: SearchTrace | None = None, path: str = "query"
+):
+    if trace is None:
+        async with SessionFactory() as session:
+            return (await session.execute(stmt)).all()
+
+    session = SessionFactory()
+    try:
+        with _measure(trace, "session_acquire", path=path):
+            await session.connection()
+        with _measure(trace, "db_execute", path=path):
+            result = await session.execute(stmt)
+        with _measure(trace, "result_materialize", path=path):
+            return result.all()
+    finally:
+        with _measure(trace, "session_release", path=path):
+            await session.close()
 
 
-async def _title_candidates(query: str, *, ticker: str | None, limit: int):
+async def _title_candidates(
+    query: str, *, ticker: str | None, limit: int, trace: SearchTrace | None = None
+):
     """질의 바이그램이 제목에서 차지하는 비율로 문서 후보를 찾는다."""
     grams = list(dict.fromkeys(bigrams(query)))
     if not grams:
@@ -284,7 +338,11 @@ async def _title_candidates(query: str, *, ticker: str | None, limit: int):
     )
     if ticker:
         stmt = stmt.where(Document.ticker == ticker)
-    return await _run(stmt.order_by(rank.desc(), Document.published_at.desc()).limit(limit))
+    return await _run(
+        stmt.order_by(rank.desc(), Document.published_at.desc()).limit(limit),
+        trace=trace,
+        path="title",
+    )
 
 
 async def search(
@@ -328,16 +386,23 @@ async def search_with_vector(
     top_k: int = 5,
     ticker: str | None = None,
     doc_type: DocumentType | None = None,
+    trace: SearchTrace | None = None,
 ) -> list[dict]:
     """이미 만든 질의 벡터로 검색한다. 평가 배치가 임베딩을 한 번에 묶을 때 쓴다."""
     dense_rows = await _dense_candidates(
-        query_vec, ticker=ticker, doc_type=doc_type, limit=CANDIDATE_POOL
+        query_vec,
+        ticker=ticker,
+        doc_type=doc_type,
+        limit=CANDIDATE_POOL,
+        trace=trace,
     )
 
     lexical_rows: list = []
     title_rows: list = []
     try:
-        title_rows = await _title_candidates(query, ticker=ticker, limit=CANDIDATE_POOL)
+        title_rows = await _title_candidates(
+            query, ticker=ticker, limit=CANDIDATE_POOL, trace=trace
+        )
     except SQLAlchemyError:
         log.exception("제목 검색이 실패해 다른 검색 결과만 사용한다")
     tsq = lexical_tsquery(query)
@@ -366,12 +431,13 @@ async def search_with_vector(
             if doc_type:
                 stmt = stmt.where(Document.doc_type == doc_type)
             stmt = stmt.order_by(rank.desc()).limit(CANDIDATE_POOL)
-            lexical_rows = await _run(stmt)
+            lexical_rows = await _run(stmt, trace=trace, path="lexical")
         except SQLAlchemyError:
             # 어휘 경로 실패는 열화 상태다. 전체를 죽이지 않고 진행한다.
             log.exception("어휘 검색이 실패해 밀집 결과만으로 진행한다")
 
-    return fuse(dense_rows, lexical_rows, title_rows, top_k=top_k)
+    with _measure(trace, "result_fusion"):
+        return fuse(dense_rows, lexical_rows, title_rows, top_k=top_k)
 
 
 async def tsv_backfill(

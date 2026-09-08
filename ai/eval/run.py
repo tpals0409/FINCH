@@ -104,7 +104,7 @@ def _to_case(d: dict) -> RetrievalCase:
 async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
     from app.core.db import engine
     from app.rag.embedding import NullEmbedder, get_embedder
-    from app.rag.search import search_with_vector
+    from app.rag.search import SearchTrace, search_with_vector
 
     if isinstance(get_embedder(), NullEmbedder):
         print("임베딩 키가 없어 검색 평가를 건너뛴다. GMS_KEY를 설정하라.")
@@ -116,6 +116,7 @@ async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
     vectors = await asyncio.to_thread(get_embedder().embed, [case.query for case in cases])
     hits = graded = 0
     search_latencies_ms: list[float] = []
+    stage_latencies_ms: dict[str, list[float]] = {}
     case_latencies_ms: dict[str, list[float]] = {case.id: [] for case in cases}
     first_results: dict[str, list[dict]] = {}
     try:
@@ -131,11 +132,27 @@ async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
         for repeat_index in range(repeats):
             for c, vector in zip(cases, vectors, strict=True):
                 started_at = perf_counter()
+                trace = SearchTrace()
                 found = await search_with_vector(
-                    c.query, vector, top_k=top_k, ticker=c.ticker
+                    c.query, vector, top_k=top_k, ticker=c.ticker, trace=trace
                 )
                 elapsed_ms = (perf_counter() - started_at) * 1000
                 search_latencies_ms.append(elapsed_ms)
+                accounted_ms = sum(
+                    trace.elapsed_ms.get(stage, 0.0)
+                    for stage in (
+                        "session_acquire",
+                        "db_execute",
+                        "result_materialize",
+                        "session_release",
+                        "result_fusion",
+                    )
+                )
+                trace.add("unclassified", max(0.0, elapsed_ms - accounted_ms))
+                for stage, stage_ms in trace.elapsed_ms.items():
+                    stage_latencies_ms.setdefault(stage, []).append(stage_ms)
+                for stage, stage_ms in trace.path_elapsed_ms.items():
+                    stage_latencies_ms.setdefault(stage, []).append(stage_ms)
                 case_latencies_ms[c.id].append(elapsed_ms)
                 if repeat_index == 0:
                     first_results[c.id] = found
@@ -174,6 +191,40 @@ async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
                 f"검색 지연 ({latency.samples}건): 중앙값 {latency.median_ms:.1f} ms"
                 f" · p95(nearest-rank) {latency.p95_ms:.1f} ms"
             )
+            print("검색 내부 구간 (호출당 합계):")
+            labels = {
+                "session_acquire": "세션·커넥션 획득",
+                "db_execute": "DB 왕복·실행",
+                "result_materialize": "결과 변환",
+                "session_release": "세션 반환",
+                "result_fusion": "RRF 융합",
+                "unclassified": "그 밖의 파이썬 구간",
+            }
+            for stage, label in labels.items():
+                samples = stage_latencies_ms.get(stage)
+                if not samples:
+                    continue
+                stage_latency = _summarize_latency_ms(samples)
+                print(
+                    f"  {label:<18} 중앙값 {stage_latency.median_ms:.1f} ms"
+                    f" · p95 {stage_latency.p95_ms:.1f} ms"
+                    f" · n={stage_latency.samples}"
+                )
+            print("DB 왕복·실행 세부:")
+            for path, label in (
+                ("dense", "밀집 벡터"),
+                ("title", "제목 검색"),
+                ("lexical", "어휘 검색"),
+            ):
+                samples = stage_latencies_ms.get(f"{path}.db_execute")
+                if not samples:
+                    continue
+                stage_latency = _summarize_latency_ms(samples)
+                print(
+                    f"  {label:<18} 중앙값 {stage_latency.median_ms:.1f} ms"
+                    f" · p95 {stage_latency.p95_ms:.1f} ms"
+                    f" · n={stage_latency.samples}"
+                )
             if minimum is not None and recall < minimum:
                 print("검색 품질 기준을 통과하지 못했다.")
                 return 1
