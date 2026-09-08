@@ -222,9 +222,10 @@
   --finch-shadow-float: var(--finch-shadow-s3);
 
   /* ═══════════ 6. Dimension ═══════════ */
-  /* 없다. 발표자료의 4px 그리드는 Tailwind 기본 4px 스케일과 1:1 로 맞아서
-     SEED 의 x0_5~x30 을 만들지 않는다. 만들면 p-5 와 space-5 가 같은 값으로 둘 다 생긴다.
-     간격은 Tailwind 기본 유틸리티로 적는다. */
+  /* 간격은 Tailwind 기본 4px 스케일을 쓴다. 아래 둘은 레이아웃 취향이 아니라
+     터치 접근성 기준과 공용 컨트롤 높이라 의미 이름으로 고정한다. */
+  --finch-size-touch-min: 44px;
+  --finch-size-control-height: 54px;
 
   /* ═══════════ 7. Typography ═══════════ */
   /* SEED 의 t1~t14 숫자 스케일 대신 의미 이름 8단을 쓴다. 숫자로 바꾸면 어느 단이

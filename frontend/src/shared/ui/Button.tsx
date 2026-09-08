@@ -37,7 +37,7 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
  * 결과가 140ms `transition-all` 이다 — 컨벤션 §12.2 가 금지한 그것이 실수로 만들어진다.
  */
 const BASE_CLASS =
-  'flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md px-4 text-label ' +
+  'flex min-h-control-height w-full items-center justify-center gap-2 rounded-md px-4 text-label ' +
   'transition-[background-color,border-color,transform] duration-(--motion-fast) ease-spring active:scale-[0.97] disabled:scale-100 disabled:duration-0 ' +
   'disabled:bg-bg-disabled disabled:text-fg-disabled disabled:border-transparent';
 

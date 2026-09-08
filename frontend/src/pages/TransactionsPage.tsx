@@ -11,6 +11,7 @@ import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 매매 내역 (apiSpec §8.2 · featureSpec §8 · 와이어프레임 아트보드 10~14).
@@ -50,9 +51,7 @@ export function TransactionsPage() {
 
       {isError ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            내역을 불러오지 못했습니다
-          </p>
+          <SupportingText>내역을 불러오지 못했습니다</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
@@ -77,9 +76,9 @@ export function TransactionsPage() {
           {isFetchingNextPage ? <ListSkeleton /> : null}
 
           {!hasNextPage ? (
-            <p className="py-6 text-center text-caption text-fg-neutral-subtle">
+            <SupportingText size="caption" className="py-6 text-center">
               마지막 내역입니다
-            </p>
+            </SupportingText>
           ) : null}
         </>
       ) : null}

@@ -20,6 +20,7 @@ import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * AI가 이해한 나 (ia.md §1 · AI 명세 §9).
@@ -40,9 +41,9 @@ export function MyWikiPage() {
   return (
     <PageMain>
       <h1 className="text-title-2 text-fg-neutral">AI가 이해한 나</h1>
-      <p className="mt-1 text-body-2 text-fg-neutral-subtle">
+      <SupportingText className="mt-1">
         거래와 대화에서 알게 된 것들이에요. 틀린 건 지워 주세요
-      </p>
+      </SupportingText>
 
       {isPending ? (
         <div className="mt-4 space-y-3">
@@ -77,9 +78,7 @@ function WikiFactSection({ facts }: { facts: AiWikiFact[] }) {
 
       {facts.length === 0 ? (
         <Card className="mt-2">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            아직 아는 게 없어요
-          </p>
+          <SupportingText>아직 아는 게 없어요</SupportingText>
         </Card>
       ) : (
         <ul className="mt-2 space-y-2">
@@ -92,9 +91,9 @@ function WikiFactSection({ facts }: { facts: AiWikiFact[] }) {
                       ? fact.text
                       : `${fact.text} — 맞나요?`}
                   </p>
-                  <p className="mt-1 text-caption text-fg-neutral-subtle">
+                  <SupportingText size="caption" className="mt-1">
                     {formatKstDateLabel(fact.asOf)}
-                  </p>
+                  </SupportingText>
                 </div>
                 {/* editable 이 false 면 서버가 지우지 못하게 한 항목이다. 버튼을 주면 눌러도 실패한다 */}
                 {fact.editable ? (
@@ -103,7 +102,7 @@ function WikiFactSection({ facts }: { facts: AiWikiFact[] }) {
                     onClick={() => remove.mutate(fact.id)}
                     disabled={remove.isPending}
                     aria-label="이 항목 지우기"
-                    className="shrink-0 text-body-2 text-fg-neutral-subtle underline disabled:text-fg-disabled"
+                    className="text-supporting shrink-0 underline disabled:text-fg-disabled"
                   >
                     지우기
                   </button>
@@ -124,9 +123,7 @@ function WikiThesisSection({ theses }: { theses: AiWikiThesis[] }) {
 
       {theses.length === 0 ? (
         <Card className="mt-2">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            아직 적어 둔 이유가 없어요
-          </p>
+          <SupportingText>아직 적어 둔 이유가 없어요</SupportingText>
         </Card>
       ) : (
         <ul className="mt-2 space-y-2">
@@ -168,13 +165,13 @@ function ThesisCard({ thesis }: { thesis: AiWikiThesis }) {
         <Link
           to={ROUTES.stockDetail(thesis.ticker)}
           viewTransition
-          className="text-body-2 text-fg-neutral-subtle tabular-nums underline"
+          className="text-supporting tabular-nums underline"
         >
           {thesis.ticker}
         </Link>
-        <span className="text-caption text-fg-neutral-subtle">
+        <SupportingText as="span" size="caption">
           {formatKstDateLabel(thesis.recordedAt)}
-        </span>
+        </SupportingText>
       </div>
 
       {draft === null ? (
@@ -185,7 +182,7 @@ function ThesisCard({ thesis }: { thesis: AiWikiThesis }) {
           <button
             type="button"
             onClick={() => setDraft(thesis.text)}
-            className="mt-2 text-body-2 text-fg-neutral-subtle underline"
+            className="text-supporting mt-2 underline"
           >
             고치기
           </button>

@@ -1,5 +1,6 @@
 import { formatKstDateLabel } from '@/shared/lib/formatDate';
 import type { Transaction } from '@/shared/types/portfolio';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 import { TransactionRow } from './TransactionRow';
 
@@ -19,9 +20,9 @@ export function TransactionList({ transactions }: Props) {
     <div className="mt-2">
       {groups.map((group) => (
         <section key={group.date}>
-          <h3 className="pt-4 pb-1 text-caption text-fg-neutral-subtle">
+          <SupportingText as="h3" size="caption" className="pt-4 pb-1">
             {group.date}
-          </h3>
+          </SupportingText>
           <ul className="divide-y divide-stroke-neutral-subtle">
             {group.items.map((transaction) => (
               <TransactionRow

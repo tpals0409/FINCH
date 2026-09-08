@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { ROUTES } from '@/shared/config/routes';
 import type { StockSummary } from '@/shared/types/stock';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 import { StockPriceText } from './StockPriceText';
 
@@ -26,14 +27,17 @@ export function StockRow({ stock }: { stock: StockSummary }) {
             {stock.stockName}
           </span>
           {stock.suspended ? (
-            <span className="shrink-0 rounded-full border border-stroke-neutral-weak px-1.5 text-body-2 text-fg-neutral-subtle">
+            <SupportingText
+              as="span"
+              className="shrink-0 rounded-full border border-stroke-neutral-weak px-1.5"
+            >
               거래정지
-            </span>
+            </SupportingText>
           ) : null}
         </span>
-        <span className="text-body-2 text-fg-neutral-subtle tabular-nums">
+        <SupportingText as="span" className="tabular-nums">
           {stock.stockCode} · {stock.market}
-        </span>
+        </SupportingText>
       </span>
 
       <StockPriceText

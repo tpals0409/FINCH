@@ -10,6 +10,7 @@ import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 최근 본 종목 (apiSpec §6.1 · featureSpec §5).
@@ -30,7 +31,7 @@ export function RecentStocksPage() {
             type="button"
             onClick={() => remove.mutate(undefined)}
             disabled={remove.isPending}
-            className="text-body-2 text-fg-neutral-subtle underline disabled:text-fg-disabled"
+            className="text-supporting underline disabled:text-fg-disabled"
           >
             전체 삭제
           </button>
@@ -45,9 +46,7 @@ export function RecentStocksPage() {
         </div>
       ) : isError ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            불러오지 못했습니다
-          </p>
+          <SupportingText>불러오지 못했습니다</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
@@ -58,9 +57,7 @@ export function RecentStocksPage() {
         </Card>
       ) : data.items.length === 0 ? (
         <Card className="mt-4">
-          <p className="text-body-2 text-fg-neutral-subtle">
-            아직 본 종목이 없습니다
-          </p>
+          <SupportingText>아직 본 종목이 없습니다</SupportingText>
           <Link
             to={ROUTES.search}
             viewTransition
@@ -82,9 +79,9 @@ export function RecentStocksPage() {
                   <span className="truncate text-body-1 text-fg-neutral">
                     {item.stockName}
                   </span>
-                  <span className="text-body-2 text-fg-neutral-subtle tabular-nums">
+                  <SupportingText as="span" className="tabular-nums">
                     {item.stockCode}
-                  </span>
+                  </SupportingText>
                 </span>
                 <StockPriceText
                   currentPrice={item.currentPrice}
@@ -96,7 +93,7 @@ export function RecentStocksPage() {
                 onClick={() => remove.mutate(item.stockCode)}
                 disabled={remove.isPending}
                 aria-label={`${item.stockName} 최근 본 목록에서 삭제`}
-                className="shrink-0 rounded-card px-3 py-3 text-body-2 text-fg-neutral-subtle active:bg-bg-transparent-pressed disabled:text-fg-disabled"
+                className="text-supporting shrink-0 rounded-card px-3 py-3 active:bg-bg-transparent-pressed disabled:text-fg-disabled"
               >
                 삭제
               </button>

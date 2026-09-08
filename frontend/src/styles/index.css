@@ -128,8 +128,9 @@
   --text-caption--line-height: var(--finch-line-height-caption);
   --text-caption--font-weight: var(--finch-font-weight-caption);
 
-  /* ── 간격 ────────────────────────────────────────────────────────── */
-  /* 토큰을 두지 않는다. 이유는 tokens.css 6절. */
+  /* ── 크기 ────────────────────────────────────────────────────────── */
+  --spacing-touch-min: var(--finch-size-touch-min);
+  --spacing-control-height: var(--finch-size-control-height);
 
   /* ── 반경 ────────────────────────────────────────────────────────── */
   /* Tailwind 기본 --radius-sm/md 를 앱 값으로 덮어쓴다.
@@ -143,6 +144,33 @@
   /* ── 모션 ────────────────────────────────────────────────────────── */
   --ease-standard: var(--finch-timing-function-standard);
   --ease-spring: var(--finch-timing-function-spring);
+}
+
+/* 반복되는 의미 조합은 호출부가 타이포·색·간격을 다시 조립하지 않게 한다. */
+@layer components {
+  .text-supporting {
+    @apply text-body-2;
+    @apply text-fg-neutral-subtle;
+  }
+
+  .text-supporting-caption {
+    @apply text-caption;
+    @apply text-fg-neutral-subtle;
+  }
+
+  .numeric-value {
+    @apply text-right;
+    @apply text-fg-neutral;
+    @apply tabular-nums;
+  }
+
+  .separated-group {
+    @apply mt-5 border-t border-stroke-neutral-subtle pt-4;
+  }
+
+  .separated-group > :not(:last-child) {
+    @apply mb-3;
+  }
 }
 
 /*

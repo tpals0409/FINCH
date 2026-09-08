@@ -44,7 +44,7 @@ export function InProgressDialog({ open, isRetrying, onRetry }: Props) {
           <Dialog.Title className="text-title-3 text-fg-neutral">
             같은 요청을 처리하고 있습니다
           </Dialog.Title>
-          <Dialog.Description className="mt-2 text-body-2 text-fg-neutral-subtle">
+          <Dialog.Description className="text-supporting mt-2">
             잠시 후 다시 시도해 주세요. 충전은 한 번만 처리됩니다.
           </Dialog.Description>
 

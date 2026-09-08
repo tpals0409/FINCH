@@ -4,6 +4,7 @@ import { CandlePeriodSchema, type CandlePeriod } from '@/shared/types/stock';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 import { useStockCandles } from '../api/useStockCandles';
 
@@ -31,7 +32,9 @@ export function StockCandleSection({
         <h2 id="stock-candle-title" className="text-title-3 text-fg-neutral">
           일봉 차트
         </h2>
-        <span className="text-caption text-fg-neutral-subtle">일봉</span>
+        <SupportingText as="span" size="caption">
+          일봉
+        </SupportingText>
       </div>
 
       <Tabs.Root
@@ -52,7 +55,7 @@ export function StockCandleSection({
             <Tabs.Trigger
               key={option}
               value={option}
-              className="min-h-[44px] flex-1 rounded-sm text-label text-fg-neutral-subtle data-[state=active]:bg-bg-layer-default data-[state=active]:text-fg-neutral"
+              className="min-h-touch-min flex-1 rounded-sm text-label text-fg-neutral-subtle data-[state=active]:bg-bg-layer-default data-[state=active]:text-fg-neutral"
             >
               {option}
             </Tabs.Trigger>
@@ -69,9 +72,7 @@ export function StockCandleSection({
           <Skeleton className="h-64 w-full" />
         ) : isError ? (
           <div className="flex min-h-64 flex-col items-center justify-center text-center">
-            <p className="text-body-2 text-fg-neutral-subtle">
-              차트를 불러오지 못했습니다
-            </p>
+            <SupportingText>차트를 불러오지 못했습니다</SupportingText>
             <Button
               variant="secondary"
               className="mt-3 max-w-40"
@@ -83,9 +84,7 @@ export function StockCandleSection({
           </div>
         ) : data.candles.length === 0 ? (
           <div className="flex min-h-64 items-center justify-center text-center">
-            <p className="text-body-2 text-fg-neutral-subtle">
-              이 기간의 일봉 데이터가 없습니다
-            </p>
+            <SupportingText>이 기간의 일봉 데이터가 없습니다</SupportingText>
           </div>
         ) : (
           <LazyStockCandleChart candles={data.candles} period={period} />

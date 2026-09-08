@@ -1,5 +1,6 @@
 import { formatKstDateTime } from '@/shared/lib/formatDate';
 import type { AiCitation, AiDataAsOf } from '@/shared/types/ai/envelope';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /** `dataAsOf` 키를 화면 이름으로 옮긴다. 키 순서가 표시 순서다. */
 const SOURCE_LABEL: Record<keyof AiDataAsOf, string> = {
@@ -42,18 +43,15 @@ export function AiResponseFooter({
   return (
     <div className="mt-4 border-t border-stroke-neutral-weak pt-3">
       {stamps.length > 0 ? (
-        <p className="text-caption text-fg-neutral-subtle">
+        <SupportingText size="caption">
           {stamps.join(' · ')} 기준
-        </p>
+        </SupportingText>
       ) : null}
 
       {citations.length > 0 ? (
         <ul className="mt-2 space-y-1">
           {citations.map((citation) => (
-            <li
-              key={citation.id}
-              className="text-caption text-fg-neutral-subtle"
-            >
+            <li key={citation.id} className="text-supporting-caption">
               {citation.url === null ? (
                 <span>{citation.title}</span>
               ) : (
@@ -72,7 +70,9 @@ export function AiResponseFooter({
         </ul>
       ) : null}
 
-      <p className="mt-2 text-caption text-fg-neutral-subtle">{disclaimer}</p>
+      <SupportingText size="caption" className="mt-2">
+        {disclaimer}
+      </SupportingText>
     </div>
   );
 }

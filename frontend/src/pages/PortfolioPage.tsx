@@ -7,6 +7,7 @@ import {
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 주식 잔고 (apiSpec §3.1 · featureSpec §9 · 와이어프레임 아트보드 1·2).
@@ -27,9 +28,7 @@ export function PortfolioPage() {
 
         {isError ? (
           <Card>
-            <p className="text-body-2 text-fg-neutral-subtle">
-              잔고를 불러오지 못했습니다
-            </p>
+            <SupportingText>잔고를 불러오지 못했습니다</SupportingText>
             <Button
               onClick={() => void refetch()}
               disabled={isFetching}

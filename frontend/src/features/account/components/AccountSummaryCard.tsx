@@ -5,7 +5,9 @@ import { formatKstDateTime } from '@/shared/lib/formatDate';
 import { formatKrw } from '@/shared/lib/formatNumber';
 import type { AccountSummaryResponse } from '@/shared/types/account';
 import { Card } from '@/shared/ui/Card';
+import { SeparatedGroup } from '@/shared/ui/SeparatedGroup';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
  * 잔고 요약 카드 (apiSpec §3.1 · featureSpec §9.1 · 와이어프레임 아트보드 1).
@@ -21,19 +23,19 @@ type Props = { summary: AccountSummaryResponse };
 export function AccountSummaryCard({ summary }: Props) {
   return (
     <Card>
-      <p className="text-caption text-fg-neutral-subtle">총자산</p>
+      <SupportingText size="caption">총자산</SupportingText>
       <p className="mt-1 text-display text-fg-neutral">
         {summary.totalAsset === null ? '—' : formatKrw(summary.totalAsset)}
       </p>
       {summary.asOf === null ? null : (
-        <p className="mt-1 text-caption text-fg-neutral-subtle">
+        <SupportingText size="caption" className="mt-1">
           {formatKstDateTime(summary.asOf)} 기준
-        </p>
+        </SupportingText>
       )}
 
-      <dl className="mt-5 space-y-3 border-t border-stroke-neutral-subtle pt-4">
+      <SeparatedGroup as="dl">
         <div className="flex items-center justify-between gap-3">
-          <dt className="text-body-2 text-fg-neutral-subtle">예수금</dt>
+          <SupportingText as="dt">예수금</SupportingText>
           <dd className="flex items-center gap-3">
             <span className="text-body-1 text-fg-neutral">
               {formatKrw(summary.cashBalance)}
@@ -46,7 +48,7 @@ export function AccountSummaryCard({ summary }: Props) {
             <Link
               to={ROUTES.deposit}
               viewTransition
-              className="-my-3 flex min-h-[44px] items-center text-label text-fg-neutral underline underline-offset-4"
+              className="-my-3 flex min-h-touch-min items-center text-label text-fg-neutral underline underline-offset-4"
             >
               충전하기
             </Link>
@@ -54,14 +56,14 @@ export function AccountSummaryCard({ summary }: Props) {
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <dt className="text-body-2 text-fg-neutral-subtle">평가금액</dt>
+          <SupportingText as="dt">평가금액</SupportingText>
           <dd className="text-body-1 text-fg-neutral">
             {summary.evaluationAmount === null
               ? '—'
               : formatKrw(summary.evaluationAmount)}
           </dd>
         </div>
-      </dl>
+      </SeparatedGroup>
     </Card>
   );
 }
@@ -73,10 +75,10 @@ export function AccountSummaryCardSkeleton() {
       <Skeleton className="h-3 w-16" />
       <Skeleton className="mt-2 h-9 w-48" />
       <Skeleton className="mt-2 h-3 w-32" />
-      <div className="mt-5 space-y-3 border-t border-stroke-neutral-subtle pt-4">
+      <SeparatedGroup>
         <Skeleton className="h-5 w-full" />
         <Skeleton className="h-5 w-full" />
-      </div>
+      </SeparatedGroup>
     </Card>
   );
 }

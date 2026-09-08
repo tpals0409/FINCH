@@ -1,5 +1,6 @@
 import type { StockSummary } from '@/shared/types/stock';
 import { Skeleton } from '@/shared/ui/Skeleton';
+import { SupportingText } from '@/shared/ui/SupportingText';
 
 import { StockRow } from './StockRow';
 
@@ -31,9 +32,9 @@ export function StockSearchResults({ keyword, stocks, isPending }: Props) {
 
   if (stocks.length === 0) {
     return (
-      <p className="mt-8 text-center text-body-2 text-fg-neutral-subtle">
+      <SupportingText className="mt-8 text-center">
         &lsquo;{keyword}&rsquo; 검색 결과가 없습니다
-      </p>
+      </SupportingText>
     );
   }
 
