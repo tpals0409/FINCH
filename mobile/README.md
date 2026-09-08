@@ -25,7 +25,11 @@ Android debug APK:
 
 ```bash
 cd android
-GRADLE_USER_HOME=/path/to/gradle-home ./gradlew assembleDebug
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
+./gradlew assembleDebug
 ```
 
 생성물은 `android/app/build/outputs/apk/debug/app-debug.apk`이며, 빌드 후 다음으로 해시를 기록한다.
@@ -34,4 +38,4 @@ GRADLE_USER_HOME=/path/to/gradle-home ./gradlew assembleDebug
 shasum -a 256 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-이번 환경에서는 Android SDK/adb가 설치되어 있지 않고 Gradle distribution 다운로드가 timeout되어 APK와 실기기·에뮬레이터 검증을 완료하지 못했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
+Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. 현재 확인된 debug APK는 SHA-256 `016e844196cbcaec11a7f6b52be20a46cb427c0e0137c9b05a26439090c9baa9`이며, 연결된 실기기·에뮬레이터는 없어 ADB 설치/실행 검증은 아직 하지 못했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
