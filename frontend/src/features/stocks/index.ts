@@ -6,6 +6,7 @@ export {
 } from './api/useStockSearch';
 export { useToggleWatchlist } from './api/useToggleWatchlist';
 export { useWatchlist } from './api/useWatchlist';
+export { StockCandleSection } from './components/StockCandleSection';
 export { StockDetailPrice } from './components/StockDetailPrice';
 export { StockPriceText } from './components/StockPriceText';
 export { StockRow } from './components/StockRow';

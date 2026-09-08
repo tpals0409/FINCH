@@ -1,11 +1,11 @@
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import {
+  StockCandleSection,
   StockDetailPrice,
   WatchToggleButton,
   useStockDetail,
 } from '@/features/stocks';
-import { StockCandleSection } from '@/features/stocks/components/StockCandleSection';
 import { ROUTES, STOCK_CODE_PARAM } from '@/shared/config/routes';
 import {
   formatKrw,

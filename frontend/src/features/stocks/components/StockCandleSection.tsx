@@ -7,7 +7,7 @@ import { Skeleton } from '@/shared/ui/Skeleton';
 
 import { useStockCandles } from '../api/useStockCandles';
 
-import { StockCandleChart } from './StockCandleChart';
+import { LazyStockCandleChart } from './LazyStockCandleChart';
 
 type Props = {
   stockCode: string;
@@ -84,7 +84,7 @@ export function StockCandleSection({
             </p>
           </div>
         ) : (
-          <StockCandleChart candles={data.candles} period={period} />
+          <LazyStockCandleChart candles={data.candles} period={period} />
         )}
       </div>
     </Card>

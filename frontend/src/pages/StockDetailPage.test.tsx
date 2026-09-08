@@ -11,6 +11,9 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/stocks', () => ({
+  StockCandleSection: ({ period }: { period: string }) => (
+    <div data-testid="stock-candle-section" data-period={period} />
+  ),
   StockDetailPrice: () => null,
   WatchToggleButton: () => null,
   useStockDetail: () => ({
@@ -40,12 +43,6 @@ vi.mock('@/features/stocks', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
-}));
-
-vi.mock('@/features/stocks/components/StockCandleSection', () => ({
-  StockCandleSection: ({ period }: { period: string }) => (
-    <div data-testid="stock-candle-section" data-period={period} />
-  ),
 }));
 
 function renderPage(path = '/stocks/005930') {

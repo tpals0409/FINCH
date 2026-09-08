@@ -25,8 +25,8 @@ vi.mock('../api/useStockCandles', () => ({
   useStockCandles: () => queryState,
 }));
 
-vi.mock('./StockCandleChart', () => ({
-  StockCandleChart: () => <div data-testid="candle-chart" />,
+vi.mock('./LazyStockCandleChart', () => ({
+  LazyStockCandleChart: () => <div data-testid="candle-chart" />,
 }));
 
 let host: HTMLDivElement;
