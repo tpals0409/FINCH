@@ -8,7 +8,7 @@ Capacitor 기반의 얇은 WebView 셸이다. 운영 웹앱은 `https://app.finc
 - HTTP/mixed content 및 비허용 navigation 차단
 - 허용되지 않은 HTTP(S) 링크는 시스템 외부 링크로 분리
 - Android 뒤로가기: WebView history가 있으면 뒤로 이동, root에서는 앱 종료
-- online/offline 상태 표시와 수동 재시도
+- WebView main-frame 오류를 위한 `offline.html` error path와 수동 재시도
 - Capacitor 기본 브리지 외 커스텀 브리지 없음
 - 로그에는 이벤트·플랫폼 등 비민감 필드만 기록하며 token/cookie/query/fragment/password 계열 키를 제거
 
@@ -18,8 +18,11 @@ Capacitor 기반의 얇은 WebView 셸이다. 운영 웹앱은 `https://app.finc
 npm install
 npm run build
 npm test
+npm run check
 npx cap sync android
 ```
+
+CI와 로컬 검증의 단일 진입점은 `scripts/check.sh`다. Android APK 빌드는 별도 도구체인 게이트로 실행한다.
 
 Android debug APK:
 
@@ -38,4 +41,4 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 shasum -a 256 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. 현재 확인된 debug APK는 SHA-256 `016e844196cbcaec11a7f6b52be20a46cb427c0e0137c9b05a26439090c9baa9`이며, 연결된 실기기·에뮬레이터는 없어 ADB 설치/실행 검증은 아직 하지 못했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
+Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. 현재 확인된 debug APK는 SHA-256 `f5dc08ca877e9d4489d24266b212a89111ca1f8847b60af83e2289ce38916c7f`이며, API 35 arm64 AVD `finch-api35`에 설치 성공 후 `org.finchapp.mobile/.MainActivity` 실행과 WebView 화면을 확인했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.

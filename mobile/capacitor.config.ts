@@ -10,6 +10,7 @@ export const config: CapacitorConfig = {
     url: webOrigin,
     cleartext: false,
     allowNavigation: [new URL(webOrigin).hostname],
+    errorPath: 'offline.html',
   },
   android: {
     allowMixedContent: false,
