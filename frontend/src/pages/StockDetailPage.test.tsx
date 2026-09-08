@@ -42,10 +42,16 @@ vi.mock('@/features/stocks', () => ({
   }),
 }));
 
-function renderPage() {
+vi.mock('@/features/stocks/components/StockCandleSection', () => ({
+  StockCandleSection: ({ period }: { period: string }) => (
+    <div data-testid="stock-candle-section" data-period={period} />
+  ),
+}));
+
+function renderPage(path = '/stocks/005930') {
   const container = document.createElement('div');
   container.innerHTML = renderToStaticMarkup(
-    <MemoryRouter initialEntries={['/stocks/005930']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/stocks/:stockCode" element={<StockDetailPage />} />
       </Routes>
@@ -67,6 +73,16 @@ describe('StockDetailPage', () => {
     expect(
       page.querySelector('a[href="/stocks/005930/order"]')?.textContent,
     ).toBe('매수·매도');
+  });
+
+  it('URL의 차트 기간을 캔들 섹션에 전달한다', () => {
+    const page = renderPage('/stocks/005930?period=3M');
+
+    expect(
+      page
+        .querySelector('[data-testid="stock-candle-section"]')
+        ?.getAttribute('data-period'),
+    ).toBe('3M');
   });
 
   it('거래정지 종목은 주문 링크 없이 비활성 버튼을 제공한다', () => {
