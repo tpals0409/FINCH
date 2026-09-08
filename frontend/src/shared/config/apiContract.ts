@@ -77,6 +77,12 @@ export const QUOTE_POLLING_INTERVAL_MS = {
   order: 3_000,
 } as const;
 
+/** 폴링 주기의 80%로 두는 시세 쿼리 신선도 임계 (apiSpec §5.6 권장 관계식). */
+export const QUOTE_STALE_TIME_MS = {
+  list: QUOTE_POLLING_INTERVAL_MS.list * 0.8,
+  order: QUOTE_POLLING_INTERVAL_MS.order * 0.8,
+} as const;
+
 /**
  * STOMP 하트비트 (apiSpec §5.6 웹소켓 · contracts C39).
  * 3회 미수신(30초)이면 서버가 연결을 닫고 슬롯을 회수한다.
