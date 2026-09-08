@@ -102,12 +102,16 @@ export function StockDetailPage() {
  * 그래서 화면은 수량 0 을 따로 다루지 않는다.
  */
 function HoldingCard({ holding }: { holding: StockHoldingSummary }) {
-  const direction = getPriceDirection(holding.evaluationProfitRate);
-  const profitClass = {
-    rise: 'text-fg-up',
-    fall: 'text-fg-down',
-    flat: 'text-fg-flat',
-  }[direction];
+  const { evaluationProfit, evaluationProfitRate } = holding;
+  const hasEvaluation =
+    evaluationProfit !== null && evaluationProfitRate !== null;
+  const profitClass = hasEvaluation
+    ? {
+        rise: 'text-fg-up',
+        fall: 'text-fg-down',
+        flat: 'text-fg-flat',
+      }[getPriceDirection(evaluationProfitRate)]
+    : 'text-fg-neutral-subtle';
 
   return (
     <Card className="mt-6">
@@ -123,8 +127,14 @@ function HoldingCard({ holding }: { holding: StockHoldingSummary }) {
         </dd>
         <dt className="text-fg-neutral-subtle">평가 손익</dt>
         <dd className={`text-right tabular-nums ${profitClass}`}>
-          {formatKrw(holding.evaluationProfit)} (
-          {formatSignedPercent(holding.evaluationProfitRate)})
+          {hasEvaluation ? (
+            <>
+              {formatKrw(evaluationProfit)} (
+              {formatSignedPercent(evaluationProfitRate)})
+            </>
+          ) : (
+            '—'
+          )}
         </dd>
       </dl>
     </Card>

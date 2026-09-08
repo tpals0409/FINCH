@@ -16,12 +16,12 @@ import { IsoDateTimeSchema, KrwAmountSchema } from './primitives';
 export const AccountSummaryResponseSchema = z.object({
   /** 예수금 */
   cashBalance: KrwAmountSchema,
-  /** 평가금액 = Σ(보유 수량 x 현재가) */
-  evaluationAmount: KrwAmountSchema,
-  /** 총자산 = 예수금 + 평가금액 */
-  totalAsset: KrwAmountSchema,
-  /** 시세 기준 시각. 화면에 "갱신 시각"으로 표시한다 */
-  asOf: IsoDateTimeSchema,
+  /** 평가금액 = Σ(보유 수량 x 현재가). 보유 시세가 하나라도 없으면 `null` */
+  evaluationAmount: KrwAmountSchema.nullable(),
+  /** 총자산 = 예수금 + 평가금액. 평가금액을 완성할 수 없으면 `null` */
+  totalAsset: KrwAmountSchema.nullable(),
+  /** 시세 기준 시각. 평가금액을 완성할 수 없으면 `null` */
+  asOf: IsoDateTimeSchema.nullable(),
 });
 export type AccountSummaryResponse = z.infer<
   typeof AccountSummaryResponseSchema

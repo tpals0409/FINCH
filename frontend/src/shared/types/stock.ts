@@ -68,9 +68,10 @@ export type StockSearchResponse = z.infer<typeof StockSearchResponseSchema>;
 export const StockHoldingSummarySchema = z.object({
   quantity: QuantitySchema,
   avgBuyPrice: KrwAmountSchema,
-  evaluationProfit: KrwAmountSchema,
+  /** 현재가가 없으면 `null` */
+  evaluationProfit: KrwAmountSchema.nullable(),
   /** 백분율 */
-  evaluationProfitRate: PercentSchema,
+  evaluationProfitRate: PercentSchema.nullable(),
 });
 export type StockHoldingSummary = z.infer<typeof StockHoldingSummarySchema>;
 
