@@ -83,7 +83,16 @@ internal class KisPriceCollector internal constructor(
 				cursor = stockCode
 			} catch (e: KisApiException) {
 				e.retryAfter?.let { pausedUntil = clock.instant().plus(it) }
-				log.warn("KIS 시세 수집 실패 stockCode={} retryable={} retryAfter={}", stockCode, e.retryable, e.retryAfter)
+				// 마지막 인자의 예외는 SLF4J 가 스택으로 찍는다. 이 둘만으로는 타임아웃·빈 응답·5xx·
+				// Retry-After 없는 429 가 전부 같은 줄로 보여 원인을 못 가른다. status·code 는
+				// KisApiException 메시지에 있고, 그 메시지는 본문과 토큰을 담지 않는다.
+				log.warn(
+					"KIS 시세 수집 실패 stockCode={} retryable={} retryAfter={}",
+					stockCode,
+					e.retryable,
+					e.retryAfter,
+					e,
+				)
 				if (e.retryable) return
 				cursor = stockCode
 			}
