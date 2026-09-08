@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>FINCH</title>
+    <style>
+      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+      [data-offline] { max-width: 22rem; padding: 1.5rem; text-align: center; }
+      button { padding: .7rem 1rem; }
+    </style>
+  </head>
+  <body>
+    <main data-offline hidden>
+      <h1>연결이 끊겼습니다</h1>
+      <p>네트워크를 확인한 뒤 다시 시도해주세요. 주문은 자동으로 재전송하지 않습니다.</p>
+      <button type="button" data-retry>다시 시도</button>
+    </main>
+    <script type="module" src="../src/main.ts"></script>
+  </body>
+</html>

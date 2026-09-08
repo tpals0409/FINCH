@@ -1,0 +1,22 @@
+{
+  "name": "finch-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FINCH mobile WebView shell",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "cap:sync": "cap sync",
+    "cap:open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
