@@ -58,8 +58,8 @@ class Stock protected constructor() {
 	 * 등락 계산 기준 (erd.md 2.7 이 "의도적 중복" 이라고 명시한 컬럼).
 	 *
 	 * `daily_candle` 에서 유도할 수 있지만 매 요청 쓰이므로 일 1회 배치로 캐시한다.
-	 * 지금은 시드가 32종만 채웠고 나머지는 `null` 이다 — KIS 수집이 붙으면 전종목으로 찬다.
-	 * `null` 인 종목은 등락률을 낼 수 없다.
+	 * 초기 시드는 32종만 채운다. 운영에서는 AI의 전 종목 일별 시세를 08:30 KST 배치로 받아
+	 * 갱신하며, 응답에 없는 종목은 기존 값을 보존한다. `null` 인 종목은 등락률을 낼 수 없다.
 	 */
 	@Column
 	final var previousClose: Long? = null
