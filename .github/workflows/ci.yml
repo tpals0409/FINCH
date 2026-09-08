@@ -61,18 +61,10 @@ jobs:
       # npm install 은 lock 을 고쳐가며 진행해서 다른 사람이 클론한 상황을 재현하지 못한다.
       - run: npm ci
 
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run format:check
-
-      # 프론트가 vitest 를 넣었는데 CI 가 부르지 않아 Sprint 3 내내 테스트가 안 돌았다.
-      # build 앞에 둔다 — 실패하면 번들을 만드는 시간을 쓰지 않는다.
-      - run: npm test
-
-      - run: npm run build
-
-      # 디자인 토큰의 APCA 대비. 회귀하면 여기서 막힌다 (docs/design/finch-seed.md §5)
-      - run: npm run design:contrast
+      # frontend/scripts/check.sh 가 검사 SSOT 다 — 로컬과 같은 스크립트를 그대로 부른다.
+      # 여기에 단계를 나열하면 스크립트와 갈라진다. 실제로 갈라져 있었다 —
+      # test·design:contrast 를 CI 만 돌려서, 로컬 통과가 CI 통과를 뜻하지 않았다.
+      - run: ./scripts/check.sh
 
   backend:
     needs: changes
@@ -92,9 +84,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # backend/scripts/check.sh 가 검사 SSOT 다 — 로컬과 같은 스크립트를 그대로 부른다.
       # Testcontainers 가 postgres·redis 를 띄운다. ubuntu 러너에는 Docker 가 이미 있다.
       # Ryuk(정리 컨테이너)은 러너가 잡째로 사라지므로 필요 없다.
-      - run: ./gradlew build
+      - run: ./scripts/check.sh
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
 
