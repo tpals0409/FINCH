@@ -18,6 +18,7 @@ export function WatchToggleButton({ stockCode, watched }: Props) {
 
   return (
     <Button
+      variant="secondary"
       onClick={() => mutate({ stockCode, watched })}
       disabled={isPending}
       aria-pressed={watched}

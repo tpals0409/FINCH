@@ -5,14 +5,14 @@ import {
   WatchToggleButton,
   useStockDetail,
 } from '@/features/stocks';
-import { STOCK_CODE_PARAM } from '@/shared/config/routes';
+import { ROUTES, STOCK_CODE_PARAM } from '@/shared/config/routes';
 import {
   formatKrw,
   formatSignedPercent,
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
 import type { StockHoldingSummary } from '@/shared/types/stock';
-import { Button } from '@/shared/ui/Button';
+import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -79,7 +79,14 @@ export function StockDetailPage() {
 
       <StockDetailPrice stock={data} />
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-2">
+        {data.suspended ? (
+          <Button disabled>매수·매도</Button>
+        ) : (
+          <LinkButton to={ROUTES.stockOrder(data.stockCode)}>
+            매수·매도
+          </LinkButton>
+        )}
         <WatchToggleButton stockCode={data.stockCode} watched={data.watched} />
       </div>
 
