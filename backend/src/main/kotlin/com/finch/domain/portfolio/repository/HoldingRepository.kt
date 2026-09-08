@@ -45,4 +45,25 @@ interface HoldingRepository : Repository<Holding, Long> {
 		nativeQuery = true,
 	)
 	fun findPositionsByAccountId(@Param("accountId") accountId: Long): List<HoldingPositionRow>
+
+	/** 종목 상세 보유 카드도 목록과 같은 DTO 프로젝션으로 읽어 종목명을 코드로 대신하지 않는다. */
+	@Query(
+		value = """
+			SELECT h.stock_code AS "stockCode",
+			       s.stock_name AS "stockName",
+			       h.quantity AS quantity,
+			       h.avg_buy_price AS "avgBuyPrice",
+			       s.previous_close AS "previousClose"
+			FROM holding h
+			JOIN stock s ON s.stock_code = h.stock_code
+			WHERE h.account_id = :accountId
+			  AND h.stock_code = :stockCode
+			  AND h.quantity > 0
+		""",
+		nativeQuery = true,
+	)
+	fun findPositionByAccountIdAndStockCode(
+		@Param("accountId") accountId: Long,
+		@Param("stockCode") stockCode: String,
+	): HoldingPositionRow?
 }

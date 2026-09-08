@@ -1,6 +1,7 @@
 package com.finch.domain.stock.service
 
 import com.finch.domain.price.dto.response.PriceRes
+import com.finch.domain.price.dto.response.PricesRes
 import com.finch.domain.price.service.PriceService
 import com.finch.domain.stock.dto.response.CandlesRes
 import com.finch.domain.stock.dto.response.StockDetailRes
@@ -54,6 +55,28 @@ class StockService(
 	fun search(keyword: String, size: Int): StockSearchRes {
 		val stocks = stockRepository.search(keyword.trim(), size)
 		return StockSearchRes.of(stocks, pricesOf(stocks))
+	}
+
+	/** 단건 현재가 (apiSpec 5.4). 종목은 있는데 수신값이 없으면 `PriceRes.empty` 가 성공 응답이다. */
+	@Transactional(readOnly = true)
+	fun getPrice(stockCode: String): PriceRes {
+		val stock = getOrThrow(stockCode)
+		return pricesOf(listOf(stock)).getValue(stockCode)
+	}
+
+	/**
+	 * 다건 현재가 (apiSpec 5.5). 없는 코드는 전체 실패시키지 않고 제외한다.
+	 *
+	 * 저장소 반환 순서에 기대지 않고 요청 순서를 보존하며, 중복 요청 코드는 한 번만 내려준다.
+	 */
+	@Transactional(readOnly = true)
+	fun getPrices(stockCodes: Collection<String>): PricesRes {
+		if (stockCodes.isEmpty()) return PricesRes(emptyList())
+
+		val requested = stockCodes.distinct()
+		val stocksByCode = stockRepository.findByStockCodeIn(requested).associateBy { it.stockCode }
+		val prices = pricesOf(stocksByCode.values.toList())
+		return PricesRes(requested.mapNotNull { prices[it] })
 	}
 
 	/** 종목 상세 (apiSpec 5.2). `watched` 는 호출자가 넘긴다 — 근거는 `WatchlistService.isWatched`. */

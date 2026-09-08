@@ -4,7 +4,6 @@ import com.finch.domain.account.dto.AccountValuation
 import com.finch.domain.account.service.AccountValuationReader
 import com.finch.domain.portfolio.dto.HoldingValuation
 import com.finch.domain.portfolio.dto.PortfolioSnapshot
-import com.finch.domain.portfolio.entity.Holding
 import com.finch.domain.portfolio.repository.HoldingPositionRow
 import com.finch.domain.portfolio.repository.HoldingRepository
 import com.finch.domain.price.service.PriceService
@@ -42,8 +41,7 @@ class PortfolioValuationService(
 
 	@Transactional(readOnly = true)
 	fun getHolding(accountId: Long, stockCode: String, currentPrice: Long?): HoldingValuation? =
-		holdingRepository.findByAccountIdAndStockCode(accountId, stockCode)
-			?.takeIf { it.quantity > 0 }
+		holdingRepository.findPositionByAccountIdAndStockCode(accountId, stockCode)
 			?.let { value(it, currentPrice) }
 
 	@Transactional(readOnly = true)
@@ -52,9 +50,6 @@ class PortfolioValuationService(
 
 	private fun value(row: HoldingPositionRow, currentPrice: Long?): HoldingValuation =
 		value(row.stockCode, row.stockName, row.quantity, row.avgBuyPrice, currentPrice)
-
-	private fun value(holding: Holding, currentPrice: Long?): HoldingValuation =
-		value(holding.stockCode, holding.stockCode, holding.quantity, holding.avgBuyPrice, currentPrice)
 
 	private fun value(
 		stockCode: String,
