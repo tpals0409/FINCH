@@ -36,6 +36,12 @@ async def test_검색_평가는_검색_호출_지연을_결과에_출력한다(
     async def fake_search(*args, **kwargs) -> list[dict[str, str]]:
         nonlocal search_calls
         search_calls += 1
+        if trace := kwargs.get("trace"):
+            trace.add("session_acquire", 2.0)
+            trace.add("db_execute", 8.0)
+            trace.add("result_materialize", 1.0)
+            trace.add("session_release", 0.5)
+            trace.add("result_fusion", 0.25)
         return [{"title": "주식소각결정"}]
 
     monkeypatch.setattr(
@@ -63,3 +69,8 @@ async def test_검색_평가는_검색_호출_지연을_결과에_출력한다(
     assert "측정: 1질의 × 2회 = 2건" in output
     assert "Recall@5: 1/1 = 1.000" in output
     assert "검색 지연 (2건): 중앙값 18.0 ms · p95(nearest-rank) 24.0 ms" in output
+    assert "세션·커넥션 획득" in output
+    assert "중앙값 2.0 ms · p95 2.0 ms · n=2" in output
+    assert "DB 왕복·실행" in output
+    assert "중앙값 8.0 ms · p95 8.0 ms · n=2" in output
+    assert "그 밖의 파이썬 구간" in output
