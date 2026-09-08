@@ -27,6 +27,7 @@ class StockService(
 	private val stockRepository: StockRepository,
 	private val dailyCandleRepository: DailyCandleRepository,
 	private val priceService: PriceService,
+	private val holdingReader: StockHoldingReader,
 ) {
 
 	/**
@@ -57,9 +58,15 @@ class StockService(
 
 	/** 종목 상세 (apiSpec 5.2). `watched` 는 호출자가 넘긴다 — 근거는 `WatchlistService.isWatched`. */
 	@Transactional(readOnly = true)
-	fun getDetail(stockCode: String, watched: Boolean): StockDetailRes {
+	fun getDetail(userId: Long, stockCode: String, watched: Boolean): StockDetailRes {
 		val stock = getOrThrow(stockCode)
-		return StockDetailRes.of(stock, pricesOf(listOf(stock)).getValue(stockCode), watched)
+		val price = pricesOf(listOf(stock)).getValue(stockCode)
+		return StockDetailRes.of(
+			stock,
+			price,
+			watched,
+			holdingReader.getHolding(userId, stockCode, price.currentPrice),
+		)
 	}
 
 	/**

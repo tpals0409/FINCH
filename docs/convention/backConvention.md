@@ -140,6 +140,11 @@ domain/order/
 `stock`을 함께 읽어야 하는데(ERD §5), 이때 `ledger`가 다른 도메인의 Entity를 import하는 대신 **DTO
 프로젝션으로 조인 결과만 받는다.** 규칙 3을 지키면서 N+1도 피하는 방법이다.
 
+낮은 계층의 응답에 높은 계층의 계산이 필요한 경우 낮은 계층이 **자기 도메인의 조회 포트 인터페이스**를
+소유하고 높은 계층이 구현한다. `account`의 `AccountValuationReader`와 `stock`의 `StockHoldingReader`가
+그 예다. 낮은 계층이 `portfolio` 서비스를 역참조하거나 Spring 순환 의존을 만드는 대신, 컴파일 참조는
+높은 계층 → 낮은 계층 방향으로 유지한다.
+
 #### 2.5 원장 기록의 단일 경로
 
 `ledger_entry`에 4종을 기록하는 주체를 고정한다 (backConvention 7장의 "기록 시점과 책임 서비스").

@@ -375,7 +375,7 @@ class LedgerInvariantTest {
 	// ---------------------------------------------------------------- 계좌 요약
 
 	@Test
-	@DisplayName("총자산이 예수금과 같다 — 평가금액이 붙으면 이 테스트가 먼저 깨진다")
+	@DisplayName("보유가 없으면 평가금액은 0이고 총자산은 예수금과 같다")
 	fun totalAssetEqualsCashWhileEvaluationIsUnavailable() {
 		val userId = openedAccount()
 		deposit(userId, 2_000_000)

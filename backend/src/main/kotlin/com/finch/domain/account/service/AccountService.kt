@@ -1,6 +1,7 @@
 package com.finch.domain.account.service
 
 import com.finch.domain.account.dto.AccountBalance
+import com.finch.domain.account.dto.AccountPortfolioBasis
 import com.finch.domain.account.dto.CashPosting
 import com.finch.domain.account.dto.response.AccountSummaryRes
 import com.finch.domain.account.entity.Account
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional
 class AccountService(
 	private val accountRepository: AccountRepository,
 	private val ledgerService: LedgerService,
+	private val valuationReader: AccountValuationReader,
 ) {
 
 	/**
@@ -96,18 +98,20 @@ class AccountService(
 	@Transactional(readOnly = true)
 	fun getSummary(userId: Long): AccountSummaryRes {
 		val account = requireAccount(accountRepository.findByUserId(userId))
-
-		// 평가금액은 Σ(보유 수량 × 현재가) 다. holding·price 도메인이 없어 아직 계산할 수 없고,
-		// 0 을 넣는다. 보유가 없어서가 아니라 계산 근거가 없어서다 — AccountSummaryRes 주석 참고.
-		val evaluationAmount = 0L
+		val valuation = valuationReader.getValuation(account.id!!)
 
 		return AccountSummaryRes(
 			cashBalance = account.cashBalance,
-			evaluationAmount = evaluationAmount,
-			totalAsset = account.cashBalance + evaluationAmount,
-			asOf = Instant.now().toKst(),
+			evaluationAmount = valuation.evaluationAmount,
+			totalAsset = valuation.evaluationAmount?.let(account.cashBalance::plus),
+			asOf = valuation.asOf,
 		)
 	}
+
+	/** portfolio가 계좌 식별자와 예수금을 한 번의 account 조회로 받는 내부 DTO다. */
+	@Transactional(readOnly = true)
+	fun getPortfolioBasis(userId: Long): AccountPortfolioBasis =
+		requireAccount(accountRepository.findByUserId(userId)).let { AccountPortfolioBasis(it.id!!, it.cashBalance) }
 
 	/**
 	 * 계좌 식별자. `holding` 처럼 계좌를 키로 갖는 테이블을 읽는 도메인이 쓴다.

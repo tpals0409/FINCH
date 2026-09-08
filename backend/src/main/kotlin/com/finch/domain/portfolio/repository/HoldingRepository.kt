@@ -29,4 +29,20 @@ interface HoldingRepository : Repository<Holding, Long> {
 
 	/** 표시용 단건 조회. **잠그지 않는다** — 화면이 여는 조회가 행을 잠그면 안 된다. */
 	fun findByAccountIdAndStockCode(accountId: Long, stockCode: String): Holding?
+
+	/** 보유 목록과 평가에 필요한 종목 마스터를 한 번에 읽는 DTO 프로젝션이다. */
+	@Query(
+		value = """
+			SELECT h.stock_code AS "stockCode",
+			       s.stock_name AS "stockName",
+			       h.quantity AS quantity,
+			       h.avg_buy_price AS "avgBuyPrice",
+			       s.previous_close AS "previousClose"
+			FROM holding h
+			JOIN stock s ON s.stock_code = h.stock_code
+			WHERE h.account_id = :accountId AND h.quantity > 0
+		""",
+		nativeQuery = true,
+	)
+	fun findPositionsByAccountId(@Param("accountId") accountId: Long): List<HoldingPositionRow>
 }

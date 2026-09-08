@@ -1,6 +1,11 @@
 package com.finch.domain.portfolio.service
 
+import com.finch.domain.account.service.AccountService
+import com.finch.domain.portfolio.dto.HoldingValuation
+import com.finch.domain.portfolio.dto.PortfolioSort
 import com.finch.domain.portfolio.dto.SellResult
+import com.finch.domain.portfolio.dto.response.PortfolioRes
+import com.finch.domain.portfolio.dto.response.PortfolioRes.Companion.toResponse
 import com.finch.domain.portfolio.entity.Holding
 import com.finch.domain.portfolio.repository.HoldingRepository
 import org.springframework.stereotype.Service
@@ -17,7 +22,33 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class PortfolioService(
 	private val holdingRepository: HoldingRepository,
+	private val accountService: AccountService,
+	private val valuationService: PortfolioValuationService,
 ) {
+	@Transactional(readOnly = true)
+	fun getPortfolio(userId: Long, sort: PortfolioSort): PortfolioRes {
+		val account = accountService.getPortfolioBasis(userId)
+		val snapshot = valuationService.getSnapshot(account.accountId)
+		val holdings = when (sort) {
+			PortfolioSort.EVALUATION -> snapshot.holdings.sortedWith(
+				compareByDescending<HoldingValuation> { it.evaluationAmount != null }
+					.thenByDescending { it.evaluationAmount }
+					.thenBy { it.stockCode },
+			)
+			PortfolioSort.PROFIT_RATE -> snapshot.holdings.sortedWith(
+				compareByDescending<HoldingValuation> { it.evaluationProfitRate != null }
+					.thenByDescending { it.evaluationProfitRate }
+					.thenBy { it.stockCode },
+			)
+		}
+		return PortfolioRes(
+			cashBalance = account.cashBalance,
+			evaluationAmount = snapshot.evaluationAmount,
+			totalAsset = snapshot.evaluationAmount?.let(account.cashBalance::plus),
+			asOf = snapshot.asOf,
+			holdings = holdings.map { it.toResponse() },
+		)
+	}
 
 	/**
 	 * 매수 반영. 없던 종목이면 행을 만든다.
