@@ -19,6 +19,7 @@ export function AiFloatingButton() {
   return (
     <Link
       to={ROUTES.chat}
+      viewTransition
       aria-label="AI에게 묻기"
       className="pointer-events-auto mr-5 mb-[calc(3.5rem+1rem+env(safe-area-inset-bottom))] flex h-14 w-14 items-center justify-center rounded-full bg-bg-neutral-solid text-fg-neutral-inverted active:bg-bg-neutral-solid-pressed"
     >

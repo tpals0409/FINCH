@@ -25,6 +25,7 @@ export function BottomTabBar() {
           <li key={tab.path} className="flex-1">
             <NavLink
               to={tab.path}
+              viewTransition
               end={tab.path === '/'}
               className={({ isActive }) =>
                 `flex h-full items-center justify-center text-body-2 ${

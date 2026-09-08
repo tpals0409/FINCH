@@ -63,6 +63,7 @@ export function RecentStocksPage() {
           </p>
           <Link
             to={ROUTES.search}
+            viewTransition
             className="mt-2 inline-block text-body-2 text-fg-neutral underline"
           >
             종목 찾아보기
@@ -74,6 +75,7 @@ export function RecentStocksPage() {
             <li key={item.stockCode} className="flex items-center gap-1">
               <Link
                 to={ROUTES.stockDetail(item.stockCode)}
+                viewTransition
                 className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-card px-2 py-3 active:bg-bg-transparent-pressed"
               >
                 <span className="flex min-w-0 flex-col">

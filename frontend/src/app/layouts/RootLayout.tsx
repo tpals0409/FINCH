@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
 
+import { PullToRefresh } from '../PullToRefresh';
 import { RouteFallback } from '../RouteFallback';
 
 import { AiFloatingOverlay } from './AiFloatingOverlay';
@@ -23,6 +24,7 @@ export function RootLayout() {
   return (
     <>
       <ScrollRestoration />
+      <PullToRefresh />
       <Suspense fallback={<RouteFallback />}>
         <Outlet />
       </Suspense>

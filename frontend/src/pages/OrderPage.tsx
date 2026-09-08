@@ -212,7 +212,11 @@ export function OrderPage() {
             {formatKrw(order.data.executedAmount)}
           </p>
           <Button
-            onClick={() => void navigate(ROUTES.stockDetail(stockCode))}
+            onClick={() =>
+              void navigate(ROUTES.stockDetail(stockCode), {
+                viewTransition: true,
+              })
+            }
             className="mt-3"
           >
             종목으로 돌아가기

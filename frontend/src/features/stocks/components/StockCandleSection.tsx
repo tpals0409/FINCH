@@ -60,7 +60,11 @@ export function StockCandleSection({
         </Tabs.List>
       </Tabs.Root>
 
-      <div className="mt-4" aria-live="polite">
+      <div
+        key={period}
+        className="finch-content-reveal mt-4"
+        aria-live="polite"
+      >
         {isPending ? (
           <Skeleton className="h-64 w-full" />
         ) : isError ? (

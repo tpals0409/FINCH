@@ -54,7 +54,7 @@ export function MyWikiPage() {
           <AiErrorNotice error={error} onRetry={() => void refetch()} />
         </Card>
       ) : (
-        <>
+        <div className="finch-content-reveal">
           <WikiFactSection facts={data.content.profile} />
           <WikiThesisSection theses={data.content.theses} />
           <AiResponseFooter
@@ -62,7 +62,7 @@ export function MyWikiPage() {
             citations={data.citations}
             disclaimer={data.disclaimer}
           />
-        </>
+        </div>
       )}
     </PageMain>
   );
@@ -167,6 +167,7 @@ function ThesisCard({ thesis }: { thesis: AiWikiThesis }) {
       <div className="flex items-center justify-between gap-3">
         <Link
           to={ROUTES.stockDetail(thesis.ticker)}
+          viewTransition
           className="text-body-2 text-fg-neutral-subtle tabular-nums underline"
         >
           {thesis.ticker}
