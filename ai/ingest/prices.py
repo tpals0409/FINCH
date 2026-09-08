@@ -8,6 +8,7 @@
     python -m ingest.prices --days 120
     python -m ingest.prices --tickers 005930,000660
     python -m ingest.prices --days 120 --limit 30
+    python -m ingest.prices --existing-only
 """
 
 from __future__ import annotations
@@ -98,7 +99,11 @@ def _to_rows(ticker: str, df: pd.DataFrame) -> list[dict]:
 
 
 async def _target_tickers(
-    session: AsyncSession, explicit: list[str] | None, limit: int | None
+    session: AsyncSession,
+    explicit: list[str] | None,
+    limit: int | None,
+    *,
+    existing_only: bool = False,
 ) -> list[str]:
     """적재 대상을 고른다.
 
@@ -106,6 +111,9 @@ async def _target_tickers(
     제약을 완화하는 대신 여기서 걸러낸다. 마스터에 없는 종목의 시세는 섹터도
     corp_code도 없어 어차피 해석할 수 없다.
     """
+    if existing_only and (explicit or limit is not None):
+        raise ValueError("existing_only은 tickers 또는 limit과 함께 쓸 수 없다")
+
     if explicit:
         known = set(
             (
@@ -121,6 +129,10 @@ async def _target_tickers(
                 ", ".join(unknown),
             )
         return [t for t in explicit if t in known]
+
+    if existing_only:
+        stmt = select(PriceDaily.ticker).distinct().order_by(PriceDaily.ticker)
+        return list((await session.scalars(stmt)).all())
 
     stmt = select(Instrument.ticker).where(Instrument.status == "listed")
     # 시가총액 큰 순으로 받는다. 중간에 끊겨도 비중 큰 종목이 먼저 확보된다.
@@ -161,6 +173,7 @@ async def ingest(
     tickers: list[str] | None = None,
     limit: int | None = None,
     full: bool = False,
+    existing_only: bool = False,
 ) -> dict[str, int]:
     """시세를 적재하고 요약을 돌려준다.
 
@@ -172,7 +185,9 @@ async def ingest(
     stats = {"tickers": 0, "rows": 0, "skipped": 0, "failed": 0}
 
     async with SessionFactory() as session:
-        targets = await _target_tickers(session, tickers, limit)
+        targets = await _target_tickers(
+            session, tickers, limit, existing_only=existing_only
+        )
         if not targets:
             logger.warning(
                 "대상 종목이 없다. 종목 마스터를 먼저 적재할 것: python -m ingest.instruments"
@@ -224,9 +239,16 @@ async def _main() -> None:
     parser.add_argument("--tickers", help="쉼표 구분 종목코드. 생략 시 마스터 전체")
     parser.add_argument("--limit", type=int, help="시가총액 상위 N종목만")
     parser.add_argument(
+        "--existing-only",
+        action="store_true",
+        help="price_daily에 이미 행이 있는 종목만 증분 갱신",
+    )
+    parser.add_argument(
         "--full", action="store_true", help="증분 무시하고 구간 전체 재적재"
     )
     args = parser.parse_args()
+    if args.existing_only and (args.tickers or args.limit is not None):
+        parser.error("--existing-only은 --tickers 또는 --limit과 함께 쓸 수 없습니다")
 
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)-5s %(message)s"
@@ -239,7 +261,11 @@ async def _main() -> None:
     )
     try:
         stats = await ingest(
-            days=args.days, tickers=tickers, limit=args.limit, full=args.full
+            days=args.days,
+            tickers=tickers,
+            limit=args.limit,
+            full=args.full,
+            existing_only=args.existing_only,
         )
         logger.info(
             "완료 — 적재 %d종목 / %d행 · 건너뜀 %d · 실패 %d",

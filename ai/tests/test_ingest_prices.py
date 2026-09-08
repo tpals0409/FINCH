@@ -10,7 +10,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from ingest.prices import COLUMN_MAP, _to_rows, _yyyymmdd
+from ingest.prices import COLUMN_MAP, _target_tickers, _to_rows, _yyyymmdd
 
 
 def _df(rows: list[tuple]) -> pd.DataFrame:
@@ -97,3 +97,50 @@ def test_nan_in_optional_columns_becomes_none() -> None:
 def test_empty_input_returns_no_rows(empty) -> None:
     """상장 직후 종목은 구간에 데이터가 없다. 오류가 아니라 빈 결과다."""
     assert _to_rows("005930", empty) == []
+
+
+class _ScalarsResult:
+    def __init__(self, values: list[str]) -> None:
+        self._values = values
+
+    def all(self) -> list[str]:
+        return self._values
+
+
+class _SessionStub:
+    def __init__(self, values: list[str]) -> None:
+        self._values = values
+        self.statement = None
+
+    async def scalars(self, statement):
+        self.statement = statement
+        return _ScalarsResult(self._values)
+
+
+@pytest.mark.asyncio
+async def test_existing_only_targets_distinct_price_daily_tickers() -> None:
+    session = _SessionStub(["000660", "005930"])
+
+    targets = await _target_tickers(
+        session, None, None, existing_only=True  # type: ignore[arg-type]
+    )
+
+    assert targets == ["000660", "005930"]
+    sql = str(session.statement)
+    assert "SELECT DISTINCT price_daily.ticker" in sql
+    assert "ORDER BY price_daily.ticker" in sql
+    assert "instruments" not in sql
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tickers", "limit"),
+    [(["005930"], None), (None, 30)],
+)
+async def test_existing_only_rejects_other_target_modes(tickers, limit) -> None:
+    session = _SessionStub([])
+
+    with pytest.raises(ValueError, match="함께 쓸 수 없다"):
+        await _target_tickers(
+            session, tickers, limit, existing_only=True  # type: ignore[arg-type]
+        )
