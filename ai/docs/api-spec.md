@@ -834,6 +834,25 @@ AI 품질 지표 수집. 모든 AI 응답 영역에 노출한다.
 
 같은 `request_id`로 다시 전송하면 새 행을 누적하지 않고 기존 평가를 마지막 요청으로 덮어쓴다. 따라서 화면은 전송 후에도 평가 수정 동작을 제공할 수 있다. Phase 1에는 피드백 취소(평가 삭제) API가 없다.
 
+### 10.1 백엔드용 전일 종가
+
+**GET** `/internal/prices/daily-close?date=YYYY-MM-DD`
+
+사용자 요청이 아니라 백엔드의 개장 전 배치가 호출하므로 `X-Internal-Token`만 요구하고
+`X-User-Id`는 요구하지 않는다. 공통 `/api/ai/v1` 프리픽스와 응답 봉투도 쓰지 않는다.
+
+```json
+{
+  "tradeDate": "2026-09-07",
+  "items": [{"stockCode": "005930", "close": 73500}]
+}
+```
+
+`date`를 생략하면 `price_snapshot_daily`의 가장 최근 거래일을 쓴다. 요청일에 데이터가
+없으면 해당 `tradeDate`와 빈 `items`를 200으로 반환한다. 테이블 전체가 비었고 날짜도
+생략했으면 `{"tradeDate": null, "items": []}`이다. 이 API의 실제 종가는 위험 엔진의
+수정주가 시계열과 섞지 않는다.
+
 ## §11 외부 의존과 자체 조달
 
 분리 원칙에 따라 **다른 파트에 신규 개발을 요청하지 않는다.** AI 기능이 필요로 하는 데이터는 이미 존재하는 것을 읽거나, AI 파트가 직접 조달한다.
@@ -844,7 +863,7 @@ AI 품질 지표 수집. 모든 AI 응답 영역에 노출한다.
 | 거래 이력 | 기존 거래 조회 API 소비 + 주기 폴링 | 없음 — 읽기 권한만 |
 | 종목 마스터 · 섹터 | **자체 구축** — pykrx + KRX 업종분류, 일 1회 동기화 | 없음 |
 | DART 고유번호 | **자체 구축** — DART `corpCode.xml` 직접 수집 | 없음 |
-| 시세 · 가격 히스토리 | **자체 적재** — KIS OpenAPI · pykrx | 없음 |
+| 시세 · 가격 히스토리 | **자체 적재** — KIS OpenAPI · pykrx 수정주가 · KRX OpenAPI 실제 종가 스냅샷 | 없음 |
 | 공시 · 뉴스 · 거시지표 | **자체 적재** — DART · 네이버 · ECOS | 없음 |
 | 투자 논지 | **자체 수집** — 대화로 직접 질문 ([§9](#ep-wiki)) | 없음 |
 
@@ -859,6 +878,7 @@ AI 품질 지표 수집. 모든 AI 응답 영역에 노출한다.
 | --- | --- |
 | `instruments` | 종목 마스터 — 종목코드, 종목명, 시장, 섹터, DART 고유번호 |
 | `price_daily` | 일별 시세 — 변동성·상관관계 계산 기반 (최소 60거래일) |
+| `price_snapshot_daily` | 화면 등락률용 실제 종가·거래량·거래대금 — 날짜당 전 종목 스냅샷 |
 | `documents` · `embeddings` | 공시 원문·뉴스 검색 요약과 벡터 (pgvector) |
 | `events` | 실적·공시·거시 일정과 중요도 점수 |
 | `wiki` | 사용자 투자 논지·성향 |
@@ -960,6 +980,7 @@ Event Ranking | `/portfolio/attribution`
 | §6 | `POST /portfolio/attribution` | `app/api/routes/portfolio.py` · `attribution`, `_contributor_payload` |
 | §7 | `POST /orders/preview` | `app/api/routes/orders.py` · `preview`, `_measures`, `_delta`, `_raised`, `_section_fields` |
 | §8 | `GET /briefing` | `app/api/routes/briefing.py` · `_item_payload`, `_values`, `_empty` |
+| §10.1 | `GET /internal/prices/daily-close` | `app/api/routes/internal_prices.py` · `get_daily_close` |
 
 | 공통 요소 | 출처 |
 | --- | --- |

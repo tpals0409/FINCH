@@ -139,6 +139,23 @@ async def _fetch(client: httpx.AsyncClient, path: str, day: date) -> list[dict]:
     return res.json().get("OutBlock_1") or []
 
 
+async def _latest_stock_payload(
+    client: httpx.AsyncClient, candidates: list[date]
+) -> tuple[date | None, list[dict]]:
+    """최근 후보일부터 최대 5일을 거슬러 전 종목 응답을 찾는다.
+
+    장 마감 전·주말·휴장일에는 당일 응답이 비어 있다. 시가총액과 실제 종가
+    스냅샷이 서로 다른 폴백 규칙을 갖지 않도록 이 함수 하나를 함께 쓴다.
+    """
+    for day in candidates[:5]:
+        payload: list[dict] = []
+        for path in STOCK_PATHS:
+            payload.extend(await _fetch(client, path, day))
+        if payload:
+            return day, payload
+    return None, []
+
+
 # ── 지수 시계열 ────────────────────────────────────────────────────────────────
 async def _trading_days(
     session: AsyncSession, start: date, end: date
@@ -254,15 +271,12 @@ async def ingest_marketcap() -> dict[str, int]:
             )
             return stats
 
-        updates: dict[str, dict] = {}
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            # 마지막 개장일이 아직 마감 전일 수 있다. 최대 5일까지 거슬러 본다.
-            for day in candidates[:5]:
-                for path in STOCK_PATHS:
-                    updates |= _marketcap_updates(await _fetch(client, path, day))
-                if updates:
-                    logger.info("기준일 %s · 응답 %d종목", day, len(updates))
-                    break
+            day, payload = await _latest_stock_payload(client, candidates)
+
+        updates = _marketcap_updates(payload)
+        if updates:
+            logger.info("기준일 %s · 응답 %d종목", day, len(updates))
 
         if not updates:
             logger.error("최근 개장일 어디에도 응답이 없다 — 적재를 중단한다")

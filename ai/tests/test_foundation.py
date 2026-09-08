@@ -25,6 +25,7 @@ AUTH = {"X-User-Id": "u_test"}
 EXPECTED_TABLES = {
     "instruments",
     "price_daily",
+    "price_snapshot_daily",
     "index_daily",
     "financial_annual",
     "documents",
@@ -146,6 +147,7 @@ def test_all_endpoints_registered() -> None:
         f"{API_PREFIX}/wiki",
         f"{API_PREFIX}/wiki/theses",
         f"{API_PREFIX}/feedback",
+        "/internal/prices/daily-close",
     ):
         assert path in paths, path
 

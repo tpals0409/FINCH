@@ -16,6 +16,7 @@ from ingest.krx import (
     _fetch,
     _index_rows,
     _int,
+    _latest_stock_payload,
     _marketcap_updates,
     _num,
     _retry_after,
@@ -193,6 +194,31 @@ async def test_missing_outblock_key_is_also_empty() -> None:
 
     async with _client(handler) as client:
         assert await _fetch(client, "/sto/stk_bydd_trd", date(2026, 8, 18)) == []
+
+
+async def test_latest_stock_payload_reuses_two_market_paths_and_falls_back() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        day = request.url.params["basDd"]
+        seen.append((path, day))
+        rows = [] if day == "20260908" else [_stk("005930", "10", "1")]
+        return httpx.Response(200, json={"OutBlock_1": rows})
+
+    async with _client(handler) as client:
+        day, payload = await _latest_stock_payload(
+            client, [date(2026, 9, 8), date(2026, 9, 7)]
+        )
+
+    assert day == date(2026, 9, 7)
+    assert len(payload) == 2
+    assert seen == [
+        ("/svc/apis/sto/stk_bydd_trd", "20260908"),
+        ("/svc/apis/sto/ksq_bydd_trd", "20260908"),
+        ("/svc/apis/sto/stk_bydd_trd", "20260907"),
+        ("/svc/apis/sto/ksq_bydd_trd", "20260907"),
+    ]
 
 
 async def test_429_is_retried_after_honoring_retry_after(monkeypatch) -> None:

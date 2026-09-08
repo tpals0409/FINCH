@@ -113,9 +113,10 @@ def test_wiki_and_feedback_content_keys_are_explicit() -> None:
     assert set(schemas["FeedbackContent"]["properties"]) == {"recorded"}
 
 
-def test_every_path_is_prefixed_or_health() -> None:
+def test_every_path_is_public_api_or_documented_internal_path() -> None:
     """프리픽스를 벗어난 경로가 생기면 프론트가 baseUrl을 못 맞춘다."""
-    stray = [p for p in COMMITTED["paths"] if not p.startswith(API_PREFIX) and p != "/health"]
+    allowed = {"/health", "/internal/prices/daily-close"}
+    stray = [p for p in COMMITTED["paths"] if not p.startswith(API_PREFIX) and p not in allowed]
     assert not stray, f"프리픽스 밖 경로: {stray}"
 
 
@@ -159,3 +160,19 @@ def test_path_parameters_survive() -> None:
 def test_health_needs_no_token() -> None:
     """헬스체크는 토큰 없이 불러야 한다 — 임포트 직후 첫 확인용이다."""
     assert COMMITTED["paths"]["/health"]["get"]["security"] == []
+
+
+def test_daily_close_requires_only_internal_token() -> None:
+    operation = COMMITTED["paths"]["/internal/prices/daily-close"]["get"]
+    assert operation["security"] == [{"internalToken": []}]
+
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+    schema = COMMITTED["components"]["schemas"][response_ref.rsplit("/", 1)[-1]]
+    assert set(schema["properties"]) == {"tradeDate", "items"}
+    assert {part.get("type") for part in schema["properties"]["tradeDate"]["anyOf"]} == {
+        "string",
+        "null",
+    }
+    item_ref = schema["properties"]["items"]["items"]["$ref"]
+    item_schema = COMMITTED["components"]["schemas"][item_ref.rsplit("/", 1)[-1]]
+    assert set(item_schema["properties"]) == {"stockCode", "close"}

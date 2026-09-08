@@ -154,6 +154,7 @@ DB 나 의존성이 준비되지 않았으면 무엇을 실행해야 하는지 �
 ```bash
 python -m app.rag.dart --tickers 005930,000660 --days 30
 python -m ingest.news --tickers 005930,000660 --days 7
+python -m ingest.price_snapshots             # KRX 최근 거래일 실제 종가·거래대금
 python -m ingest.briefings
 # 특정 사용자 또는 재생성이 필요할 때
 python -m ingest.briefings --users user_a,user_b --force

@@ -947,6 +947,53 @@
         "title": "Confidence",
         "type": "string"
       },
+      "DailyCloseItem": {
+        "properties": {
+          "close": {
+            "title": "Close",
+            "type": "integer"
+          },
+          "stockCode": {
+            "title": "Stockcode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stockCode",
+          "close"
+        ],
+        "title": "DailyCloseItem",
+        "type": "object"
+      },
+      "DailyCloseResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DailyCloseItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "tradeDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tradedate"
+          }
+        },
+        "required": [
+          "tradeDate",
+          "items"
+        ],
+        "title": "DailyCloseResponse",
+        "type": "object"
+      },
       "DataAsOf": {
         "description": "데이터 원천별 기준 시각. UI에 반드시 노출한다.\n\n시세는 지연될 수 있으므로 생성 시각과 별도로 관리한다.",
         "properties": {
@@ -3457,6 +3504,62 @@
         "summary": "Health",
         "tags": [
           "ops"
+        ]
+      }
+    },
+    "/internal/prices/daily-close": {
+      "get": {
+        "description": "요청일 또는 가장 최근 거래일의 전 종목 종가를 돌려준다.",
+        "operationId": "get_daily_close_internal_prices_daily_close_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyCloseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "internalToken": []
+          }
+        ],
+        "summary": "Get Daily Close",
+        "tags": [
+          "internal-prices"
         ]
       }
     }
