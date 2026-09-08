@@ -9,8 +9,11 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.api.main import create_app
 from app.core.enums import RiskLevel
+from app.core.request_timing import begin_request, reset_request
 from app.core.response_log import last_risk_level, record
 from app.core.schemas import Envelope
 
@@ -60,7 +63,66 @@ async def test_봉투를_통째로_남긴다() -> None:
     assert row.endpoint == "portfolio.diagnosis"
     assert row.prompt_version.startswith("prompt_")
     assert row.payload["content"]["risk_level"] == "high"
+    assert row.latency_ms is None
     assert s.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_활성_HTTP_요청의_전체_지연을_자동으로_남긴다(monkeypatch) -> None:
+    import app.core.request_timing as timing
+
+    times = iter([1_000_000_000, 1_123_000_000])
+    monkeypatch.setattr(timing, "perf_counter_ns", lambda: next(times))
+    token = begin_request()
+    try:
+        s = _Session()
+        await record(s, _envelope(), user_id="u1", endpoint="stocks.analysis")
+    finally:
+        reset_request(token)
+
+    assert s.added[0].latency_ms == 123
+
+
+@pytest.mark.asyncio
+async def test_명시한_지연값은_자동_계측보다_우선한다(monkeypatch) -> None:
+    import app.core.request_timing as timing
+
+    monkeypatch.setattr(timing, "perf_counter_ns", lambda: 1_000_000_000)
+    token = begin_request()
+    try:
+        s = _Session()
+        await record(
+            s,
+            _envelope(),
+            user_id="u1",
+            endpoint="stocks.analysis",
+            latency_ms=456,
+        )
+    finally:
+        reset_request(token)
+
+    assert s.added[0].latency_ms == 456
+
+
+def test_HTTP_미들웨어가_응답_로그와_시작점을_공유한다(monkeypatch) -> None:
+    import app.core.request_timing as timing
+
+    times = iter([1_000_000_000, 1_123_000_000])
+    monkeypatch.setattr(timing, "perf_counter_ns", lambda: next(times))
+    app = create_app()
+
+    @app.get("/_test/timing")
+    async def timed_response() -> dict[str, int | None]:
+        session = _Session()
+        await record(
+            session,
+            _envelope(),
+            user_id="u1",
+            endpoint="stocks.analysis",
+        )
+        return {"latency_ms": session.added[0].latency_ms}
+
+    assert TestClient(app).get("/_test/timing").json() == {"latency_ms": 123}
 
 
 @pytest.mark.asyncio
