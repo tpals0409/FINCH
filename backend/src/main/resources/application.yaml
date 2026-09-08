@@ -85,6 +85,13 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%X{requestId:-}] --- [%15.15t] %-40.40logger{39} : %m%n%wEx"
 
 finch:
+  stock:
+    candles:
+      # 현재가 수집 핫셋과 같은 종목을 개장 전에 동기화한다. AI 시드 범위가 30종이라 그 이상은
+      # 요청하지 않는다. 대상 코드를 설정에 복사하지 않아 핫셋과 별도 목록이 갈리지 않게 한다.
+      max-targets: 30
+      sync-cron: "0 0 8 * * *"
+
   price:
     # 마지막 수신이 이보다 오래되면 stale 로 본다 (apiSpec 5.4).
     #
