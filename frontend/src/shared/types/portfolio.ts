@@ -28,22 +28,23 @@ export const HoldingSchema = z.object({
   stockName: z.string(),
   quantity: QuantitySchema,
   avgBuyPrice: KrwAmountSchema,
-  currentPrice: KrwAmountSchema,
+  /** 시세가 없으면 아래 평가 필드와 함께 `null` */
+  currentPrice: KrwAmountSchema.nullable(),
   /** 보유 수량 x 현재가 */
-  evaluationAmount: KrwAmountSchema,
+  evaluationAmount: KrwAmountSchema.nullable(),
   /** (현재가 − 평균 매수가) x 보유 수량 */
-  evaluationProfit: KrwAmountSchema,
+  evaluationProfit: KrwAmountSchema.nullable(),
   /** 백분율. 평가손익 / (평균 매수가 x 보유 수량) x 100 */
-  evaluationProfitRate: PercentSchema,
+  evaluationProfitRate: PercentSchema.nullable(),
 });
 export type Holding = z.infer<typeof HoldingSchema>;
 
 /** `GET /portfolio` 응답 (apiSpec §8.1). 상단 요약과 보유 목록이 한 응답에 온다. */
 export const PortfolioResponseSchema = z.object({
   cashBalance: KrwAmountSchema,
-  evaluationAmount: KrwAmountSchema,
-  totalAsset: KrwAmountSchema,
-  asOf: IsoDateTimeSchema,
+  evaluationAmount: KrwAmountSchema.nullable(),
+  totalAsset: KrwAmountSchema.nullable(),
+  asOf: IsoDateTimeSchema.nullable(),
   holdings: z.array(HoldingSchema),
 });
 export type PortfolioResponse = z.infer<typeof PortfolioResponseSchema>;

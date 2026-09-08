@@ -23,11 +23,13 @@ export function AccountSummaryCard({ summary }: Props) {
     <Card>
       <p className="text-caption text-fg-neutral-subtle">총자산</p>
       <p className="mt-1 text-display text-fg-neutral">
-        {formatKrw(summary.totalAsset)}
+        {summary.totalAsset === null ? '—' : formatKrw(summary.totalAsset)}
       </p>
-      <p className="mt-1 text-caption text-fg-neutral-subtle">
-        {formatKstDateTime(summary.asOf)} 기준
-      </p>
+      {summary.asOf === null ? null : (
+        <p className="mt-1 text-caption text-fg-neutral-subtle">
+          {formatKstDateTime(summary.asOf)} 기준
+        </p>
+      )}
 
       <dl className="mt-5 space-y-3 border-t border-stroke-neutral-subtle pt-4">
         <div className="flex items-center justify-between gap-3">
@@ -52,13 +54,10 @@ export function AccountSummaryCard({ summary }: Props) {
 
         <div className="flex items-center justify-between gap-3">
           <dt className="text-body-2 text-fg-neutral-subtle">평가금액</dt>
-          {/*
-            지금 이 값은 항상 0 이다. 보유가 없어서가 아니라 holding·price 도메인이 아직
-            없어서다 (apiSpec §3.1 · backend AccountSummaryRes 주석). 화면에는 그 이유를 쓰지
-            않는다 — 사용자에게는 "보유 종목이 없다" 가 이유의 전부다.
-          */}
           <dd className="text-body-1 text-fg-neutral">
-            {formatKrw(summary.evaluationAmount)}
+            {summary.evaluationAmount === null
+              ? '—'
+              : formatKrw(summary.evaluationAmount)}
           </dd>
         </div>
       </dl>
