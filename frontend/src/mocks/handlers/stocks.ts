@@ -44,6 +44,9 @@ import { profitRate } from '../lib/valuation';
  * | `036570`(엔씨소프트) | `suspended: true` — 뱃지와 주문 차단 렌더 |
  * | `010950`(에스오일) | `stale: true` + 마지막 수신 값 유지 |
  * | `900140`(엘브이엠씨홀딩스) | `stale: true` + 가격 3필드와 `asOf` 가 전부 `null` |
+ * | 캔들 `005930` 등 | 기간별 non-empty |
+ * | 캔들 `900140` | 빈 `candles` 200 |
+ * | 캔들 `010950` | `503 INTERNAL_ERROR` |
  *
  * 시세 없음은 에러가 아니다 (apiSpec §11.2) — 위 두 종목이 그 두 상태를 재현한다.
  */
@@ -199,11 +202,22 @@ export const stockHandlers = [
         );
       }
 
+      if (stockCode === '010950') {
+        return errorResponse(
+          COMMON_ERROR_CODES.INTERNAL_ERROR,
+          '차트 데이터를 불러오지 못했습니다',
+          503,
+        );
+      }
+
       return HttpResponse.json({
         stockCode,
         period,
         interval: 'DAY',
-        candles: buildCandles(stockCode, period, stock.currentPrice),
+        candles:
+          stockCode === '900140'
+            ? []
+            : buildCandles(stockCode, period, stock.currentPrice),
       });
     },
   ),
