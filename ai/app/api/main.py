@@ -27,6 +27,7 @@ from app.api.routes import (
 from app.core.config import settings
 from app.core.db import engine
 from app.core.errors import AppError, ErrorCode
+from app.core.request_timing import begin_request, reset_request
 from app.core.schemas import ErrorResponse, new_request_id
 from app.core.usage_limits import default_guard
 
@@ -51,6 +52,15 @@ def create_app() -> FastAPI:
     # 배치도 같은 팩터리로 장부를 고른다. DB 통합 테스트는 UsageGuard(SessionFactory)를
     # 직접 쓴다.
     app.state.usage_guard = default_guard()
+
+    @app.middleware("http")
+    async def measure_request_latency(request: Request, call_next):
+        """모든 AI 응답 로그가 같은 시작점에서 전체 처리 시간을 잰다."""
+        timing_token = begin_request()
+        try:
+            return await call_next(request)
+        finally:
+            reset_request(timing_token)
 
     for module in (stocks, chat, portfolio, orders, briefing, wiki, feedback):
         app.include_router(module.router, prefix=API_PREFIX)

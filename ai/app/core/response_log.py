@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import RiskLevel
 from app.core.models import AIResponse
+from app.core.request_timing import elapsed_ms
 from app.core.schemas import Envelope
 from app.core.usage_limits import usage_values
 from app.llm.versioning import prompt_version_for
@@ -63,7 +64,7 @@ async def record(
         cache_read_tokens=(
             measured["cache_read_tokens"] if cache_read_tokens is None else cache_read_tokens
         ),
-        latency_ms=latency_ms,
+        latency_ms=elapsed_ms() if latency_ms is None else latency_ms,
         guardrail_result=guardrail_result,
         payload=envelope.model_dump(mode="json"),
     )
