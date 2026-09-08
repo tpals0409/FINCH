@@ -1,6 +1,7 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 
 import {
+  StockCandleSection,
   StockDetailPrice,
   WatchToggleButton,
   useStockDetail,
@@ -11,7 +12,11 @@ import {
   formatSignedPercent,
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
-import type { StockHoldingSummary } from '@/shared/types/stock';
+import {
+  CandlePeriodSchema,
+  type CandlePeriod,
+  type StockHoldingSummary,
+} from '@/shared/types/stock';
 import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -20,15 +25,25 @@ import { Skeleton } from '@/shared/ui/Skeleton';
 /**
  * 종목 상세 (apiSpec §5.2 · featureSpec §7.1).
  *
- * **차트는 아직 없다.** `daily_candle` 이 비어 있고 채우려면 KRX API 키가 필요한데 미발급이다
- * (MEMORY "외부 API 키 4종 미발급"). 목은 캔들을 만들어 주지만, 목에서만 보이는 차트를 먼저
- * 붙이면 실서버에서 빈 캔버스를 보고 차트가 고장 난 줄 알게 된다. 키가 나오면 붙인다.
+ * 차트 기간은 URL 상태다. 링크를 공유하거나 뒤로 갔을 때 같은 기간이 보여야 한다
+ * (`frontend/docs/frontConvention.md` §4 URL 상태).
  */
 export function StockDetailPage() {
   const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const stockCode = params[STOCK_CODE_PARAM] ?? '';
+  const parsedPeriod = CandlePeriodSchema.safeParse(searchParams.get('period'));
+  const period: CandlePeriod = parsedPeriod.success ? parsedPeriod.data : '1M';
   const { data, isPending, isError, refetch, isFetching } =
     useStockDetail(stockCode);
+
+  const handlePeriodChange = (nextPeriod: CandlePeriod) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('period', nextPeriod);
+      return next;
+    });
+  };
 
   if (isPending) {
     return (
@@ -78,6 +93,12 @@ export function StockDetailPage() {
       ) : null}
 
       <StockDetailPrice stock={data} />
+
+      <StockCandleSection
+        stockCode={data.stockCode}
+        period={period}
+        onPeriodChange={handlePeriodChange}
+      />
 
       <div className="mt-6 flex flex-col gap-2">
         {data.suspended ? (
