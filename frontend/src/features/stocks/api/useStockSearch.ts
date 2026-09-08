@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
+import {
+  QUOTE_POLLING_INTERVAL_MS,
+  QUOTE_STALE_TIME_MS,
+} from '@/shared/config/apiContract';
 import { queryKeys } from '@/shared/config/queryKeys';
 
 import { getStockSearch } from './getStockSearch';
@@ -24,5 +28,7 @@ export function useStockSearch(keyword: string) {
     queryFn: ({ signal }) => getStockSearch({ keyword: trimmed, signal }),
     enabled: trimmed.length >= MIN_SEARCH_KEYWORD_LENGTH,
     placeholderData: (previous) => previous,
+    refetchInterval: QUOTE_POLLING_INTERVAL_MS.list,
+    staleTime: QUOTE_STALE_TIME_MS.list,
   });
 }

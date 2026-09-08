@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
+import {
+  QUOTE_POLLING_INTERVAL_MS,
+  QUOTE_STALE_TIME_MS,
+} from '@/shared/config/apiContract';
 import { queryKeys } from '@/shared/config/queryKeys';
 import type { OrderSide } from '@/shared/types/order';
 
@@ -15,5 +19,7 @@ export function useOrderAvailable(stockCode: string, side: OrderSide) {
   return useQuery({
     queryKey: queryKeys.orders.available(stockCode, side),
     queryFn: ({ signal }) => getOrderAvailable(stockCode, side, signal),
+    refetchInterval: QUOTE_POLLING_INTERVAL_MS.order,
+    staleTime: QUOTE_STALE_TIME_MS.order,
   });
 }

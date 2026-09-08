@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
+import {
+  QUOTE_POLLING_INTERVAL_MS,
+  QUOTE_STALE_TIME_MS,
+} from '@/shared/config/apiContract';
 import { queryKeys } from '@/shared/config/queryKeys';
 import type { WatchlistSort } from '@/shared/types/stock';
 
@@ -9,5 +13,7 @@ export function useWatchlist(sort: WatchlistSort = 'REGISTERED') {
   return useQuery({
     queryKey: queryKeys.stocks.watchlist(sort),
     queryFn: ({ signal }) => getWatchlist(sort, signal),
+    refetchInterval: QUOTE_POLLING_INTERVAL_MS.list,
+    staleTime: QUOTE_STALE_TIME_MS.list,
   });
 }

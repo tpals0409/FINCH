@@ -1,3 +1,4 @@
+import { formatKstTime } from '@/shared/lib/formatDate';
 import {
   formatKrw,
   formatSignedPercent,
@@ -43,6 +44,11 @@ export function StockDetailPrice({ stock }: { stock: StockDetailResponse }) {
       <p className="mt-2 text-body-2 text-fg-neutral-subtle tabular-nums">
         전일 종가 {formatKrw(stock.previousClose)}
       </p>
+      {stock.asOf ? (
+        <p className="mt-1 text-caption text-fg-neutral-subtle tabular-nums">
+          {formatKstTime(stock.asOf)} 갱신
+        </p>
+      ) : null}
     </div>
   );
 }
