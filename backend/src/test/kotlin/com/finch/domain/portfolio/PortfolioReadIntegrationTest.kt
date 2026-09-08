@@ -56,6 +56,7 @@ internal class PortfolioReadIntegrationTest @Autowired constructor(
 		assertThat(portfolio.evaluationAmount).isEqualTo(735_000)
 		assertThat(portfolio.totalAsset).isEqualTo(Account.INITIAL_GRANT_AMOUNT + 735_000)
 		assertThat(holding.quantity).isEqualTo(10)
+		assertThat(holding.stockName).isEqualTo("삼성전자")
 		assertThat(holding.avgBuyPrice).isEqualTo(71_200)
 		assertThat(holding.evaluationAmount).isEqualTo(735_000)
 		assertThat(holding.evaluationProfit).isEqualTo(23_000)

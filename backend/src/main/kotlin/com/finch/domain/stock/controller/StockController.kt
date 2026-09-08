@@ -1,5 +1,7 @@
 package com.finch.domain.stock.controller
 
+import com.finch.domain.price.dto.response.PriceRes
+import com.finch.domain.price.dto.response.PricesRes
 import com.finch.domain.stock.dto.response.CandlesRes
 import com.finch.domain.stock.dto.response.StockDetailRes
 import com.finch.domain.stock.dto.response.StockSearchRes
@@ -9,6 +11,7 @@ import com.finch.domain.watchlist.service.WatchlistService
 import com.finch.global.security.LoginUser
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -47,6 +50,20 @@ class StockController(
 		@Max(100, message = "1 이상 100 이하여야 합니다")
 		size: Int,
 	): StockSearchRes = stockService.search(keyword, size)
+
+	/** 벌크 경로는 종목코드 변수 경로와 별개다. 최대 50건 제한은 관심 종목 한도와 같다. */
+	@GetMapping("/prices")
+	fun prices(
+		@RequestParam
+		@Pattern(
+			regexp = "\\d{6}(,\\d{6}){0,49}",
+			message = "쉼표로 구분한 6자리 종목코드 1개 이상 50개 이하여야 합니다",
+		)
+		stockCodes: String,
+	): PricesRes = stockService.getPrices(stockCodes.split(','))
+
+	@GetMapping("/{stockCode}/price")
+	fun price(@PathVariable stockCode: String): PriceRes = stockService.getPrice(stockCode)
 
 	@GetMapping("/{stockCode}")
 	fun detail(@LoginUser userId: Long, @PathVariable stockCode: String): StockDetailRes =
