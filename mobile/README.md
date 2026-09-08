@@ -41,4 +41,4 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 shasum -a 256 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. API 35 arm64 AVD `finch-api35`에 설치 후 `org.finchapp.mobile/.MainActivity` 실행과 WebView 화면을 확인했고, 루트 BACK 입력 뒤 resumed activity가 `NexusLauncherActivity`로 바뀌어 앱 종료를 확인했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
+Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. API 35 arm64 AVD `finch-api35`에 설치 후 `org.finchapp.mobile/.MainActivity` 실행과 WebView 화면을 확인했다. Android 13+ predictive-back과 key-event fallback을 등록했으며, 최종 일반 BACK 재확인은 AVD 재기동 불안정으로 별도 게이트다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
