@@ -65,7 +65,10 @@ AUTH_HEADERS = frozenset(
 PUBLIC_PATHS = {"/health"}
 
 # 사용자 식별자 없이 백엔드 배치가 부르는 내부 경로. 서비스 토큰만 요구한다.
-INTERNAL_ONLY_PATHS = {"/internal/prices/daily-close"}
+INTERNAL_ONLY_PATHS = {
+    "/internal/prices/daily-close",
+    "/internal/prices/{stock_code}/candles",
+}
 
 
 def build() -> dict[str, Any]:

@@ -853,6 +853,36 @@ AI 품질 지표 수집. 모든 AI 응답 영역에 노출한다.
 생략했으면 `{"tradeDate": null, "items": []}`이다. 이 API의 실제 종가는 위험 엔진의
 수정주가 시계열과 섞지 않는다.
 
+### 10.2 백엔드용 일봉
+
+**GET** `/internal/prices/{stockCode}/candles?period=1M|3M|1Y`
+
+백엔드가 종목 상세의 일봉을 채울 때 호출한다. `X-Internal-Token`만 요구하며 공통
+`/api/ai/v1` 프리픽스와 응답 봉투는 쓰지 않는다.
+
+```json
+{
+  "stockCode": "005930",
+  "period": "1M",
+  "interval": "DAY",
+  "candles": [
+    {
+      "date": "2026-09-07",
+      "open": 70000,
+      "high": 72000,
+      "low": 69000,
+      "close": 71500,
+      "volume": 123456
+    }
+  ]
+}
+```
+
+기간은 KST 현재일에서 달력 기준 30일·90일·365일을 뺀 날부터 현재일까지다. 휴장일은
+행 수에서 빠지며 결과는 `date` 오름차순이다. `price_daily`의 수정주가 OHLCV만 사용하고,
+OHLCV 중 하나라도 없는 행은 반환하지 않는다. 종목이나 기간에 데이터가 없으면 404 대신
+같은 메타데이터와 빈 `candles`를 200으로 반환한다.
+
 ## §11 외부 의존과 자체 조달
 
 분리 원칙에 따라 **다른 파트에 신규 개발을 요청하지 않는다.** AI 기능이 필요로 하는 데이터는 이미 존재하는 것을 읽거나, AI 파트가 직접 조달한다.
@@ -981,6 +1011,7 @@ Event Ranking | `/portfolio/attribution`
 | §7 | `POST /orders/preview` | `app/api/routes/orders.py` · `preview`, `_measures`, `_delta`, `_raised`, `_section_fields` |
 | §8 | `GET /briefing` | `app/api/routes/briefing.py` · `_item_payload`, `_values`, `_empty` |
 | §10.1 | `GET /internal/prices/daily-close` | `app/api/routes/internal_prices.py` · `get_daily_close` |
+| §10.2 | `GET /internal/prices/{stockCode}/candles` | `app/api/routes/internal_prices.py` · `get_candles` |
 
 | 공통 요소 | 출처 |
 | --- | --- |
