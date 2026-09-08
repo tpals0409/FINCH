@@ -764,6 +764,84 @@
         "title": "BriefingItem",
         "type": "object"
       },
+      "CandleItem": {
+        "properties": {
+          "close": {
+            "title": "Close",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "high": {
+            "title": "High",
+            "type": "integer"
+          },
+          "low": {
+            "title": "Low",
+            "type": "integer"
+          },
+          "open": {
+            "title": "Open",
+            "type": "integer"
+          },
+          "volume": {
+            "title": "Volume",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "CandleItem",
+        "type": "object"
+      },
+      "CandlePeriod": {
+        "enum": [
+          "1M",
+          "3M",
+          "1Y"
+        ],
+        "title": "CandlePeriod",
+        "type": "string"
+      },
+      "CandlesResponse": {
+        "properties": {
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/CandleItem"
+            },
+            "title": "Candles",
+            "type": "array"
+          },
+          "interval": {
+            "default": "DAY",
+            "title": "Interval",
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/CandlePeriod"
+          },
+          "stockCode": {
+            "title": "Stockcode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stockCode",
+          "period",
+          "candles"
+        ],
+        "title": "CandlesResponse",
+        "type": "object"
+      },
       "ChatContent": {
         "additionalProperties": false,
         "description": "§4 답변 본문.",
@@ -3558,6 +3636,63 @@
           }
         ],
         "summary": "Get Daily Close",
+        "tags": [
+          "internal-prices"
+        ]
+      }
+    },
+    "/internal/prices/{stock_code}/candles": {
+      "get": {
+        "description": "KST 현재일을 기준으로 수정주가 일봉을 오래된 순서부터 돌려준다.",
+        "operationId": "get_candles_internal_prices__stock_code__candles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "stock_code",
+            "required": true,
+            "schema": {
+              "pattern": "^\\d{6}$",
+              "title": "Stock Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CandlePeriod"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandlesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "internalToken": []
+          }
+        ],
+        "summary": "Get Candles",
         "tags": [
           "internal-prices"
         ]

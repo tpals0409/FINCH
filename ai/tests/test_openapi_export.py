@@ -115,7 +115,11 @@ def test_wiki_and_feedback_content_keys_are_explicit() -> None:
 
 def test_every_path_is_public_api_or_documented_internal_path() -> None:
     """프리픽스를 벗어난 경로가 생기면 프론트가 baseUrl을 못 맞춘다."""
-    allowed = {"/health", "/internal/prices/daily-close"}
+    allowed = {
+        "/health",
+        "/internal/prices/daily-close",
+        "/internal/prices/{stock_code}/candles",
+    }
     stray = [p for p in COMMITTED["paths"] if not p.startswith(API_PREFIX) and p not in allowed]
     assert not stray, f"프리픽스 밖 경로: {stray}"
 
