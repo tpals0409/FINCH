@@ -64,6 +64,9 @@ AUTH_HEADERS = frozenset(
 # 인증이 필요 없는 경로. 나머지는 전부 신뢰 헤더를 요구한다.
 PUBLIC_PATHS = {"/health"}
 
+# 사용자 식별자 없이 백엔드 배치가 부르는 내부 경로. 서비스 토큰만 요구한다.
+INTERNAL_ONLY_PATHS = {"/internal/prices/daily-close"}
+
 
 def build() -> dict[str, Any]:
     """앱에서 스키마를 뽑아 Postman이 바로 쓸 수 있게 손본다.
@@ -93,6 +96,9 @@ def build() -> dict[str, Any]:
     for path in PUBLIC_PATHS & schema["paths"].keys():
         for op in schema["paths"][path].values():
             op["security"] = []
+    for path in INTERNAL_ONLY_PATHS & schema["paths"].keys():
+        for op in schema["paths"][path].values():
+            op["security"] = [{"internalToken": []}]
 
     # 같은 이유로 신뢰 헤더가 오퍼레이션마다 헤더 파라미터로도 잡혀 있다.
     # 위에서 securitySchemes로 선언했으니 남겨 두면 Postman이 요청 12개마다

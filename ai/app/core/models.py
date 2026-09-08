@@ -105,6 +105,26 @@ class PriceDaily(Base):
     __table_args__ = (Index("ix_price_daily_date", "trade_date"),)
 
 
+class PriceSnapshotDaily(Base):
+    """화면 등락률용 실제 종가 스냅샷.
+
+    수정주가 시계열인 ``price_daily``와 섞지 않는다. 이 값은 전일 실제 종가와
+    당일 현재가를 비교하는 백엔드 화면 계산에만 제공한다.
+    """
+
+    __tablename__ = "price_snapshot_daily"
+
+    ticker: Mapped[str] = mapped_column(
+        String(6), ForeignKey("instruments.ticker", ondelete="CASCADE"), primary_key=True
+    )
+    trade_date: Mapped[Date] = mapped_column(SADate, primary_key=True)
+    close: Mapped[int] = mapped_column(Integer, nullable=False)
+    volume: Mapped[int | None] = mapped_column(BigInteger)
+    trade_value: Mapped[int | None] = mapped_column(BigInteger)
+
+    __table_args__ = (Index("ix_price_snapshot_daily_date", "trade_date"),)
+
+
 class IndexDaily(Base):
     """지수 일별 시세. 시장 기여도 분해와 베타 계산에 쓴다.
 
@@ -407,6 +427,7 @@ __all__ = [
     "Base",
     "Instrument",
     "PriceDaily",
+    "PriceSnapshotDaily",
     "IndexDaily",
     "Document",
     "DocumentChunk",

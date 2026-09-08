@@ -18,6 +18,7 @@ from app.api.routes import (
     briefing,
     chat,
     feedback,
+    internal_prices,
     orders,
     portfolio,
     stocks,
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
 
     for module in (stocks, chat, portfolio, orders, briefing, wiki, feedback):
         app.include_router(module.router, prefix=API_PREFIX)
+    app.include_router(internal_prices.router)
 
     @app.exception_handler(AppError)
     async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:

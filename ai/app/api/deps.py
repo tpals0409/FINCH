@@ -67,6 +67,18 @@ async def get_current_user_id(
 CurrentUser = Annotated[str, Depends(get_current_user_id)]
 
 
+async def require_internal_token(
+    internal_token: Annotated[
+        str | None, Header(alias=settings.internal_token_header)
+    ] = None,
+) -> None:
+    """사용자 문맥이 없는 백엔드 전용 호출의 공유 토큰만 검증한다."""
+    _check_internal_token(internal_token)
+
+
+InternalToken = Annotated[None, Depends(require_internal_token)]
+
+
 def _usage_endpoint(path: str) -> str | None:
     if path.endswith("/analysis") and "/stocks/" in path:
         return "stocks.analysis"
