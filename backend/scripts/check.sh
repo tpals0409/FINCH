@@ -28,8 +28,9 @@ step() {
   fi
 }
 
-# 지금은 test 하나다. 정적 분석 등이 늘면 여기에 step 을 추가한다 — CI yml 은 그대로다.
-step "테스트" ./gradlew --no-daemon test
+# build 는 assemble + check 다. test 만 돌리면 부트 jar 조립 실패를 로컬이 못 잡는다.
+# 정적 분석 등이 늘면 여기에 step 을 추가한다 — CI yml 은 그대로다.
+step "빌드·테스트" ./gradlew --no-daemon build
 
 # 첫 실패에서 멈추지 않고 전부 돌린 뒤 한 번에 보고한다.
 printf '\n'

@@ -31,6 +31,10 @@ step() {
 step "포맷"     npm run format:check
 step "린트"     npm run lint
 step "타입"     npm run typecheck
+# 빌드 앞에 둔다 — 실패하면 번들을 만드는 시간을 쓰지 않는다.
+step "테스트"   npm test
 step "빌드"     npm run build
+# 디자인 토큰의 APCA 대비. 회귀하면 여기서 막힌다 (docs/design/finch-seed.md §5)
+step "대비"     npm run design:contrast
 
 printf '\n✓ 전체 통과\n'
