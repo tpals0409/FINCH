@@ -41,4 +41,4 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 shasum -a 256 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. 현재 확인된 debug APK는 SHA-256 `f5dc08ca877e9d4489d24266b212a89111ca1f8847b60af83e2289ce38916c7f`이며, API 35 arm64 AVD `finch-api35`에 설치 성공 후 `org.finchapp.mobile/.MainActivity` 실행과 WebView 화면을 확인했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
+Capacitor Android 의존성이 Java 21 소스 레벨을 요구하므로 Android 빌드는 JDK 21을 사용한다. API 35 arm64 AVD `finch-api35`에 설치 후 `org.finchapp.mobile/.MainActivity` 실행과 WebView 화면을 확인했고, 루트 BACK 입력 뒤 resumed activity가 `NexusLauncherActivity`로 바뀌어 앱 종료를 확인했다. 스토어 게시, 운영 서명, iOS 배포는 범위 밖이다.
