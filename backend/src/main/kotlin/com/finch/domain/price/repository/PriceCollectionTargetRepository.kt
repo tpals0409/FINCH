@@ -1,6 +1,5 @@
 package com.finch.domain.price.repository
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Repository
  * 동기화 실패 지점을 추가하므로 두지 않는다.
  */
 @Repository
-@ConditionalOnProperty(prefix = "finch.price.kis", name = ["enabled"], havingValue = "true")
 internal class PriceCollectionTargetRepository(private val jdbcClient: JdbcClient) {
 
 	fun findAfter(afterStockCode: String, limit: Int): List<String> =
