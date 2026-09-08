@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import re
@@ -50,6 +51,57 @@ def _summarize_latency_ms(samples: list[float]) -> LatencySummary:
         median_ms=statistics.median(ordered),
         p95_ms=ordered[p95_index],
     )
+
+
+def _summary_payload(samples: list[float]) -> dict[str, float | int]:
+    summary = _summarize_latency_ms(samples)
+    return {
+        "samples": summary.samples,
+        "median_ms": summary.median_ms,
+        "p95_ms": summary.p95_ms,
+    }
+
+
+def _write_raw_measurement(
+    path: Path,
+    *,
+    environment_id: str,
+    top_k: int,
+    repeats: int,
+    cases: list[RetrievalCase],
+    samples: list[dict],
+    stage_samples: dict[str, list[float]],
+) -> None:
+    """중앙값과 p95를 다시 계산할 수 있는 개별 표본을 JSON으로 보존한다."""
+    payload = {
+        "schema_version": 1,
+        "environment_id": environment_id,
+        "dataset": {
+            "path": str(RETRIEVAL_SET.relative_to(EVAL_DIR.parent)),
+            "sha256": hashlib.sha256(RETRIEVAL_SET.read_bytes()).hexdigest(),
+            "cases": len(cases),
+            "graded_cases": sum(not case.expect_empty for case in cases),
+        },
+        "top_k": top_k,
+        "repeats": repeats,
+        "warmup_samples": len(cases),
+        "samples": samples,
+        "summary": {
+            "total": _summary_payload([sample["total_ms"] for sample in samples]),
+            "stages": {
+                name: _summary_payload(values)
+                for name, values in stage_samples.items()
+                if "." not in name
+            },
+            "paths": {
+                name: _summary_payload(values)
+                for name, values in stage_samples.items()
+                if "." in name
+            },
+        },
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def _load_cases(path: Path = RETRIEVAL_SET) -> list[RetrievalCase]:
@@ -101,16 +153,24 @@ def _to_case(d: dict) -> RetrievalCase:
     )
 
 
-async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
+async def run_retrieval(
+    top_k: int = 5,
+    *,
+    repeats: int = 5,
+    raw_json: Path | None = None,
+    environment_id: str | None = None,
+) -> int:
     from app.core.db import engine
     from app.rag.embedding import NullEmbedder, get_embedder
     from app.rag.search import SearchTrace, search_with_vector
 
+    if repeats < 1:
+        raise ValueError("검색 반복 횟수는 1 이상이어야 한다")
+    if raw_json is not None and not environment_id:
+        raise ValueError("원자료 JSON에는 환경 식별자가 필요하다")
     if isinstance(get_embedder(), NullEmbedder):
         print("임베딩 키가 없어 검색 평가를 건너뛴다. GMS_KEY를 설정하라.")
         return 0
-    if repeats < 1:
-        raise ValueError("검색 반복 횟수는 1 이상이어야 한다")
 
     cases = _load_cases()
     vectors = await asyncio.to_thread(get_embedder().embed, [case.query for case in cases])
@@ -119,6 +179,7 @@ async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
     stage_latencies_ms: dict[str, list[float]] = {}
     case_latencies_ms: dict[str, list[float]] = {case.id: [] for case in cases}
     first_results: dict[str, list[dict]] = {}
+    raw_samples: list[dict] = []
     try:
         for c, vector in zip(cases, vectors, strict=True):
             if vector is None:
@@ -154,6 +215,15 @@ async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
                 for stage, stage_ms in trace.path_elapsed_ms.items():
                     stage_latencies_ms.setdefault(stage, []).append(stage_ms)
                 case_latencies_ms[c.id].append(elapsed_ms)
+                raw_samples.append(
+                    {
+                        "case_id": c.id,
+                        "repeat": repeat_index + 1,
+                        "total_ms": elapsed_ms,
+                        "stages_ms": trace.elapsed_ms,
+                        "paths_ms": trace.path_elapsed_ms,
+                    }
+                )
                 if repeat_index == 0:
                     first_results[c.id] = found
 
@@ -225,6 +295,17 @@ async def run_retrieval(top_k: int = 5, *, repeats: int = 5) -> int:
                     f" · p95 {stage_latency.p95_ms:.1f} ms"
                     f" · n={stage_latency.samples}"
                 )
+            if raw_json is not None:
+                _write_raw_measurement(
+                    raw_json,
+                    environment_id=environment_id or "",
+                    top_k=top_k,
+                    repeats=repeats,
+                    cases=cases,
+                    samples=raw_samples,
+                    stage_samples=stage_latencies_ms,
+                )
+                print(f"원자료 JSON: {raw_json}")
             if minimum is not None and recall < minimum:
                 print("검색 품질 기준을 통과하지 못했다.")
                 return 1
@@ -303,6 +384,8 @@ def main() -> int:
     p.add_argument("--metrics", action="store_true", help="지표 자체 점검")
     p.add_argument("--top-k", type=int, default=5)
     p.add_argument("--repeat", type=int, default=5, help="검색 질의 반복 횟수 (기본 5)")
+    p.add_argument("--raw-json", type=Path, help="개별 지연 표본과 요약을 저장할 JSON 경로")
+    p.add_argument("--environment-id", help="Pod·이미지·평가 코드로 구성한 실행 환경 식별자")
     p.add_argument("--list", action="store_true", help="평가셋 요약")
     p.add_argument("--feedback", action="store_true", help="프롬프트 버전별 피드백 통계")
     p.add_argument("--days", type=int, default=30, help="피드백 집계 기간 (기본 30일)")
@@ -345,7 +428,16 @@ def main() -> int:
     if a.retrieval:
         if a.repeat < 1:
             p.error("--repeat는 1 이상이어야 한다")
-        return asyncio.run(run_retrieval(a.top_k, repeats=a.repeat))
+        if a.raw_json and not a.environment_id:
+            p.error("--raw-json에는 --environment-id가 필요하다")
+        return asyncio.run(
+            run_retrieval(
+                a.top_k,
+                repeats=a.repeat,
+                raw_json=a.raw_json,
+                environment_id=a.environment_id,
+            )
+        )
     p.print_help()
     return 0
 
