@@ -38,7 +38,7 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
  */
 const BASE_CLASS =
   'flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md px-4 text-label ' +
-  'transition-[background-color,border-color] duration-(--motion-fast) ease-standard disabled:duration-0 ' +
+  'transition-[background-color,border-color,transform] duration-(--motion-fast) ease-spring active:scale-[0.97] disabled:scale-100 disabled:duration-0 ' +
   'disabled:bg-bg-disabled disabled:text-fg-disabled disabled:border-transparent';
 
 type ButtonProps = ComponentProps<'button'> & { variant?: ButtonVariant };
@@ -70,6 +70,7 @@ export function LinkButton({
   return (
     <Link
       {...props}
+      viewTransition={props.viewTransition ?? true}
       className={`${BASE_CLASS} ${VARIANT_CLASS[variant]} ${className}`}
     />
   );

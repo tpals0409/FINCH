@@ -50,6 +50,7 @@ export function WatchlistSection() {
           </p>
           <Link
             to={ROUTES.search}
+            viewTransition
             className="mt-2 inline-block text-body-2 text-fg-neutral underline"
           >
             종목 찾아보기
@@ -61,6 +62,7 @@ export function WatchlistSection() {
             <li key={item.stockCode}>
               <Link
                 to={ROUTES.stockDetail(item.stockCode)}
+                viewTransition
                 className="flex items-center justify-between gap-3 rounded-card px-2 py-3 active:bg-bg-transparent-pressed"
               >
                 <span className="flex min-w-0 flex-col">

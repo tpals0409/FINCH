@@ -71,7 +71,11 @@ export function KakaoCallback() {
       {
         // replace 로 이동한다. 기록에 남기면 뒤로가기로 이미 소진된 코드가 붙은
         // URL 로 되돌아와 실패 화면을 본다.
-        onSuccess: () => navigate(preflight.redirectTo, { replace: true }),
+        onSuccess: () =>
+          navigate(preflight.redirectTo, {
+            replace: true,
+            viewTransition: true,
+          }),
         onError: (error) =>
           setExchangeFailure({
             kind: 'exchangeFailed',

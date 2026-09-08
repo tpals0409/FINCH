@@ -32,6 +32,7 @@ export function MyPage() {
           <li key={item.path}>
             <Link
               to={item.path}
+              viewTransition
               className="flex items-center justify-between rounded-card px-2 py-4 text-body-1 text-fg-neutral active:bg-bg-transparent-pressed"
             >
               {item.label}

@@ -45,6 +45,7 @@ export function AccountSummaryCard({ summary }: Props) {
             */}
             <Link
               to={ROUTES.deposit}
+              viewTransition
               className="-my-3 flex min-h-[44px] items-center text-label text-fg-neutral underline underline-offset-4"
             >
               충전하기

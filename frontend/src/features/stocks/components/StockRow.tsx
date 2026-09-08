@@ -17,6 +17,7 @@ export function StockRow({ stock }: { stock: StockSummary }) {
   return (
     <Link
       to={ROUTES.stockDetail(stock.stockCode)}
+      viewTransition
       className="flex items-center justify-between gap-3 rounded-card px-2 py-3 active:bg-bg-transparent-pressed"
     >
       <span className="flex min-w-0 flex-col">

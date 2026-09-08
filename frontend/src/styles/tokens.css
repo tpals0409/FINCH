@@ -279,7 +279,7 @@
 
   /* ═══════════ 9. Motion ═══════════ */
   /* 발표자료는 장면 타이밍이라 d1~d6 이지만 앱은 마이크로 인터랙션 셋뿐이다.
-     이징도 하나다 — 들어오고 나가는 곡선을 나누는 건 시트가 여러 종류일 때 얘기다.
+     이징은 화면 전환용 standard 와 직접 조작 피드백용 spring 둘뿐이다.
      ease-standard 는 ease-out 곡선이라 엄밀히는 들어오는 쪽 것이지만, 260ms 에서
      나가는 데 써도 티가 안 난다. 시트가 두 종류(위에서 · 아래서) 되면 그때 exit 곡선을 만든다.
 
@@ -303,6 +303,8 @@
   --finch-duration-normal: 200ms; /* 아코디언 높이 · 에러 등장(opacity) */
   --finch-duration-sheet: 260ms; /* 바텀시트 translateY + 딤 opacity */
   --finch-timing-function-standard: cubic-bezier(0.2, 0, 0, 1);
+  /* 눌렀다 놓을 때 한 번만 되받는 FINCH 곡선. TDS 수치를 복사한 값이 아니다. */
+  --finch-timing-function-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* ═══════════ 10. Elevation ═══════════ */
   /* Design.md 12 는 전역 z 스케일을 두지 말라고 하지만, 그건 포털 DOM 순서를 통제할 수 있는

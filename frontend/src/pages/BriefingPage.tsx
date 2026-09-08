@@ -51,12 +51,13 @@ export function BriefingPage() {
           </p>
         </Card>
       ) : (
-        <>
+        <div className="finch-content-reveal">
           <ul className="mt-4 space-y-3">
             {data.content.items.map((item) => (
               <li key={item.rank}>
                 <Link
                   to={item.deeplink}
+                  viewTransition
                   className="block rounded-card border border-stroke-neutral-weak bg-bg-layer-default p-5 active:bg-bg-transparent-pressed"
                 >
                   <h2 className="text-title-3 text-fg-neutral">{item.title}</h2>
@@ -75,7 +76,7 @@ export function BriefingPage() {
             citations={data.citations}
             disclaimer={data.disclaimer}
           />
-        </>
+        </div>
       )}
     </PageMain>
   );
