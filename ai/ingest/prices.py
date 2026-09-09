@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
 import pandas as pd
@@ -31,6 +32,8 @@ logger = logging.getLogger("ingest.prices")
 
 # pykrx는 KRX를 직접 호출한다. 과하게 두드리면 차단되므로 간격을 둔다.
 REQUEST_DELAY_S = 0.2
+UNIVERSE_PAGE_SIZE = 100
+UNIVERSE_PATH = "/internal/v1/ai/price-universe"
 
 # pykrx 한글 컬럼 → 모델 컬럼
 COLUMN_MAP = {
@@ -40,6 +43,12 @@ COLUMN_MAP = {
     "종가": "close",
     "거래량": "volume",
 }
+
+
+@dataclass(frozen=True)
+class PriceUniverse:
+    tickers: tuple[str, ...]
+    as_of: str
 
 
 def _yyyymmdd(d: date) -> str:
@@ -142,6 +151,77 @@ async def _target_tickers(
     return list((await session.scalars(stmt)).all())
 
 
+def _fetch_price_universe(client: object | None = None) -> PriceUniverse:
+    """백엔드가 소유한 AI 가격 유니버스를 전부 읽는다.
+
+    `--existing-only`의 이름은 기존 크론 호환을 위해 유지하지만, 운영에서는
+    DB에 이미 있는 종목이 아니라 백엔드의 매수 가능 목록을 기준으로 삼는다.
+    호출 실패나 계약 위반은 예외로 남겨 기존 price_daily를 건드리지 않는다.
+    """
+    import httpx
+
+    headers = {settings.internal_token_header: settings.backend_service_token}
+    owned = client is None
+    http = client or httpx.Client(timeout=10.0)
+    cursor: str | None = None
+    tickers: list[str] = []
+    seen: set[str] = set()
+    as_of: str | None = None
+    try:
+        while True:
+            params: dict[str, object] = {"size": UNIVERSE_PAGE_SIZE}
+            if cursor is not None:
+                params["cursor"] = cursor
+            response = http.get(
+                f"{settings.backend_base_url.rstrip('/')}{UNIVERSE_PATH}",
+                params=params,
+                headers=headers,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("시장 유니버스 응답이 객체가 아니다")
+
+            page_as_of = payload.get("asOf")
+            if not isinstance(page_as_of, str) or not page_as_of:
+                raise ValueError("시장 유니버스 응답에 asOf가 없다")
+            if as_of is None:
+                as_of = page_as_of
+            elif page_as_of != as_of:
+                raise ValueError("시장 유니버스 페이지의 asOf가 서로 다르다")
+
+            items = payload.get("items")
+            if not isinstance(items, list):
+                raise ValueError("시장 유니버스 응답에 items가 없다")
+            for item in items:
+                ticker = item.get("stockCode") if isinstance(item, dict) else None
+                if not isinstance(ticker, str) or len(ticker) != 6 or not ticker.isdigit():
+                    raise ValueError("시장 유니버스에 잘못된 stockCode가 있다")
+                if ticker in seen:
+                    raise ValueError(f"시장 유니버스에 중복된 stockCode가 있다: {ticker}")
+                seen.add(ticker)
+                tickers.append(ticker)
+
+            has_next = payload.get("hasNext")
+            next_cursor = payload.get("nextCursor")
+            if not isinstance(has_next, bool):
+                raise ValueError("시장 유니버스 응답에 hasNext가 없다")
+            if not has_next:
+                if not tickers:
+                    raise RuntimeError("시장 유니버스가 비어 있다")
+                return PriceUniverse(tuple(tickers), as_of)
+            if not isinstance(next_cursor, str) or not next_cursor:
+                raise ValueError("hasNext=true인데 nextCursor가 없다")
+            if next_cursor == cursor:
+                raise ValueError("시장 유니버스 cursor가 진행하지 않는다")
+            cursor = next_cursor
+            if len(tickers) > 100_000:
+                raise RuntimeError("시장 유니버스 페이징이 끝나지 않는다")
+    finally:
+        if owned:
+            http.close()
+
+
 async def _last_date(session: AsyncSession, ticker: str) -> date | None:
     return await session.scalar(
         select(func.max(PriceDaily.trade_date)).where(PriceDaily.ticker == ticker)
@@ -184,9 +264,16 @@ async def ingest(
     start = end - timedelta(days=days)
     stats = {"tickers": 0, "rows": 0, "skipped": 0, "failed": 0}
 
+    universe: PriceUniverse | None = None
+    if existing_only:
+        universe = await asyncio.to_thread(_fetch_price_universe)
+        logger.info("백엔드 시장 유니버스 %s 기준 · 대상 %d종목", universe.as_of, len(universe.tickers))
+
     async with SessionFactory() as session:
-        targets = await _target_tickers(
-            session, tickers, limit, existing_only=existing_only
+        targets = (
+            list(universe.tickers)
+            if universe is not None
+            else await _target_tickers(session, tickers, limit, existing_only=False)
         )
         if not targets:
             logger.warning(
@@ -241,7 +328,7 @@ async def _main() -> None:
     parser.add_argument(
         "--existing-only",
         action="store_true",
-        help="price_daily에 이미 행이 있는 종목만 증분 갱신",
+        help="백엔드 price-universe에 있는 종목만 증분 갱신 (기존 옵션명)",
     )
     parser.add_argument(
         "--full", action="store_true", help="증분 무시하고 구간 전체 재적재"
