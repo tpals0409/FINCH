@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { usePortfolio } from '@/features/portfolio/api/usePortfolio';
+import {
+  sortHoldings,
+  type PortfolioSort,
+} from '@/features/portfolio/lib/sortHoldings';
 import { ROUTES } from '@/shared/config/routes';
 import {
   formatKrw,
@@ -16,12 +20,14 @@ import { Card } from '@/shared/ui/Card';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { SupportingText } from '@/shared/ui/SupportingText';
 
-type PortfolioSort = 'evaluation' | 'profitRate';
 type ValueDisplay = 'currentPrice' | 'evaluationAmount';
 
 const SORT_OPTIONS = [
-  { value: 'profitRate', label: '수익률 높은 순' },
-  { value: 'evaluation', label: '평가금액 높은 순' },
+  { value: 'profitRateDesc', label: '총 수익률 높은 순' },
+  { value: 'profitRateAsc', label: '총 수익률 낮은 순' },
+  { value: 'evaluationDesc', label: '평가금 높은 순' },
+  { value: 'evaluationAsc', label: '평가금 낮은 순' },
+  { value: 'nameAsc', label: '가나다 순' },
 ] as const satisfies readonly { value: PortfolioSort; label: string }[];
 
 const DIRECTION_CLASS = {
@@ -34,21 +40,6 @@ function getHoldingValue(holding: Holding, display: ValueDisplay) {
   return display === 'currentPrice'
     ? holding.currentPrice
     : holding.evaluationAmount;
-}
-
-function sortHoldings(holdings: Holding[], sort: PortfolioSort) {
-  return [...holdings].sort((left, right) => {
-    if (sort === 'profitRate') {
-      return (
-        (right.evaluationProfitRate ?? Number.NEGATIVE_INFINITY) -
-        (left.evaluationProfitRate ?? Number.NEGATIVE_INFINITY)
-      );
-    }
-    return (
-      (right.evaluationAmount ?? Number.NEGATIVE_INFINITY) -
-      (left.evaluationAmount ?? Number.NEGATIVE_INFINITY)
-    );
-  });
 }
 
 function summarizePerformance(portfolio: PortfolioResponse) {
@@ -152,7 +143,7 @@ function HoldingRow({
 }
 
 function PortfolioContent({ portfolio }: { portfolio: PortfolioResponse }) {
-  const [sort, setSort] = useState<PortfolioSort>('profitRate');
+  const [sort, setSort] = useState<PortfolioSort>('profitRateDesc');
   const [display, setDisplay] = useState<ValueDisplay>('currentPrice');
   const holdings = useMemo(
     () => sortHoldings(portfolio.holdings, sort),
@@ -170,7 +161,7 @@ function PortfolioContent({ portfolio }: { portfolio: PortfolioResponse }) {
         <BottomSheetSelect
           value={sort}
           options={SORT_OPTIONS}
-          label="보유 종목 정렬"
+          label="어떤 순서로 볼까요?"
           onChange={setSort}
         />
         <div
