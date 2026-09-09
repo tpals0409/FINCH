@@ -75,6 +75,30 @@ internal class KisPriceCollectorTest {
 	}
 
 	@Test
+	fun `KIS 실패 로그에 상태 코드와 마스킹된 응답 본문을 남긴다`(output: CapturedOutput) {
+		given(lease.acquireOrRenew()).willReturn(true)
+		given(pacer.awaitPermit()).willReturn(true)
+		given(targetRepository.findAfter("", 2)).willReturn(listOf("005930"))
+		given(client.fetch("005930")).willThrow(
+			KisApiException(
+				retryable = false,
+				status = 400,
+				code = "EGW00201",
+				responseBody = """{"rt_cd":"1","msg_cd":"EGW00201","msg1":"종목코드 오류","access_token":"[REDACTED]"}""",
+			),
+		)
+		val collector = collector()
+
+		collector.collect()
+
+		assertThat(output).contains(
+			"KIS 시세 수집 실패 stockCode=005930 retryable=false retryAfter=null " +
+				"responseBody={\"rt_cd\":\"1\",\"msg_cd\":\"EGW00201\",\"msg1\":\"종목코드 오류\",\"access_token\":\"[REDACTED]\"}",
+		)
+		assertThat(output).contains("KIS API 실패 status=400 code=EGW00201")
+	}
+
+	@Test
 	fun `KST 장 운영시간이 지나면 임대와 KIS를 호출하지 않는다`() {
 		val afterClose = Clock.fixed(Instant.parse("2026-09-07T06:30:01Z"), ZoneOffset.UTC)
 		val collector = KisPriceCollector(
