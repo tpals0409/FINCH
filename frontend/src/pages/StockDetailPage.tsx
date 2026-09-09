@@ -17,7 +17,7 @@ import {
   type CandlePeriod,
   type StockHoldingSummary,
 } from '@/shared/types/stock';
-import { BackButton } from '@/shared/ui/BackButton';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { NumericValue } from '@/shared/ui/NumericValue';
@@ -54,6 +54,7 @@ export function StockDetailPage() {
   if (isPending) {
     return (
       <PageMain>
+        <AppBar title="종목 상세" />
         <Skeleton className="h-7 w-40" />
         <Skeleton className="mt-4 h-12 w-56" />
         <Skeleton className="mt-6 h-24 w-full" />
@@ -64,6 +65,7 @@ export function StockDetailPage() {
   if (isError) {
     return (
       <PageMain>
+        <AppBar title="종목 상세" />
         <Card>
           <SupportingText>종목 정보를 불러오지 못했어요</SupportingText>
           <Button
@@ -80,10 +82,7 @@ export function StockDetailPage() {
 
   return (
     <PageMain>
-      <header className="sticky top-0 z-(--z-sticky) -mx-5 -mt-[calc(1.5rem+env(safe-area-inset-top))] mb-2 bg-bg-layer-default px-5 pt-[calc(1.5rem+env(safe-area-inset-top))]">
-        <BackButton fallbackTo={ROUTES.search} />
-      </header>
-      <h1 className="text-title-2 text-fg-neutral">{data.stockName}</h1>
+      <AppBar title={data.stockName} fallbackTo={ROUTES.search} />
       <SupportingText className="mt-1 tabular-nums">
         {data.stockCode} · {data.market}
       </SupportingText>

@@ -6,6 +6,7 @@ import {
   useStockSearch,
 } from '@/features/stocks';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -31,7 +32,7 @@ export function StockSearchPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">종목 검색</h1>
+      <AppBar title="종목 검색" />
 
       <input
         type="search"

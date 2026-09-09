@@ -16,6 +16,7 @@ import {
   type AiWikiThesis,
   isUserStated,
 } from '@/shared/types/ai/wiki';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -40,7 +41,7 @@ export function MyWikiPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">AI가 이해한 나</h1>
+      <AppBar title="AI가 이해한 나" />
       <SupportingText className="mt-1">
         거래와 대화에서 알게 된 것들이에요. 틀린 건 지워 주세요
       </SupportingText>

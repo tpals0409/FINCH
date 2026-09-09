@@ -7,6 +7,7 @@ import {
   useAiChat,
 } from '@/features/ai';
 import type { AiChatResponse } from '@/shared/types/ai/chat';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -61,7 +62,7 @@ export function ChatPage() {
 
   return (
     <PageMain className="flex min-h-dvh flex-col">
-      <h1 className="text-title-2 text-fg-neutral">AI에게 묻기</h1>
+      <AppBar title="AI에게 묻기" />
 
       <ul className="mt-4 flex-1 space-y-3">
         {turns.length === 0 ? (

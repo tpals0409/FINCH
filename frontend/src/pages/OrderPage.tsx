@@ -8,6 +8,7 @@ import { createIdempotencyKey } from '@/shared/lib/idempotencyKey';
 import type { OrderSide } from '@/shared/types/order';
 import { StockCodeSchema } from '@/shared/types/primitives';
 import type { IdempotencyKey } from '@/shared/types/primitives';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { NumericValue } from '@/shared/ui/NumericValue';
@@ -70,6 +71,7 @@ export function OrderPage() {
   if (available.isPending) {
     return (
       <PageMain>
+        <AppBar title={`${stockCode} 주문`} />
         <Skeleton className="h-7 w-32" />
         <Skeleton className="mt-4 h-24 w-full" />
       </PageMain>
@@ -79,6 +81,7 @@ export function OrderPage() {
   if (available.isError) {
     return (
       <PageMain>
+        <AppBar title={`${stockCode} 주문`} />
         <Card>
           <SupportingText>주문 정보를 불러오지 못했어요</SupportingText>
           <Button onClick={() => void available.refetch()} className="mt-3">
@@ -97,7 +100,7 @@ export function OrderPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">{stockCode} 주문</h1>
+      <AppBar title={`${stockCode} 주문`} />
 
       <div className="mt-4 flex gap-2" role="group" aria-label="주문 방향">
         {(['BUY', 'SELL'] as const).map((value) => (

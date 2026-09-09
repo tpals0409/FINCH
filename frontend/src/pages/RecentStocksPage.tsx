@@ -6,6 +6,7 @@ import {
   useRemoveRecentStock,
 } from '@/features/stocks';
 import { ROUTES } from '@/shared/config/routes';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -24,19 +25,21 @@ export function RecentStocksPage() {
 
   return (
     <PageMain>
-      <div className="flex items-center justify-between">
-        <h1 className="text-title-2 text-fg-neutral">최근 본 종목</h1>
-        {data !== undefined && data.items.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => remove.mutate(undefined)}
-            disabled={remove.isPending}
-            className="text-supporting underline disabled:text-fg-disabled"
-          >
-            전체 삭제
-          </button>
-        ) : null}
-      </div>
+      <AppBar
+        title="최근 본 종목"
+        actions={
+          data !== undefined && data.items.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => remove.mutate(undefined)}
+              disabled={remove.isPending}
+              className="text-supporting underline disabled:text-fg-disabled"
+            >
+              전체 삭제
+            </button>
+          ) : null
+        }
+      />
 
       {isPending ? (
         <div className="mt-4 space-y-2">

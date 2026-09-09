@@ -4,6 +4,7 @@ import {
   EmptyHoldings,
   useAccountSummary,
 } from '@/features/account';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -21,7 +22,7 @@ export function PortfolioPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">포트폴리오</h1>
+      <AppBar title="포트폴리오" />
 
       <div className="mt-4 space-y-4">
         {isPending ? <AccountSummaryCardSkeleton /> : null}

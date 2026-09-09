@@ -8,47 +8,45 @@ import { PortfolioSection } from '@/features/portfolio';
 import { WatchlistSection } from '@/features/stocks';
 import { ROUTES } from '@/shared/config/routes';
 import { formatKrw } from '@/shared/lib/formatNumber';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { SupportingText } from '@/shared/ui/SupportingText';
 
-function HomeHeader() {
+function HomeActions() {
   return (
-    <header className="flex items-center justify-between">
-      <p className="text-title-3 text-fg-neutral">FINCH</p>
-      <nav aria-label="홈 메뉴" className="flex items-center gap-1">
-        <Link
-          to={ROUTES.search}
-          aria-label="종목 검색"
-          className="flex size-11 items-center justify-center rounded-md text-fg-neutral"
+    <nav aria-label="홈 메뉴" className="flex items-center gap-1">
+      <Link
+        to={ROUTES.search}
+        aria-label="종목 검색"
+        className="flex size-11 items-center justify-center rounded-md text-fg-neutral"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-6 fill-none stroke-current"
+          strokeWidth="1.8"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            className="size-6 fill-none stroke-current"
-            strokeWidth="1.8"
-          >
-            <circle cx="10.8" cy="10.8" r="5.8" />
-            <path d="m15.2 15.2 4.6 4.6" strokeLinecap="round" />
-          </svg>
-        </Link>
-        <Link
-          to={ROUTES.my}
-          aria-label="내 정보"
-          className="flex size-11 items-center justify-center rounded-md text-fg-neutral"
+          <circle cx="10.8" cy="10.8" r="5.8" />
+          <path d="m15.2 15.2 4.6 4.6" strokeLinecap="round" />
+        </svg>
+      </Link>
+      <Link
+        to={ROUTES.my}
+        aria-label="내 정보"
+        className="flex size-11 items-center justify-center rounded-md text-fg-neutral"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          className="size-6 fill-none stroke-current"
+          strokeWidth="1.8"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            className="size-6 fill-none stroke-current"
-            strokeWidth="1.8"
-          >
-            <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-          </svg>
-        </Link>
-      </nav>
-    </header>
+          <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+        </svg>
+      </Link>
+    </nav>
   );
 }
 
@@ -81,8 +79,7 @@ export function HomePage() {
 
   return (
     <PageMain>
-      <h1 className="sr-only">홈</h1>
-      <HomeHeader />
+      <AppBar title="FINCH" actions={<HomeActions />} />
 
       {isPending ? (
         <AccountSummaryCardSkeleton />

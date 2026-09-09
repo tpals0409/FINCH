@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { LogoutButton } from '@/features/auth';
 import { ROUTES } from '@/shared/config/routes';
+import { AppBar } from '@/shared/ui/AppBar';
 import { PageMain } from '@/shared/ui/PageMain';
 
 /**
@@ -25,7 +26,7 @@ const MENU = [
 export function MyPage() {
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">내 정보</h1>
+      <AppBar title="내 정보" />
 
       <ul className="mt-4">
         {MENU.map((item) => (

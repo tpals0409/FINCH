@@ -7,6 +7,7 @@ import {
   useTransactions,
 } from '@/features/transactions';
 import type { TransactionFilter } from '@/shared/types/portfolio';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -41,7 +42,7 @@ export function TransactionsPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">매매 내역</h1>
+      <AppBar title="매매 내역" />
 
       <div className="mt-4">
         <TransactionFilterTabs value={filter} onChange={setFilter} />
