@@ -3,6 +3,7 @@ package com.finch.global.config
 import com.finch.global.security.JwtAuthenticationEntryPoint
 import com.finch.global.security.JwtAuthenticationFilter
 import com.finch.global.security.JwtProvider
+import com.finch.global.security.InternalTokenAuthenticationFilter
 import jakarta.servlet.DispatcherType
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -11,6 +12,7 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import tools.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Value
 
 @Configuration
 class SecurityConfig {
@@ -35,7 +37,12 @@ class SecurityConfig {
 	 * 도메인 설정을 두지 않는 것이 팀 규약이다 (frontConvention 2.3, 프론트 contracts C32).
 	 */
 	@Bean
-	fun filterChain(http: HttpSecurity, jwtProvider: JwtProvider, objectMapper: ObjectMapper): SecurityFilterChain =
+	fun filterChain(
+		http: HttpSecurity,
+		jwtProvider: JwtProvider,
+		objectMapper: ObjectMapper,
+		@Value("\${finch.ai.internal-token:}") internalToken: String,
+	): SecurityFilterChain =
 		http
 			.csrf { csrf -> csrf.disable() }
 			.sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
@@ -57,7 +64,8 @@ class SecurityConfig {
 			// UsernamePasswordAuthenticationFilter 자리 앞에 끼운다. 그 필터는 폼 로그인용이라 이 체인에
 			// 없지만, addFilterBefore 는 실제 등록 여부가 아니라 등록된 순서표를 보므로 자리는 정해진다.
 			// 요구 조건은 "인증 판정(AuthorizationFilter)보다 앞" 하나뿐이고 이 자리가 관례다.
-			.addFilterBefore(JwtAuthenticationFilter(jwtProvider), UsernamePasswordAuthenticationFilter::class.java)
+			.addFilterBefore(InternalTokenAuthenticationFilter(internalToken), UsernamePasswordAuthenticationFilter::class.java)
+			.addFilterBefore(JwtAuthenticationFilter(jwtProvider), InternalTokenAuthenticationFilter::class.java)
 			.build()
 
 	companion object {
