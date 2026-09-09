@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@capacitor/core": "^7.4.3",
-    "@capacitor/ios": "^7.6.9"
+    "@capacitor/ios": "^7.6.9",
+    "@capacitor/splash-screen": "^7.0.5"
   },
   "devDependencies": {
     "@capacitor/android": "^7.4.3",
