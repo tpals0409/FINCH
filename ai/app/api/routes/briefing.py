@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 
 from app.api.deps import CurrentUser, DbSession, UsageLimit
-from app.core.adapters import Ledger, ledger_source
+from app.core.adapters import Ledger, ledger_fingerprint, ledger_source
 from app.core.enums import BriefingStatus, CitationType, MetricSource, RateSensitivity
 from app.core.errors import InsufficientData
 from app.core.models import AIResponse, Document, Event
@@ -123,12 +123,19 @@ async def build_briefing(
     if ledger is None:
         return await _empty(db, user_id, requested, now)
 
+    fingerprint = ledger_fingerprint(ledger)
     day = _resolve_day(ledger, requested)
     if day is None:
-        return await _empty(db, user_id, requested, now)
+        return await _empty(db, user_id, requested, now, fingerprint=fingerprint)
 
-    if use_cache and (cached := await _cached_briefing(db, user_id, day)):
-        await record(db, cached, user_id=user_id, endpoint=_ENDPOINT)
+    if use_cache and (cached := await _cached_briefing(db, user_id, day, fingerprint)):
+        await record(
+            db,
+            cached,
+            user_id=user_id,
+            endpoint=_ENDPOINT,
+            guardrail_result={"ledger_fingerprint": fingerprint},
+        )
         return cached
 
     engine = PortfolioEngine(ledger)
@@ -150,7 +157,7 @@ async def build_briefing(
     ]
     top = rank(candidates, seen_keys=await _seen_keys(db, user_id, now))
     if not top:
-        return await _empty(db, user_id, day, now)
+        return await _empty(db, user_id, day, now, fingerprint=fingerprint)
 
     citations_by_document, citations = await _briefing_citations(db, top)
 
@@ -233,18 +240,24 @@ async def build_briefing(
         ),
     )
     # 다음 날 novelty가 읽을 행이 되고, 피드백이 참조할 행이 된다(§10).
-    await record(db, envelope, user_id=user_id, endpoint=_ENDPOINT)
+    await record(
+        db,
+        envelope,
+        user_id=user_id,
+        endpoint=_ENDPOINT,
+        guardrail_result={"ledger_fingerprint": fingerprint},
+    )
     return envelope
 
 
 async def _cached_briefing(
-    db: DbSession, user_id: str, day: Date
+    db: DbSession, user_id: str, day: Date, fingerprint: str
 ) -> Envelope[BriefingContent] | None:
     """같은 사용자·거래일·프롬프트 버전의 가장 최근 브리핑."""
     try:
         payloads = (
-            await db.scalars(
-                select(AIResponse.payload)
+            await db.execute(
+                select(AIResponse.payload, AIResponse.guardrail_result)
                 .where(
                     AIResponse.user_id == user_id,
                     AIResponse.endpoint == _ENDPOINT,
@@ -258,7 +271,9 @@ async def _cached_briefing(
         log.warning("사용자 %s 브리핑 캐시 조회 실패", user_id, exc_info=True)
         return None
 
-    for payload in payloads:
+    for payload, metadata in payloads:
+        if not isinstance(metadata, dict) or metadata.get("ledger_fingerprint") != fingerprint:
+            continue
         if not isinstance(payload, dict):
             continue
         content = payload.get("content")
@@ -279,7 +294,12 @@ async def _cached_briefing(
 
 # ── 응답 조립 ─────────────────────────────────────────────────────────────────
 async def _empty(
-    db: DbSession, user_id: str, day: Date | None, now: datetime
+    db: DbSession,
+    user_id: str,
+    day: Date | None,
+    now: datetime,
+    *,
+    fingerprint: str | None = None,
 ) -> Envelope[BriefingContent]:
     """보유 종목이 없거나 내보낼 항목이 없을 때. 오류가 아니다."""
     envelope = Envelope[BriefingContent](
@@ -290,7 +310,15 @@ async def _empty(
             "items": [],
         }
     )
-    await record(db, envelope, user_id=user_id, endpoint=_ENDPOINT)
+    await record(
+        db,
+        envelope,
+        user_id=user_id,
+        endpoint=_ENDPOINT,
+        guardrail_result=(
+            {"ledger_fingerprint": fingerprint} if fingerprint is not None else None
+        ),
+    )
     return envelope
 
 
