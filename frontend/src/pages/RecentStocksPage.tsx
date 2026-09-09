@@ -42,13 +42,13 @@ export function RecentStocksPage() {
       />
 
       {isPending ? (
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
         </div>
       ) : isError ? (
-        <Card className="mt-4">
+        <Card>
           <SupportingText>최근 본 종목을 불러오지 못했어요</SupportingText>
           <Button
             onClick={() => void refetch()}
@@ -59,7 +59,7 @@ export function RecentStocksPage() {
           </Button>
         </Card>
       ) : data.items.length === 0 ? (
-        <Card className="mt-4">
+        <Card>
           <SupportingText>아직 본 종목이 없어요</SupportingText>
           <Link
             to={ROUTES.search}

@@ -52,7 +52,7 @@ function HomeActions() {
 
 function CashBalanceCard({ cashBalance }: { cashBalance: number }) {
   return (
-    <Card className="mt-5">
+    <Card>
       <SupportingText size="caption">원화 잔고</SupportingText>
       <p className="mt-1 text-title-1 text-fg-neutral">
         {formatKrw(cashBalance)}

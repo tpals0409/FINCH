@@ -64,7 +64,7 @@ export function ChatPage() {
     <PageMain className="flex min-h-dvh flex-col">
       <AppBar title="AI에게 묻기" />
 
-      <ul className="mt-4 flex-1 space-y-3">
+      <ul className="flex-1 space-y-3">
         {turns.length === 0 ? (
           <li>
             <Card>

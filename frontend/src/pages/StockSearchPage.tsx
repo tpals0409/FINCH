@@ -40,7 +40,7 @@ export function StockSearchPage() {
         onChange={(event) => setKeyword(event.target.value)}
         placeholder="종목명 또는 종목코드"
         aria-label="종목 검색"
-        className="mt-4 w-full rounded-card border border-stroke-neutral-weak bg-bg-layer-default px-4 py-3 text-body-1 text-fg-neutral placeholder:text-fg-placeholder"
+        className="w-full rounded-card border border-stroke-neutral-weak bg-bg-layer-default px-4 py-3 text-body-1 text-fg-neutral placeholder:text-fg-placeholder"
       />
 
       {!isReady ? (

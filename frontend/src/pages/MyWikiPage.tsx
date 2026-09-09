@@ -42,12 +42,12 @@ export function MyWikiPage() {
   return (
     <PageMain>
       <AppBar title="AI가 이해한 나" />
-      <SupportingText className="mt-1">
+      <SupportingText>
         거래와 대화에서 알게 된 것들이에요. 틀린 건 지워 주세요
       </SupportingText>
 
       {isPending ? (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>

@@ -136,7 +136,7 @@ export function DepositPage() {
         있고 이건 그 위에 덧대는 층이다. 그래도 닫는 이유는, 모달 뒤에서 눌리는 CTA 는
         중복 충전이 아니더라도 그 자체로 결함이기 때문이다.
       */}
-      <div className="mt-4" inert={isInProgress}>
+      <div inert={isInProgress}>
         {step === 'method' ? (
           <PaymentMethodStep
             onSelect={(method) => {
