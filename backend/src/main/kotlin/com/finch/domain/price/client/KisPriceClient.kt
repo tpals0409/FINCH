@@ -58,11 +58,13 @@ internal class KisPriceClient internal constructor(
 		)
 
 		if (response.status == 429) {
+			val details = errorDetails(response.body)
 			throw KisApiException(
 				retryable = true,
 				retryAfter = retryAfter(response.retryAfter),
 				status = response.status,
-				responseBody = sanitizeForLog(response.body),
+				kisMsgCd = details.code,
+				kisMsg = details.message,
 			)
 		}
 
@@ -72,11 +74,13 @@ internal class KisPriceClient internal constructor(
 			return fetch(stockCode, mayRefreshToken = false)
 		}
 		if (response.status !in 200..299 || body?.resultCode != SUCCESS_CODE) {
+			val details = errorDetails(response.body)
 			throw KisApiException(
 				retryable = response.status >= 500 || response.status == 408,
 				status = response.status,
 				code = body?.messageCode,
-				responseBody = sanitizeForLog(response.body),
+				kisMsgCd = details.code,
+				kisMsg = details.message,
 			)
 		}
 
@@ -85,7 +89,6 @@ internal class KisPriceClient internal constructor(
 				retryable = false,
 				status = response.status,
 				code = "INVALID_PRICE",
-				responseBody = sanitizeForLog(response.body),
 			)
 		return PriceTick(currentPrice, OffsetDateTime.ofInstant(clock.instant(), KST))
 	}
@@ -102,13 +105,15 @@ internal class KisPriceClient internal constructor(
 				.bodyValue(TokenRequest(appKey, appSecret)),
 		)
 		val body = parse(response.body, KisTokenResponse::class.java)
+		val details = errorDetails(response.body)
 		if (body?.errorCode == TOKEN_RATE_LIMIT_CODE) {
 			throw KisApiException(
 				retryable = true,
 				retryAfter = TOKEN_RATE_LIMIT_DELAY,
 				status = response.status,
 				code = body.errorCode,
-				responseBody = sanitizeForLog(response.body),
+				kisMsgCd = details.code,
+				kisMsg = details.message,
 			)
 		}
 		if (response.status !in 200..299) {
@@ -117,7 +122,8 @@ internal class KisPriceClient internal constructor(
 				retryAfter = if (response.status == 429) retryAfter(response.retryAfter) else null,
 				status = response.status,
 				code = body?.errorCode,
-				responseBody = sanitizeForLog(response.body),
+				kisMsgCd = details.code,
+				kisMsg = details.message,
 			)
 		}
 
@@ -128,7 +134,6 @@ internal class KisPriceClient internal constructor(
 				retryable = false,
 				status = response.status,
 				code = "INVALID_TOKEN_RESPONSE",
-				responseBody = sanitizeForLog(response.body),
 			)
 		}
 
@@ -175,17 +180,16 @@ internal class KisPriceClient internal constructor(
 		}.getOrNull()
 	}
 
-	private fun sanitizeForLog(raw: String): String? {
-		if (raw.isBlank()) return null
-		val redacted = SENSITIVE_JSON_FIELD.replace(raw) { match ->
-			"${match.groupValues[1]}\"[REDACTED]\""
-		}
-		return redacted.take(MAX_LOG_BODY_LENGTH)
+	private fun errorDetails(raw: String): ErrorDetails {
+		val body = parse(raw, KisErrorResponse::class.java)
+		return ErrorDetails(body?.messageCode ?: body?.errorCode, body?.message)
 	}
 
 	private data class CachedToken(val value: String, val refreshAt: java.time.Instant)
 
 	private data class HttpResponse(val status: Int, val body: String, val retryAfter: String?)
+
+	private data class ErrorDetails(val code: String?, val message: String?)
 
 	private data class TokenRequest(
 		val appkey: String,
@@ -197,6 +201,13 @@ internal class KisPriceClient internal constructor(
 	private data class KisTokenResponse(
 		@param:JsonProperty("access_token") val accessToken: String?,
 		@param:JsonProperty("expires_in") val expiresIn: Long?,
+		@param:JsonProperty("error_code") val errorCode: String?,
+	)
+
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	private data class KisErrorResponse(
+		@param:JsonProperty("msg_cd") val messageCode: String?,
+		@param:JsonProperty("msg1") val message: String?,
 		@param:JsonProperty("error_code") val errorCode: String?,
 	)
 
@@ -223,9 +234,5 @@ internal class KisPriceClient internal constructor(
 		private val TOKEN_REFRESH_AHEAD = Duration.ofMinutes(1)
 		private val TOKEN_RATE_LIMIT_DELAY = Duration.ofMinutes(1)
 		private val KST = ZoneId.of("Asia/Seoul")
-		private const val MAX_LOG_BODY_LENGTH = 512
-		private val SENSITIVE_JSON_FIELD = Regex(
-			"(?i)(\\\"?(?:access_token|refresh_token|appkey|appsecret|authorization|token|secret)\\\"?\\s*:\\s*)(\\\"(?:\\\\.|[^\\\"])*\\\"|[^,}\\s]+)",
-		)
 	}
 }

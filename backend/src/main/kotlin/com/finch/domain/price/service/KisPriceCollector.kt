@@ -87,11 +87,12 @@ internal class KisPriceCollector internal constructor(
 				// Retry-After 없는 429 가 전부 같은 줄로 보여 원인을 못 가른다. status·code 는
 				// KisApiException 메시지에 있고, 그 메시지는 본문과 토큰을 담지 않는다.
 				log.warn(
-					"KIS 시세 수집 실패 stockCode={} retryable={} retryAfter={} responseBody={}",
+					"KIS 시세 수집 실패 stockCode={} retryable={} retryAfter={} kisMsgCd={} kisMsg={}",
 					stockCode,
 					e.retryable,
 					e.retryAfter,
-					e.responseBody,
+					e.kisMsgCd,
+					e.kisMsg,
 					e,
 				)
 				if (e.retryable) return

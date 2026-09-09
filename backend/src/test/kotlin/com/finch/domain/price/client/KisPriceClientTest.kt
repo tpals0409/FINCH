@@ -105,8 +105,8 @@ internal class KisPriceClientTest {
 	}
 
 	@Test
-	@DisplayName("KIS 실패 본문을 보존하되 토큰 필드는 마스킹한다")
-	fun keepsSanitizedFailureBody() {
+	@DisplayName("KIS 실패 코드와 메시지만 보존하고 토큰은 남기지 않는다")
+	fun keepsKisFailureDetails() {
 		val client = clientOf { request ->
 			if (request.method().name() == "POST") json(HttpStatus.OK, fixture("token-success.json"))
 			else json(
@@ -117,8 +117,11 @@ internal class KisPriceClientTest {
 
 		assertThatThrownBy { client.fetch("005930") }
 			.isInstanceOf(KisApiException::class.java)
-			.extracting("responseBody")
-			.isEqualTo("""{"rt_cd":"1","msg_cd":"E123","msg1":"종목코드 오류","access_token":"[REDACTED]"}""")
+			.extracting("kisMsgCd", "kisMsg")
+			.containsExactly("E123", "종목코드 오류")
+		assertThatThrownBy { client.fetch("005930") }
+			.isInstanceOf(KisApiException::class.java)
+			.hasMessageNotContaining("do-not-log")
 	}
 
 	private fun clientOf(responder: (ClientRequest) -> ClientResponse): KisPriceClient {
