@@ -104,6 +104,26 @@ internal class KisPriceClientTest {
 			.hasMessageContaining("INVALID_PRICE")
 	}
 
+	@Test
+	@DisplayName("KIS 실패 코드와 메시지만 보존하고 토큰은 남기지 않는다")
+	fun keepsKisFailureDetails() {
+		val client = clientOf { request ->
+			if (request.method().name() == "POST") json(HttpStatus.OK, fixture("token-success.json"))
+			else json(
+				HttpStatus.BAD_REQUEST,
+				"""{"rt_cd":"1","msg_cd":"E123","msg1":"종목코드 오류","access_token":"do-not-log"}""",
+			)
+		}
+
+		assertThatThrownBy { client.fetch("005930") }
+			.isInstanceOf(KisApiException::class.java)
+			.extracting("kisMsgCd", "kisMsg")
+			.containsExactly("E123", "종목코드 오류")
+		assertThatThrownBy { client.fetch("005930") }
+			.isInstanceOf(KisApiException::class.java)
+			.hasMessageNotContaining("do-not-log")
+	}
+
 	private fun clientOf(responder: (ClientRequest) -> ClientResponse): KisPriceClient {
 		val webClient = WebClient.builder()
 			.exchangeFunction { request -> Mono.just(responder(request)) }
