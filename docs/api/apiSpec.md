@@ -852,6 +852,7 @@ GET /api/v1/portfolio?sort=EVALUATION
       "quantity": 10,
       "avgBuyPrice": 71200,
       "currentPrice": 73500,
+      "previousClose": 72000,
       "evaluationAmount": 735000,
       "evaluationProfit": 23000,
       "evaluationProfitRate": 3.23

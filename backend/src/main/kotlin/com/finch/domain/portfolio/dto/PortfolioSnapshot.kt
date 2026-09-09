@@ -15,6 +15,7 @@ data class HoldingValuation(
 	val quantity: Long,
 	val avgBuyPrice: Long,
 	val currentPrice: Long?,
+	val previousClose: Long?,
 	val evaluationAmount: Long?,
 	val evaluationProfit: Long?,
 	val evaluationProfitRate: BigDecimal?,
