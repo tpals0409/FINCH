@@ -15,6 +15,9 @@ export const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
   },
+  ios: {
+    allowsLinkPreview: false,
+  },
   plugins: {
     SplashScreen: {
       backgroundColor: '#ffffff',
