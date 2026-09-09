@@ -10,6 +10,7 @@ import {
 } from '@/shared/lib/formatNumber';
 import type { Holding, PortfolioResponse } from '@/shared/types/portfolio';
 import { PercentSchema } from '@/shared/types/primitives';
+import { BottomSheetSelect } from '@/shared/ui/BottomSheetSelect';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -17,6 +18,11 @@ import { SupportingText } from '@/shared/ui/SupportingText';
 
 type PortfolioSort = 'evaluation' | 'profitRate';
 type ValueDisplay = 'currentPrice' | 'evaluationAmount';
+
+const SORT_OPTIONS = [
+  { value: 'profitRate', label: '수익률 높은 순' },
+  { value: 'evaluation', label: '평가금액 높은 순' },
+] as const satisfies readonly { value: PortfolioSort; label: string }[];
 
 const DIRECTION_CLASS = {
   rise: 'text-fg-up',
@@ -161,17 +167,12 @@ function PortfolioContent({ portfolio }: { portfolio: PortfolioResponse }) {
       <Performance portfolio={portfolio} />
 
       <div className="mt-5 flex items-center justify-between gap-3">
-        <label className="text-label text-fg-neutral-subtle">
-          <span className="sr-only">보유 종목 정렬</span>
-          <select
-            value={sort}
-            onChange={(event) => setSort(event.target.value as PortfolioSort)}
-            className="rounded-md border border-stroke-neutral-weak bg-bg-layer-default px-3 py-2 text-label text-fg-neutral"
-          >
-            <option value="profitRate">수익률 높은 순</option>
-            <option value="evaluation">평가금액 높은 순</option>
-          </select>
-        </label>
+        <BottomSheetSelect
+          value={sort}
+          options={SORT_OPTIONS}
+          label="보유 종목 정렬"
+          onChange={setSort}
+        />
         <div
           className="flex rounded-md border border-stroke-neutral-weak p-0.5"
           role="group"
