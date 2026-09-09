@@ -14,7 +14,7 @@ import asyncio
 import logging
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from enum import StrEnum
 from typing import Annotated, Any
 
@@ -28,7 +28,15 @@ from app.core.enums import EventType, MetricSource, WikiSource
 from app.core.errors import InsufficientData, InvalidRequest
 from app.core.models import AIResponse, Event
 from app.core.response_log import record
-from app.core.schemas import Citation, ContentModel, DataAsOf, Envelope, Segment, now_kst
+from app.core.schemas import (
+    KST_OFFSET_HOURS,
+    Citation,
+    ContentModel,
+    DataAsOf,
+    Envelope,
+    Segment,
+    now_kst,
+)
 from app.engines.portfolio import Holding, PortfolioEngine, PortfolioSnapshot
 from app.llm.client import NullLlmClient, get_llm_client
 from app.llm.generate import (
@@ -469,4 +477,6 @@ def _as_datetime(snapshot: PortfolioSnapshot | None) -> datetime | None:
     """스냅샷 기준일을 장 마감 시각으로 본다. 종가 기준이기 때문이다."""
     if snapshot is None:
         return None
-    return datetime.combine(snapshot.trade_date, time(15, 30))
+    return datetime.combine(
+        snapshot.trade_date, time(15, 30), timezone(timedelta(hours=KST_OFFSET_HOURS))
+    )

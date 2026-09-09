@@ -6,7 +6,7 @@ DB 연결 없이 도는 테스트만 여기 둔다. 병렬 트랙이 각자 작�
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,10 +14,15 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
 from app.api.main import API_PREFIX, app
+from app.api.routes.briefing import _as_datetime as briefing_as_datetime
+from app.api.routes.portfolio import _as_datetime as portfolio_as_datetime
+from app.api.routes.stocks import _as_datetime as stocks_as_datetime
 from app.core.config import settings
 from app.core.enums import MetricSource, SegmentType, Unit
 from app.core.models import Base
 from app.core.schemas import DataAsOf, Envelope, Section, Segment
+from app.engines.portfolio import PortfolioSnapshot
+from app.llm.tools import _as_datetime as tool_as_datetime
 
 client = TestClient(app)
 AUTH = {"X-User-Id": "u_test"}
@@ -128,6 +133,33 @@ def test_envelope_marks_only_stale_data_sources() -> None:
         "news",
     ]
     assert payload["freshness_warnings"][0]["age_seconds"] == 21 * 60
+
+
+def test_data_as_of_기준시각은_KST_오프셋을_포함한다() -> None:
+    day = date(2026, 9, 9)
+    snapshot = PortfolioSnapshot(
+        trade_date=day,
+        holdings=(),
+        cash=0.0,
+        total_value=0.0,
+        cash_weight=0.0,
+    )
+    values = [
+        briefing_as_datetime(day),
+        portfolio_as_datetime(snapshot),
+        stocks_as_datetime(snapshot),
+        tool_as_datetime(day),
+    ]
+    assert all(value.utcoffset() == timedelta(hours=9) for value in values)
+    assert Envelope[dict](
+        content={}, data_as_of=DataAsOf(price=values[0], portfolio=values[1])
+    ).model_dump(mode="json")["data_as_of"] == {
+        "price": "2026-09-09T15:30:00+09:00",
+        "portfolio": "2026-09-09T15:30:00+09:00",
+        "filings": None,
+        "news": None,
+        "macro": None,
+    }
 
 
 # ── API 계약 ─────────────────────────────────────────────

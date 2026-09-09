@@ -10,7 +10,7 @@ import asyncio
 import logging
 import uuid
 from datetime import date as Date
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter
@@ -23,7 +23,7 @@ from app.core.enums import BriefingStatus, CitationType, MetricSource, RateSensi
 from app.core.errors import InsufficientData
 from app.core.models import AIResponse, Document, Event
 from app.core.response_log import record
-from app.core.schemas import Citation, DataAsOf, Envelope, Segment, now_kst
+from app.core.schemas import KST_OFFSET_HOURS, Citation, DataAsOf, Envelope, Segment, now_kst
 from app.engines.attribution import EventRecord
 from app.engines.briefing import (
     Candidate,
@@ -507,4 +507,4 @@ async def _seen_keys(db: DbSession, user_id: str, now: datetime) -> set[str]:
 
 def _as_datetime(day: Date) -> datetime:
     """기준일을 장 마감 시각으로 본다. 종가 기준이기 때문이다."""
-    return datetime.combine(day, time(15, 30))
+    return datetime.combine(day, time(15, 30), timezone(timedelta(hours=KST_OFFSET_HOURS)))

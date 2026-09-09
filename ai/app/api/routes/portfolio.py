@@ -14,7 +14,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import Sequence
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter
@@ -27,7 +27,7 @@ from app.core.enums import MetricSource, Period
 from app.core.errors import InsufficientData, InvalidRequest
 from app.core.models import Event, IndexDaily, Instrument, PriceDaily
 from app.core.response_log import last_risk_level, record
-from app.core.schemas import DataAsOf, Envelope, Section, Segment
+from app.core.schemas import KST_OFFSET_HOURS, DataAsOf, Envelope, Section, Segment
 from app.engines.attribution import (
     AttributionResult,
     BenchmarkDay,
@@ -768,4 +768,6 @@ def _indicators(result: RiskAssessment) -> dict[str, Any]:
 
 def _as_datetime(snapshot: PortfolioSnapshot) -> datetime:
     """스냅샷 기준일을 장 마감 시각으로 본다. 종가 기준이기 때문이다."""
-    return datetime.combine(snapshot.trade_date, time(15, 30))
+    return datetime.combine(
+        snapshot.trade_date, time(15, 30), timezone(timedelta(hours=KST_OFFSET_HOURS))
+    )
