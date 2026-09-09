@@ -55,6 +55,13 @@ def _yyyymmdd(d: date) -> str:
     return d.strftime("%Y%m%d")
 
 
+def _parse_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("날짜는 YYYY-MM-DD 형식이어야 합니다") from exc
+
+
 def _fetch_ohlcv(ticker: str, start: date, end: date) -> pd.DataFrame:
     """pykrx 호출. 블로킹이므로 호출부에서 스레드로 넘긴다.
 
@@ -105,6 +112,13 @@ def _to_rows(ticker: str, df: pd.DataFrame) -> list[dict]:
             }
         )
     return rows
+
+
+def _require_trade_date(rows: list[dict], expected: date) -> None:
+    """마감 기준일이 실제 가격 응답에 포함됐는지 확인한다."""
+    if any(row["trade_date"] == expected for row in rows):
+        return
+    raise ValueError(f"기준일 {expected}의 시세가 응답에 없다")
 
 
 async def _target_tickers(
@@ -222,6 +236,25 @@ def _fetch_price_universe(client: object | None = None) -> PriceUniverse:
             http.close()
 
 
+async def _latest_market_date() -> date:
+    """KRX가 반환한 최근 확정 거래일을 읽는다.
+
+    장 마감 전에는 당일 응답이 비어 있으므로, 크론이 임의로 전일을
+    "오늘"로 간주하지 않도록 KRX 응답의 기준일을 사용한다.
+    """
+    import httpx
+
+    from ingest.krx import HTTP_TIMEOUT, _latest_stock_payload
+
+    today = date.today()
+    candidates = [today - timedelta(days=offset) for offset in range(5)]
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        trade_date, _ = await _latest_stock_payload(client, candidates)
+    if trade_date is None:
+        raise RuntimeError("최근 5일 내 KRX 확정 종가가 없다")
+    return trade_date
+
+
 async def _last_date(session: AsyncSession, ticker: str) -> date | None:
     return await session.scalar(
         select(func.max(PriceDaily.trade_date)).where(PriceDaily.ticker == ticker)
@@ -254,13 +287,18 @@ async def ingest(
     limit: int | None = None,
     full: bool = False,
     existing_only: bool = False,
+    as_of: date | None = None,
 ) -> dict[str, int]:
     """시세를 적재하고 요약을 돌려준다.
 
     full=False면 종목별 마지막 적재일 다음날부터만 받는다. 재실행 비용이 낮아
     cron으로 매일 돌려도 된다.
     """
-    end = date.today()
+    if existing_only and as_of is None:
+        as_of = await _latest_market_date()
+        logger.info("KRX 확정 기준일 %s를 사용한다", as_of)
+
+    end = as_of or date.today()
     start = end - timedelta(days=days)
     stats = {"tickers": 0, "rows": 0, "skipped": 0, "failed": 0}
 
@@ -296,6 +334,8 @@ async def ingest(
             try:
                 df = await asyncio.to_thread(_fetch_ohlcv, ticker, fetch_start, end)
                 rows = _to_rows(ticker, df)
+                if as_of is not None:
+                    _require_trade_date(rows, as_of)
                 n = await _upsert(session, rows)
                 await session.commit()
                 stats["tickers"] += 1
@@ -331,6 +371,11 @@ async def _main() -> None:
         help="백엔드 price-universe에 있는 종목만 증분 갱신 (기존 옵션명)",
     )
     parser.add_argument(
+        "--as-of",
+        type=_parse_date,
+        help="장 마감 기준일(YYYY-MM-DD). 지정하면 모든 대상에 해당일 시세가 있어야 성공",
+    )
+    parser.add_argument(
         "--full", action="store_true", help="증분 무시하고 구간 전체 재적재"
     )
     args = parser.parse_args()
@@ -353,6 +398,7 @@ async def _main() -> None:
             limit=args.limit,
             full=args.full,
             existing_only=args.existing_only,
+            as_of=args.as_of,
         )
         logger.info(
             "완료 — 적재 %d종목 / %d행 · 건너뜀 %d · 실패 %d",
@@ -361,6 +407,8 @@ async def _main() -> None:
             stats["skipped"],
             stats["failed"],
         )
+        if stats["failed"]:
+            raise SystemExit(1)
     finally:
         await engine.dispose()
 
