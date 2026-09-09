@@ -6,10 +6,12 @@ import {
   useStockSearch,
 } from '@/features/stocks';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import { useInfiniteScroll } from '@/shared/hooks/useInfiniteScroll';
 import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
+import { Skeleton } from '@/shared/ui/Skeleton';
 import { SupportingText } from '@/shared/ui/SupportingText';
 
 /**
@@ -27,8 +29,21 @@ export function StockSearchPage() {
   const trimmed = debounced.trim();
   const isReady = trimmed.length >= MIN_SEARCH_KEYWORD_LENGTH;
 
-  const { data, isPending, isError, refetch, isFetching } =
-    useStockSearch(debounced);
+  const {
+    data,
+    isPending,
+    isError,
+    refetch,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useStockSearch(debounced);
+  const stocks = data?.pages.flatMap((page) => page.items) ?? [];
+  const sentinelRef = useInfiniteScroll({
+    enabled: isReady && hasNextPage && !isFetchingNextPage,
+    onReach: () => void fetchNextPage(),
+  });
 
   return (
     <PageMain>
@@ -61,10 +76,23 @@ export function StockSearchPage() {
       ) : (
         <StockSearchResults
           keyword={trimmed}
-          stocks={data?.items ?? []}
+          stocks={stocks}
           isPending={isPending}
         />
       )}
+
+      {isReady && stocks.length > 0 ? (
+        <>
+          <div ref={sentinelRef} aria-hidden="true" />
+          {isFetchingNextPage ? (
+            <ul className="mt-2" aria-label="검색 결과 더 불러오는 중">
+              <li className="px-2 py-3">
+                <Skeleton className="h-10 w-full" />
+              </li>
+            </ul>
+          ) : null}
+        </>
+      ) : null}
     </PageMain>
   );
 }
