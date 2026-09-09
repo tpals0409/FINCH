@@ -22,6 +22,10 @@ export const queryKeys = {
     /** users.me 와 같은 이유로 식별자를 넣지 않는다. 계좌는 사용자당 하나다 (apiSpec 1.6). */
     summary: () => [...queryKeys.account.all(), 'summary'] as const,
   },
+  portfolio: {
+    all: () => ['portfolio'] as const,
+    summary: () => [...queryKeys.portfolio.all(), 'summary'] as const,
+  },
   deposits: {
     all: () => ['deposits'] as const,
     limit: () => [...queryKeys.deposits.all(), 'limit'] as const,
