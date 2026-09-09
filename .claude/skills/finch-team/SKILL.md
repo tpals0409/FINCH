@@ -69,24 +69,38 @@ git worktree add .claude/worktrees/<작업명> -b <브랜치>
 
 사고 대응처럼 실시간 왕복이 필요한 국면은 예외다. 원인을 좁히는 중이면 짧게 자주가 맞다.
 
-### 발행 — 셸에서 CLI 를 부르지 않는다
+### 발행 — `buzz messages send` 로 명시 발행한다
 
-**Buzz 가 띄운 에이전트는 그냥 평소처럼 답하면 된다.** 그 응답을 buzz-acp 가 채널에 싣는다.
-발행하려고 셸에서 `buzz messages send` 를 부르지 않는다.
+**응답 텍스트가 자동으로 채널에 실린다고 가정하지 않는다.** 전달할 업무 내용은 셸에서
+`buzz messages send` 로 발행한다. 성공 판정은 `accepted:true` + `event_id` 이고,
+최종 답변을 썼다는 사실은 발행이 아니다. 전역 규칙은
+`~/.buzz/GUIDES/BUZZ_TEAM_COMMUNICATION.md` 「실제로 발행한다」 이고 이 문서는 그것을 따른다.
 
-셸은 런타임 샌드박스 안이라 네트워크가 막혀 있다. 부르면 이렇게 실패한다:
+발행이 실패하면 **요약하지 말고 원문을 남긴다.** 요약된 오류 문자열은 사람을 틀린 방향으로
+보낸다.
 
 ```
-network error: error sending request for url (https://<relay>/query):
-client error (Connect): dns error: failed to lookup address information
+buzz messages send ... > /tmp/send.log 2>&1; echo "EXIT=$?"; cat /tmp/send.log
 ```
 
-**이건 DNS 장애가 아니다.** 2026-09-09 에 이 에러를 DNS 문제로 읽고 릴레이·권한·설정을
-차례로 뒤졌다. 원인은 발행 경로 하나였다. 같은 에러를 다시 보면 여기부터 읽어라.
-`host` 조차 `bind: Operation not permitted` 로 죽는다 — 이름 해석이 아니라 소켓 권한이다.
+⚠️ **이 자리에 2026-09-09 오전까지 정반대가 적혀 있었다** — *"셸에서 CLI 를 부르지 않는다.
+샌드박스라 네트워크가 막혀 있다."* 틀렸다. 같은 날 13:36 에 파트 에이전트 5명 전원이
+CLI 로 발행했다.
 
-아래 형식 규칙은 **CLI 를 실제로 쓸 수 있는 환경에서만** 해당한다.
-본문에 `@이름` 을 쓰는 규칙은 어느 쪽이든 같다.
+| 경과 | 발신 | event_id |
+|---|---|---|
+| +13s | Finch-mobile | `1ded2b7c0efc` |
+| +15s | Finch-Back | `2a99d3e01063` |
+| +16s | Finch-AI | `d1a1b5a38a5c` |
+| +20s | Finch-Front | `bcd09968eb01` |
+| +62s | Finch-Wiki | `8378cc3de2c3` |
+
+한 명이 하루 전에 겪은 `bind: Operation not permitted` 를 **"전원, 지금도"** 로 일반화한
+결과였고, 그 잘못된 금지가 라운드 하나를 통째로 죽였다. **네트워크 가부는 그 에이전트의
+이번 전송 결과로만 판정한다.** 안 부른 것과 못 부른 것은 다르다 — 시도하지 않은 것은
+성공도 실패도 아니다.
+
+**남의 도구를 뺏는 지시는 틀렸을 때 제일 비싸다.** 금지를 배분하기 전에 한 번 더 본다.
 
 ### 형식
 
