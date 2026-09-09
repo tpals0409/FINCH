@@ -5,6 +5,7 @@ import { useCreateOrder, useOrderAvailable } from '@/features/order';
 import { ROUTES, STOCK_CODE_PARAM } from '@/shared/config/routes';
 import { formatKrw } from '@/shared/lib/formatNumber';
 import { createIdempotencyKey } from '@/shared/lib/idempotencyKey';
+import { ORDER_ERROR_CODES } from '@/shared/types/errorCodes';
 import type { OrderSide } from '@/shared/types/order';
 import { StockCodeSchema } from '@/shared/types/primitives';
 import type { IdempotencyKey } from '@/shared/types/primitives';
@@ -95,8 +96,14 @@ export function OrderPage() {
   const info = available.data;
   const price = info.currentPrice;
   const overMax = quantity > info.maxQuantity;
+  const buyUnsupported =
+    side === 'BUY' && info.reason === ORDER_ERROR_CODES.AI_UNSUPPORTED;
   const canSubmit =
-    info.tradable && quantity > 0 && !overMax && !order.isPending;
+    info.tradable &&
+    !buyUnsupported &&
+    quantity > 0 &&
+    !overMax &&
+    !order.isPending;
 
   return (
     <PageMain>
