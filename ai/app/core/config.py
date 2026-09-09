@@ -25,9 +25,12 @@ class Settings(BaseSettings):
     db_echo: bool = False
 
     # ── LLM ──────────────────────────────────────────────
-    # SSAFY GMS의 OpenAI 호환 Chat Completions API를 사용한다.
+    # OpenAI 호환 Chat Completions 게이트웨이(GMS)를 쓴다. 주소는 키와 마찬가지로
+    # 환경에서 주입한다 — 기본값을 두지 않아 어느 게이트웨이를 부르는지가 배포 설정에만
+    # 남는다. 운영값은 finch-gitops `apps/prod/ai/values.yaml` 의 GMS_BASE_URL 이고,
+    # 비어 있으면 클라이언트 생성이 즉시 실패한다 (app/llm/client.py · app/rag/embedding.py).
     gms_key: str = ""
-    gms_base_url: str = "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
+    gms_base_url: str = ""
     llm_model: str = "gpt-5.4-mini"
     llm_max_tokens: int = 16_000
     llm_timeout_s: int = 30

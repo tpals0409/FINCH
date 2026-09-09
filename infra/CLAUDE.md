@@ -46,13 +46,13 @@ docker-compose.observability.yml  prometheus · loki · alloy · grafana. finch-
 가변 태그를 GitOps 에 넣으면 매니페스트가 그대로인데 이미지 내용만 바뀌어 Argo CD 가
 변화를 못 본다. 크로스 레포 쓰기라 `secrets.FINCH_TOKEN` 이 필요하다.
 
-SSAFY 시절의 GitLab CI · Jenkins 파일은 Sprint 3 에서 전부 지웠다. GitHub 에서 돌지 않는데
+이전 팀 시절의 GitLab CI · Jenkins 파일은 Sprint 3 에서 전부 지웠다. GitHub 에서 돌지 않는데
 남아 있으면 "CI 가 있다"는 착각을 준다.
 
 ## 이 저장소에서 고쳐야 finch-gitops 가 동작하는 것
 
 1. ~~**`nginx/nginx.conf` 의 TLS 제거.**~~ Sprint 3 에서 했다. 443 블록이 컨테이너에 없는
-   `/etc/letsencrypt/live/j15a101.p.ssafy.io/` 를 가리켜 k8s 에서 nginx 가 기동조차 못 했다
+   호스트의 letsencrypt 인증서 경로를 가리켜 k8s 에서 nginx 가 기동조차 못 했다
    (실측: `nginx -t` 가 `[emerg] cannot load certificate`). `/jenkins/` 도 같이 지웠다.
    **`/api/` 프록시는 남겨 뒀다** — 로컬 compose 가 호스트에 nginx 80 하나만 열어서
    브라우저가 같은 오리진의 `/api` 를 부를 길이 그것뿐이다. k8s 에서는 Ingress 의 `/api` 가

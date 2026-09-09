@@ -5,13 +5,13 @@
 
 ## 왜 이 문서가 있나 — "Sprint 0"은 두 가지를 가리킨다
 
-| | SSAFY 원본 | ver2 |
+| | 이전 팀 원본 | ver2 |
 |---|---|---|
 | "Sprint 0" | 2026-08-26 **결정 회의**. `S0-1`~`S0-7`은 이 회의에서 팀이 확정하기로 했던 항목 | 기반 구축 스프린트. **2026-09-03 완료** |
 | 지금 | — (그 팀은 더 이상 회신하지 않는다) | **Sprint 3** 진행 중 |
 
 `docs/spec/featureSpec.md`·`docs/api/apiSpec.md`·`docs/convention/backConvention.md`의 "Sprint 0"·`S0-N`
-표기는 전부 **SSAFY 원본 결정 회의**를 가리킨다. 그 회의는 다시 열리지 않는다 — `featureSpec.md:60`이
+표기는 전부 **이전 팀 원본 결정 회의**를 가리킨다. 그 회의는 다시 열리지 않는다 — `featureSpec.md:60`이
 "S0-1~S0-4 확정 전에는 차트·체결 가격 소스 구현을 시작하지 않는다"고 못 박아 뒀지만, 확정할 회의 자체가
 없다. 이 문서가 그 자리를 대신한다 — **팀 결정 대신 세민의 승인**으로 항목을 닫는다.
 
@@ -162,11 +162,11 @@
 
 ---
 
-## 부록 A — `lab.ssafy.com` 링크에 대하여
+## 부록 A — 옛 팀 GitLab 이슈 링크에 대하여
 
-`frontend/docs/contracts.md`·`frontend/docs/ia.md`·`frontend/docs/frontConvention.md`에 SSAFY GitLab
-(`lab.ssafy.com/.../S15P21A101/-/issues/N`) 링크가 17건 있다. **죽은 링크는 아니다** — 그 서버는 살아
-있을 수 있다. 다만 SSAFY 팀은 해산했고 ver2는 그 저장소에 접근·회신을 받을 수 없다.
+`frontend/docs/contracts.md`·`frontend/docs/ia.md`·`frontend/docs/frontConvention.md`에 옛 팀 GitLab
+이슈 링크가 17건 있었다. **URL 은 지웠고 이슈 번호 표기만 남겼다** — 그 서버가 살아 있더라도 ver2 는
+그 저장소에 접근·회신을 받을 수 없고, 팀도 해산했기 때문이다.
 
 이미 회신을 받아 "닫힘, 회신 있음"으로 표시된 이슈는 그 자체로 완결된 기록이라 문제가 없다. 위험한 것은
 **"이슈 없음 (스프린트 0 결정)"이나 "회신 대기"로 남아 있는 항목**이다 — 예: `contracts.md` P9·P10·P11
@@ -174,7 +174,7 @@
 가 그 자리를 메운다.
 
 `frontend/docs/**`는 프론트 소유라 사서는 본문을 직접 고치지 않는다. 프론트에게 넘길 제안: 각 파일 상단에
-"`lab.ssafy.com` 링크는 SSAFY 팀 해산 전 기록이며 더 이상 회신이 오지 않는다" 한 줄을 추가하는 것.
+"이슈 번호 표기는 옛 팀 해산 전 기록이며 더 이상 회신이 오지 않는다" 한 줄을 추가하는 것.
 
 ## 부록 B — 상호 참조
 

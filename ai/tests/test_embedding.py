@@ -9,6 +9,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from app.core.config import settings
 from app.rag.embedding import (
     Embedder,
     NullEmbedder,
@@ -45,9 +46,15 @@ def test_requires_api_key() -> None:
         OpenAIEmbedder("")
 
 
-def test_default_base_url_is_gms() -> None:
+def test_default_base_url_comes_from_settings() -> None:
     e = OpenAIEmbedder("k")
-    assert e._url == "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
+    assert e._url == "https://gms.test/v1"
+
+
+def test_requires_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "gms_base_url", "")
+    with pytest.raises(ValueError):
+        OpenAIEmbedder("k")
 
 
 def test_gateway_base_url_overrides() -> None:

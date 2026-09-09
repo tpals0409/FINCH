@@ -4,7 +4,7 @@
 
 global:
   # 15초. 더 짧게 하면 저장량이 비례해서 늘고, 더 길면 부하 테스트 중
-  # 짧은 스파이크를 놓친다 (S15P21A101-58·62 가 이 해상도에 의존한다).
+  # 짧은 스파이크를 놓친다 (옛 팀 이슈 58·62 가 이 해상도에 의존한다).
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
@@ -19,7 +19,7 @@ scrape_configs:
 
   # Spring Boot — micrometer 가 /actuator/prometheus 로 노출한다.
   # 컨테이너 이름으로 부른다. nginx 경유(/api)로 가면 actuator 가 루트에 있어 404 가 난다
-  # (S15P21A101-111 에서 스모크 테스트가 같은 이유로 실패했다).
+  # (옛 팀 이슈 111 에서 스모크 테스트가 같은 이유로 실패했다).
   - job_name: backend
     metrics_path: /actuator/prometheus
     static_configs:
@@ -46,7 +46,7 @@ scrape_configs:
 #
 # 2. 컨테이너별 자원 지표(cAdvisor)가 없다. 이 서버의 Docker 스토리지 드라이버가
 #    overlayfs 라 cAdvisor 가 컨테이너를 식별하지 못한다 (docker-compose.observability.yml 주석 참고).
-#    k3s 전환(S15P21A101-39) 후 kubelet 이 같은 지표를 내장 노출하므로 그때 job 을 추가한다.
+#    k3s 전환(옛 팀 이슈 39) 후 kubelet 이 같은 지표를 내장 노출하므로 그때 job 을 추가한다.
 #
 # 대상을 추가할 때는 promtool 로 먼저 검증한다:
 #   docker run --rm --entrypoint promtool -v $PWD/prometheus.yml:/p.yml prom/prometheus:v3.1.0 check config /p.yml

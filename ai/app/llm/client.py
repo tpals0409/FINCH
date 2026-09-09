@@ -4,7 +4,7 @@
 키가 없는 환경은 :class:`NullLlmClient`를 받는다. `app.rag.embedding`의
 `NullEmbedder`와 같은 방식이다 — 없는 내용을 지어내느니 명시적으로 실패한다.
 
-운영 호출은 SSAFY GMS의 OpenAI 호환 Chat Completions API를 사용한다.
+운영 호출은 GMS 게이트웨이의 OpenAI 호환 Chat Completions API를 사용한다.
 
 도구 루프(`app.llm.agent`)가 주고받는 메시지 모양은 Anthropic 표기를 따른다.
 공급자마다 이 표기를 고치는 대신, 표기와 자기 API 사이의 번역을 각 클라이언트가
@@ -285,7 +285,7 @@ def _to_turn(message: Any) -> ToolTurn:
 
 
 class GmsClient:
-    """SSAFY GMS의 OpenAI 호환 Chat Completions 구현.
+    """GMS 게이트웨이의 OpenAI 호환 Chat Completions 구현.
 
     Anthropic 표기와 다른 점만 여기서 흡수한다. 확인하고 맞춘 것들:
 
@@ -305,6 +305,8 @@ class GmsClient:
             raise ValueError("GMS_KEY가 필요하다")
         self._key = api_key
         self.model = model or settings.llm_model
+        if not settings.gms_base_url:
+            raise ValueError("GMS_BASE_URL이 필요하다")
         self._url = settings.gms_base_url.rstrip("/")
         self._client = client
 

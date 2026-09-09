@@ -79,7 +79,7 @@ def _batched(texts: Sequence[str], size: int) -> Iterator[tuple[int, list[str]]]
 
 
 class OpenAIEmbedder(Embedder):
-    """SSAFY GMS의 OpenAI 호환 임베딩 엔드포인트."""
+    """GMS 게이트웨이의 OpenAI 호환 임베딩 엔드포인트."""
 
     def __init__(
         self,
@@ -96,7 +96,10 @@ class OpenAIEmbedder(Embedder):
         self.model = model or settings.embedding_model
         self.dim = dim or settings.embedding_dim
         self._batch = batch_size or settings.embedding_batch_size
-        self._url = (base_url or settings.gms_base_url).rstrip("/")
+        url = base_url or settings.gms_base_url
+        if not url:
+            raise ValueError("GMS_BASE_URL이 필요하다")
+        self._url = url.rstrip("/")
         self._key = api_key
         self._client = client
         self._warned_truncate = False

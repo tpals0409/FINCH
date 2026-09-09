@@ -173,7 +173,7 @@ async def test_generate가_strict_스키마와_max_completion_tokens를_보낸�
     assert http.sent["response_format"]["json_schema"]["strict"] is True
     assert http.sent["reasoning_effort"] == "high"
     assert http.sent["messages"][0] == {"role": "developer", "content": "지시"}
-    assert http.url == "https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions"
+    assert http.url == "https://gms.test/v1/chat/completions"
 
 
 @pytest.mark.asyncio

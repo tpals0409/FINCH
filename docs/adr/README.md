@@ -54,5 +54,5 @@ grep -l "{keyword}" docs/adr/sprints/*.md     # 키워드 검색
 
 ## 팀 프로젝트에서 이어받은 것
 
-SSAFY 팀 저장소(S15P21A101)의 결정은 `docs/convention/`, `docs/api/`, `docs/spec/` 에 그대로 있다.
+이전 팀 저장소의 결정은 `docs/convention/`, `docs/api/`, `docs/spec/` 에 그대로 있다.
 ver2 에서 그 결정을 뒤집을 때 영구 ADR 로 남긴다. 뒤집지 않은 것은 그대로 유효하다.

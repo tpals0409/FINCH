@@ -44,7 +44,7 @@ model: opus
 | 렌더된 스타일가이드 | `~/Desktop/발표자료/presentation/styleguide.html` |
 | 컴포넌트 적용 예 | `~/Desktop/발표자료/presentation/styles/components.css` — 시세 오브젝트, 브리핑 카드, 근거 연결, 태그 |
 
-`index.css` 주석이 인용하는 `design.md §N` 은 SSAFY 팀 디자인 파트가 외부에서 준 옛 문서다. 저장소에 없고 이제 기준도 아니다.
+`index.css` 주석이 인용하는 `design.md §N` 은 이전 팀 디자인 파트가 외부에서 준 옛 문서다. 저장소에 없고 이제 기준도 아니다.
 그 주석들은 **이탈 이유의 기록**으로서만 가치가 있다. 팔레트를 옮길 때 주석도 발표자료 기준으로 다시 쓴다.
 
 ### 결정된 방향 — 무채색 모노톤
