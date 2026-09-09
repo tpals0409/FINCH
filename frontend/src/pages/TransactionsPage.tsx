@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import {
   EmptyTransactions,
@@ -6,6 +6,7 @@ import {
   TransactionList,
   useTransactions,
 } from '@/features/transactions';
+import { useInfiniteScroll } from '@/shared/hooks/useInfiniteScroll';
 import type { TransactionFilter } from '@/shared/types/portfolio';
 import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
@@ -95,45 +96,4 @@ function ListSkeleton() {
       <Skeleton className="h-12 w-full" />
     </div>
   );
-}
-
-/**
- * 무한 스크롤. `IntersectionObserver` 는 플랫폼 기본 기능이라 라이브러리를 더하지 않는다.
- *
- * 스크롤 이벤트로 만들지 않는 이유 — 그쪽은 프레임마다 콜백이 돌아 스로틀을 직접 짜야 하고,
- * 그 스로틀이 빠른 스크롤에서 마지막 페이지를 놓친다.
- */
-function useInfiniteScroll({
-  enabled,
-  onReach,
-}: {
-  enabled: boolean;
-  onReach: () => void;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  // 최신 콜백을 참조로 들고 있어 observer 를 매 렌더 다시 만들지 않는다.
-  const onReachRef = useRef(onReach);
-  // 렌더 중에 ref 를 쓰지 않는다 (react-hooks/refs). 커밋 뒤에 갱신해도
-  // observer 콜백은 그 다음 교차에서 최신 값을 읽으므로 늦지 않는다.
-  useEffect(() => {
-    onReachRef.current = onReach;
-  });
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!enabled || node === null) {
-      return;
-    }
-
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) {
-        onReachRef.current();
-      }
-    });
-    observer.observe(node);
-
-    return () => observer.disconnect();
-  }, [enabled]);
-
-  return ref;
 }
