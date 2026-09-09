@@ -3,6 +3,7 @@ package org.finchapp.mobile;
 import android.os.Build;
 import android.view.KeyEvent;
 import android.webkit.WebView;
+import android.webkit.WebBackForwardList;
 import android.window.OnBackInvokedDispatcher;
 import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
@@ -52,10 +53,15 @@ public class MainActivity extends BridgeActivity {
 
     private void handleBackPressed() {
         WebView webView = getBridge() == null ? null : getBridge().getWebView();
-        if (webView != null && webView.canGoBack()) {
+        if (webView != null && hasBackHistory(webView)) {
             webView.goBack();
         } else {
             finishAndRemoveTask();
         }
+    }
+
+    private boolean hasBackHistory(WebView webView) {
+        WebBackForwardList history = webView.copyBackForwardList();
+        return history.getCurrentIndex() > 0;
     }
 }
