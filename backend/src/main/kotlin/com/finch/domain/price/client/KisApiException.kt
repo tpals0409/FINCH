@@ -8,5 +8,6 @@ internal class KisApiException(
 	val retryAfter: Duration? = null,
 	status: Int? = null,
 	code: String? = null,
+	val responseBody: String? = null,
 	cause: Throwable? = null,
 ) : RuntimeException("KIS API 실패 status=$status code=$code", cause)

@@ -62,6 +62,7 @@ internal class KisPriceClient internal constructor(
 				retryable = true,
 				retryAfter = retryAfter(response.retryAfter),
 				status = response.status,
+				responseBody = sanitizeForLog(response.body),
 			)
 		}
 
@@ -75,11 +76,17 @@ internal class KisPriceClient internal constructor(
 				retryable = response.status >= 500 || response.status == 408,
 				status = response.status,
 				code = body?.messageCode,
+				responseBody = sanitizeForLog(response.body),
 			)
 		}
 
 		val currentPrice = body.output?.currentPrice?.toLongOrNull()?.takeIf { it > 0 }
-			?: throw KisApiException(retryable = false, status = response.status, code = "INVALID_PRICE")
+			?: throw KisApiException(
+				retryable = false,
+				status = response.status,
+				code = "INVALID_PRICE",
+				responseBody = sanitizeForLog(response.body),
+			)
 		return PriceTick(currentPrice, OffsetDateTime.ofInstant(clock.instant(), KST))
 	}
 
@@ -101,6 +108,7 @@ internal class KisPriceClient internal constructor(
 				retryAfter = TOKEN_RATE_LIMIT_DELAY,
 				status = response.status,
 				code = body.errorCode,
+				responseBody = sanitizeForLog(response.body),
 			)
 		}
 		if (response.status !in 200..299) {
@@ -109,13 +117,19 @@ internal class KisPriceClient internal constructor(
 				retryAfter = if (response.status == 429) retryAfter(response.retryAfter) else null,
 				status = response.status,
 				code = body?.errorCode,
+				responseBody = sanitizeForLog(response.body),
 			)
 		}
 
 		val token = body?.accessToken?.takeIf(String::isNotBlank)
 		val expiresIn = body?.expiresIn?.takeIf { it > 0 }
 		if (token == null || expiresIn == null) {
-			throw KisApiException(retryable = false, status = response.status, code = "INVALID_TOKEN_RESPONSE")
+			throw KisApiException(
+				retryable = false,
+				status = response.status,
+				code = "INVALID_TOKEN_RESPONSE",
+				responseBody = sanitizeForLog(response.body),
+			)
 		}
 
 		val refreshIn = (expiresIn - TOKEN_REFRESH_AHEAD.seconds).coerceAtLeast(1)
@@ -161,6 +175,14 @@ internal class KisPriceClient internal constructor(
 		}.getOrNull()
 	}
 
+	private fun sanitizeForLog(raw: String): String? {
+		if (raw.isBlank()) return null
+		val redacted = SENSITIVE_JSON_FIELD.replace(raw) { match ->
+			"${match.groupValues[1]}\"[REDACTED]\""
+		}
+		return redacted.take(MAX_LOG_BODY_LENGTH)
+	}
+
 	private data class CachedToken(val value: String, val refreshAt: java.time.Instant)
 
 	private data class HttpResponse(val status: Int, val body: String, val retryAfter: String?)
@@ -201,5 +223,9 @@ internal class KisPriceClient internal constructor(
 		private val TOKEN_REFRESH_AHEAD = Duration.ofMinutes(1)
 		private val TOKEN_RATE_LIMIT_DELAY = Duration.ofMinutes(1)
 		private val KST = ZoneId.of("Asia/Seoul")
+		private const val MAX_LOG_BODY_LENGTH = 512
+		private val SENSITIVE_JSON_FIELD = Regex(
+			"(?i)(\\\"?(?:access_token|refresh_token|appkey|appsecret|authorization|token|secret)\\\"?\\s*:\\s*)(\\\"(?:\\\\.|[^\\\"])*\\\"|[^,}\\s]+)",
+		)
 	}
 }
