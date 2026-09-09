@@ -3,7 +3,7 @@
 Postgres 내장 텍스트 검색은 형태소를 모른다 — 'simple' 설정은 공백만 본다.
 한국어는 조사·어미를 붙여 쓰므로 문장을 그대로 넣으면 문장 하나가 통째로
 한 토큰이 되어 아무것도 매치되지 않는다. 글자 단위 2-셔글로 잘라 공백으로
-이어 붙이면 부분 일치 기반의 어휘 랭킹(ts_rank_cd)을 확보한다.
+이어 붙이면 부분 일치 기반의 어휘 랭킹(ts_rank)을 확보한다.
 
 pg_bigm 같은 외부 확장 없이 내장 tsvector · GIN 만으로 돌리기 위한 선택이다.
 저장 시엔 `to_tsv_text`, 질의 시엔 `lexical_tsquery` 를 쓴다.
@@ -50,7 +50,7 @@ def lexical_tsquery(text: str) -> str:
     """질의 변환 — OR 로 이은 to_tsquery 리터럴. 빈 입력이면 빈 문자열.
 
     AND(websearch 기본)로 잠그면 셔글 하나만 어긋나도 전부 놓친다. 어휘 팔은
-    넓게 잡고 랭킹(ts_rank_cd)이 좁히는 구조가 맞다. 순서를 보존하는 이유는
+    넓게 잡고 랭킹(ts_rank)이 좁히는 구조가 맞다. 순서를 보존하는 이유는
     인접 셔글이 같이 맞았을 때 rank 가 올라 구절 신호가 살아있기 때문이다.
     """
     grams = bigrams(text)[:_QUERY_TERMS_MAX]

@@ -175,7 +175,7 @@ def fuse(
     """두 랭킹을 Reciprocal Rank Fusion 으로 묶되 어휘 상위를 보장한다.
 
     score = Σ 1/(k+rank). 순위만 보고 점수 스케일을 무시하므로 코사인 거리와
-    ts_rank_cd 처럼 단위가 다른 근거를 섞을 때 안전하다.
+    ts_rank 처럼 단위가 다른 근거를 섞을 때 안전하다.
 
     순수 RRF 만 쓰면 희석이 생긴다 — 밀집 상위 조각들이 우연히 어휘도 일부
     맞아 작은 가점을 받으면, 제목이 정확히 맞는 어휘 전문가(융합 점수는 낮음)
@@ -409,7 +409,7 @@ async def search_with_vector(
     if tsq:
         try:
             q = func.to_tsquery("simple", tsq)
-            rank = func.ts_rank_cd(DocumentChunk.text_tsv, q).label("rank")
+            rank = func.ts_rank(DocumentChunk.text_tsv, q).label("rank")
             stmt = (
                 select(
                     DocumentChunk.id,
@@ -467,7 +467,7 @@ async def tsv_backfill(
             rows = (await session.execute(stmt)).all()
             if not rows:
                 break
-            # 문자열을 그대로 캐스팅하면 위치가 빠져 ts_rank_cd 가 죽는다.
+            # 문자열을 그대로 캐스팅하면 위치가 빠져 어휘 랭킹이 죽는다.
             # 반드시 to_tsvector('simple', …) 로 감싸 넣는다. Core 테이블
             # 업데이트를 쓴다 — ORM 벌크 모드는 PK 파라미터를 강요한다.
             await session.execute(

@@ -276,7 +276,7 @@ async def save(filing: Filing, body: str) -> int:
                     [
                         # embedding은 NULL. 제공자가 정해지면 별도 배치로 채운다.
                         # text_tsv는 반드시 to_tsvector() 로 넣는다 — 문자열을
-                        # 그대로 캐스팅하면 위치 정보가 빠져 ts_rank_cd 가 전부 0이 된다.
+                        # 그대로 캐스팅하면 위치 정보가 빠져 어휘 랭킹이 무너진다.
                         {
                             "document_id": document_id,
                             "chunk_index": i,
