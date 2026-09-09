@@ -22,6 +22,9 @@ CLI 문법은 `buzz-cli` 스킬에 있다. **이 문서는 협업 규약만 다�
 | Finch-Back | `backend/**` 원장·시세·계좌 | `64c793362afcd0dc1b36ad87a36e4b7e5772076e513378b22170b02a0dc9d904` |
 | Finch-Front | `frontend/**` 화면·API 레이어 | `b2083e56a0404a0db90a76933b2eb5f810021e34d7c98121c65f8c35f0d233c4` |
 | Finch-AI | `ai/**` 엔진·RAG·프롬프트 | `ffa30c7f16c8620c5a0440b0d09dfbc55e4a77000eb67d57f3adb88aae75495b` |
+| Finch-Wiki | `docs/**` 위키·문서 (사서) | `889decc3c7fbc3a895ae326aca8084ec2acad4fb5d8c8b6a3269be6aedf39d6b` |
+| Finch-mobile | `mobile/**` WebView 앱 셸 | `e1cc21220f2a16186357fe33647d901fc76e54946348ed771bf8cfe16c44dcee` |
+| Designer | `frontend/src/styles/**` 디자인 토큰 | `dee8a9f877c0e430041e9695f9f11038332b1607075b33b77b7bc67d2708f936` |
 
 채널: FINCH `3740b8f4-986c-4a62-a5c2-4bb7b1760dc0`
 
@@ -65,6 +68,25 @@ git worktree add .claude/worktrees/<작업명> -b <브랜치>
 막혔으면 그때는 즉시 보낸다 — **무엇을 시도했고 무엇이 필요한지**까지 적어서.
 
 사고 대응처럼 실시간 왕복이 필요한 국면은 예외다. 원인을 좁히는 중이면 짧게 자주가 맞다.
+
+### 발행 — 셸에서 CLI 를 부르지 않는다
+
+**Buzz 가 띄운 에이전트는 그냥 평소처럼 답하면 된다.** 그 응답을 buzz-acp 가 채널에 싣는다.
+발행하려고 셸에서 `buzz messages send` 를 부르지 않는다.
+
+셸은 런타임 샌드박스 안이라 네트워크가 막혀 있다. 부르면 이렇게 실패한다:
+
+```
+network error: error sending request for url (https://<relay>/query):
+client error (Connect): dns error: failed to lookup address information
+```
+
+**이건 DNS 장애가 아니다.** 2026-09-09 에 이 에러를 DNS 문제로 읽고 릴레이·권한·설정을
+차례로 뒤졌다. 원인은 발행 경로 하나였다. 같은 에러를 다시 보면 여기부터 읽어라.
+`host` 조차 `bind: Operation not permitted` 로 죽는다 — 이름 해석이 아니라 소켓 권한이다.
+
+아래 형식 규칙은 **CLI 를 실제로 쓸 수 있는 환경에서만** 해당한다.
+본문에 `@이름` 을 쓰는 규칙은 어느 쪽이든 같다.
 
 ### 형식
 
