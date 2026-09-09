@@ -11,6 +11,8 @@ import com.finch.domain.stock.entity.Stock
 import com.finch.domain.stock.exception.StockErrorCode
 import com.finch.domain.stock.repository.DailyCandleRepository
 import com.finch.domain.stock.repository.StockRepository
+import com.finch.domain.stock.util.StockSearchCursor
+import com.finch.global.apiPayload.CursorPage
 import com.finch.global.exception.CustomException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -52,9 +54,34 @@ class StockService(
 	 * 생겨 한쪽만 고치는 날이 온다.
 	 */
 	@Transactional(readOnly = true)
-	fun search(keyword: String, size: Int): StockSearchRes {
-		val stocks = stockRepository.search(keyword.trim(), size)
-		return StockSearchRes.of(stocks, pricesOf(stocks))
+	fun search(keyword: String, size: Int, cursor: String?): CursorPage<StockSearchRes.Item> {
+		val normalizedKeyword = keyword.trim()
+		val limit = CursorPage.resolveSize(size)
+		val position = StockSearchCursor.from(normalizedKeyword, cursor)
+		val rows = stockRepository.searchPage(
+			keyword = normalizedKeyword,
+			cursorRank = position?.exactRank ?: 2,
+			cursorName = position?.stockName.orEmpty(),
+			cursorCode = position?.stockCode.orEmpty(),
+			limit = limit + 1,
+		)
+		val hasNext = rows.size > limit
+		val page = if (hasNext) rows.subList(0, limit) else rows
+		val items = StockSearchRes.of(page, pricesOf(page)).items
+		return CursorPage(
+			items = items,
+			nextCursor = if (hasNext) {
+				page.last().let {
+					StockSearchCursor(
+						normalizedKeyword,
+						if (it.stockCode == normalizedKeyword) 1 else 0,
+						it.stockName,
+						it.stockCode,
+					).encode()
+				}
+			} else null,
+			hasNext = hasNext,
+		)
 	}
 
 	/** 단건 현재가 (apiSpec 5.4). 종목은 있는데 수신값이 없으면 `PriceRes.empty` 가 성공 응답이다. */

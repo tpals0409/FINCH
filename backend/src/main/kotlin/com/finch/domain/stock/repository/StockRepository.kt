@@ -29,17 +29,32 @@ interface StockRepository : Repository<Stock, String> {
 	 *
 	 * 코드는 앞자리 일치다. `005930` 을 찾는데 `593` 이 걸리면 검색이 쓸모없어진다.
 	 *
-	 * 정렬은 코드 정확일치 → 종목명 순이다. `005930` 을 입력한 사람이 원하는 건 그 종목 하나다.
+	 * 정렬은 코드 정확일치 → 종목명 → 코드 순이다. 마지막 코드가 tie-breaker라 페이지 경계에서
+	 * 같은 이름의 종목이 누락되거나 중복되지 않는다.
 	 */
 	@Query(
 		value = """
 			SELECT * FROM stock
 			WHERE is_active = true
 			  AND (stock_name ILIKE '%' || :keyword || '%' OR stock_code LIKE :keyword || '%')
-			ORDER BY (stock_code = :keyword) DESC, stock_name
-			LIMIT :size
+			  AND (
+			    :cursorRank = 2
+			    OR (CASE WHEN stock_code = :keyword THEN 1 ELSE 0 END) < :cursorRank
+			    OR (
+			      (CASE WHEN stock_code = :keyword THEN 1 ELSE 0 END) = :cursorRank
+			      AND (stock_name > :cursorName OR (stock_name = :cursorName AND stock_code > :cursorCode))
+			    )
+			  )
+			ORDER BY (stock_code = :keyword) DESC, stock_name, stock_code
+			LIMIT :limit
 		""",
 		nativeQuery = true,
 	)
-	fun search(@Param("keyword") keyword: String, @Param("size") size: Int): List<Stock>
+	fun searchPage(
+		@Param("keyword") keyword: String,
+		@Param("cursorRank") cursorRank: Int,
+		@Param("cursorName") cursorName: String,
+		@Param("cursorCode") cursorCode: String,
+		@Param("limit") limit: Int,
+	): List<Stock>
 }
