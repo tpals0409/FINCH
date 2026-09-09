@@ -70,6 +70,9 @@ class OrderService(
 
 			val stock = stockService.getOrThrow(request.stockCode)
 			if (stock.suspended) throw CustomException(OrderErrorCode.ORDER_STOCK_SUSPENDED)
+			if (request.side == OrderSide.BUY && !stock.aiTradable) {
+				throw CustomException(OrderErrorCode.ORDER_AI_UNSUPPORTED)
+			}
 
 			val price = latestPrice(stock)
 			val amount = request.quantity * price
@@ -100,6 +103,7 @@ class OrderService(
 		val reason = when {
 			!isMarketOpen() -> OrderErrorCode.ORDER_MARKET_CLOSED
 			stock.suspended -> OrderErrorCode.ORDER_STOCK_SUSPENDED
+			side == OrderSide.BUY && !stock.aiTradable -> OrderErrorCode.ORDER_AI_UNSUPPORTED
 			price.stale || price.currentPrice == null || price.currentPrice <= 0 ->
 				OrderErrorCode.ORDER_PRICE_UNAVAILABLE
 			else -> null

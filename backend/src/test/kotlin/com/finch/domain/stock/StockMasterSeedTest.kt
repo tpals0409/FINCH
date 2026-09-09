@@ -71,6 +71,21 @@ class StockMasterSeedTest {
 	}
 
 	@Test
+	@DisplayName("AI 가격 유니버스는 운영 price_daily와 같은 32종을 코드순으로 적재한다")
+	fun seedsAiTradableUniverse() {
+		val rows = stockRepository.findAiTradablePage("", 33)
+
+		assertThat(rows).hasSize(32)
+		assertThat(rows.map { it.stockCode }).isSorted
+		assertThat(rows.map { it.stockCode }).containsExactly(
+			"000270", "000660", "000720", "000810", "005380", "005490", "005930", "009540",
+			"011200", "012450", "015760", "017670", "033780", "035420", "035720", "039030",
+			"041510", "042700", "051910", "055550", "058470", "068270", "105560", "145020",
+			"196170", "207940", "214150", "240810", "247540", "263750", "293490", "373220",
+		)
+	}
+
+	@Test
 	@DisplayName("검색 커서는 관련도·종목코드 경계를 넘겨도 중복과 누락이 없다")
 	fun searchCursorHasNoDuplicatesOrGaps() {
 		val keyword = "전자"

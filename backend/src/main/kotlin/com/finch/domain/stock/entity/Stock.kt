@@ -70,6 +70,11 @@ class Stock protected constructor() {
 	final var isActive: Boolean = true
 		private set
 
+	/** AI가 일별 시세를 보장하는 신규 매수 가능 종목이다. 보유 중에는 false로 내리지 않는다. */
+	@Column(nullable = false)
+	final var aiTradable: Boolean = false
+		private set
+
 	@Column(nullable = false)
 	final lateinit var updatedAt: Instant
 		private set

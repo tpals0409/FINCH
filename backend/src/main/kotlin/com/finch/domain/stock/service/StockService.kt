@@ -6,6 +6,7 @@ import com.finch.domain.price.service.PriceService
 import com.finch.domain.stock.dto.response.CandlesRes
 import com.finch.domain.stock.dto.response.StockDetailRes
 import com.finch.domain.stock.dto.response.StockSearchRes
+import com.finch.domain.stock.dto.response.PriceUniverseRes
 import com.finch.domain.stock.entity.CandlePeriod
 import com.finch.domain.stock.entity.Stock
 import com.finch.domain.stock.exception.StockErrorCode
@@ -13,6 +14,7 @@ import com.finch.domain.stock.repository.DailyCandleRepository
 import com.finch.domain.stock.repository.StockRepository
 import com.finch.domain.stock.util.StockSearchCursor
 import com.finch.global.apiPayload.CursorPage
+import com.finch.global.apiPayload.code.GeneralErrorCode
 import com.finch.global.exception.CustomException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -81,6 +83,25 @@ class StockService(
 				}
 			} else null,
 			hasNext = hasNext,
+		)
+	}
+
+	/** AI가 일별 시세를 적재할 전역 신규 매수 가능 종목 목록이다. 사용자 헤더를 받지 않는다. */
+	@Transactional(readOnly = true)
+	fun getPriceUniverse(cursor: String?, size: Int): PriceUniverseRes {
+		val normalizedCursor = cursor.orEmpty()
+		if (normalizedCursor.isNotEmpty() && !normalizedCursor.matches(STOCK_CODE_PATTERN)) {
+			throw CustomException(GeneralErrorCode.INVALID_REQUEST, mapOf("cursor" to "형식이 올바르지 않습니다"))
+		}
+		val limit = CursorPage.resolveSize(size)
+		val rows = stockRepository.findAiTradablePage(normalizedCursor, limit + 1)
+		val hasNext = rows.size > limit
+		val page = if (hasNext) rows.subList(0, limit) else rows
+		return PriceUniverseRes(
+			items = page.map { PriceUniverseRes.Item(it.stockCode) },
+			nextCursor = if (hasNext) page.last().stockCode else null,
+			hasNext = hasNext,
+			asOf = java.time.OffsetDateTime.now(KST_OFFSET),
 		)
 	}
 
@@ -167,5 +188,7 @@ class StockService(
 		 * 그 환경변수가 빠지는 순간 자정 근처에서 하루가 밀린다. 시각 계산은 주변 설정에 기대지 않는다.
 		 */
 		private val KST = ZoneId.of("Asia/Seoul")
+		private val KST_OFFSET = java.time.ZoneOffset.ofHours(9)
+		private val STOCK_CODE_PATTERN = Regex("\\d{6}")
 	}
 }

@@ -19,6 +19,19 @@ interface StockRepository : Repository<Stock, String> {
 	/** 검색·목록에서 여러 종목의 전일 종가를 한 번에 읽는다. 종목 수만큼 왕복하지 않는다. */
 	fun findByStockCodeIn(stockCodes: Collection<String>): List<Stock>
 
+	@Query(
+		value = """
+			SELECT stock_code AS \"stockCode\"
+			  FROM stock
+			 WHERE ai_tradable = true
+			   AND stock_code > :cursor
+			 ORDER BY stock_code
+			 LIMIT :limit
+		""",
+		nativeQuery = true,
+	)
+	fun findAiTradablePage(@Param("cursor") cursor: String, @Param("limit") limit: Int): List<AiTradableStockRow>
+
 	/**
 	 * 종목명 부분일치 또는 종목코드 앞자리 일치 (apiSpec 5.1). 상장폐지 종목은 뺀다.
 	 *

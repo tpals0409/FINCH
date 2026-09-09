@@ -60,6 +60,16 @@ class InternalApiSecurityTest {
 			.andExpect(status().isOk)
 	}
 
+	@Test
+	@DisplayName("전역 가격 유니버스는 사용자 ID 없이 올바른 내부 토큰이면 도달한다")
+	fun priceUniverseAcceptsServiceTokenWithoutUserId() {
+		mockMvc.perform(
+			get("/internal/v1/ai/price-universe")
+				.header("X-Internal-Token", "test-internal-token"),
+		)
+			.andExpect(status().isOk)
+	}
+
 	@RestController
 	class StubController {
 		@GetMapping("/internal/v1/portfolio")
@@ -67,5 +77,8 @@ class InternalApiSecurityTest {
 
 		@GetMapping("/internal/v1/trades")
 		fun trades() = "ok"
+
+		@GetMapping("/internal/v1/ai/price-universe")
+		fun priceUniverse() = "ok"
 	}
 }

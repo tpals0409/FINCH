@@ -778,11 +778,12 @@ MVP는 시장가 즉시 체결만 존재한다. 접수와 체결이 분리되지
 ```
 1. 거래 시간 확인 (09:00~15:30 KST)      → 아니면 ORDER_MARKET_CLOSED
 2. 종목 거래정지 확인                     → 정지면 ORDER_STOCK_SUSPENDED
-3. 최신 수신 가격 조회                    → 없거나 허용 시간 초과면 ORDER_PRICE_UNAVAILABLE
-4. 체결 직전 재검증 (최신 가격 기준 재계산)
+3. 신규 매수 가능 종목 확인               → AI 시세 미지원이면 ORDER_AI_UNSUPPORTED (매수만)
+4. 최신 수신 가격 조회                    → 없거나 허용 시간 초과면 ORDER_PRICE_UNAVAILABLE
+5. 체결 직전 재검증 (최신 가격 기준 재계산)
      매수: 예수금 >= 수량 × 최신가        → 부족하면 ORDER_PRICE_CHANGED
      매도: 보유 수량 >= 주문 수량          → 부족하면 ORDER_INSUFFICIENT_QUANTITY
-5. 원장 기록 + 잔고 반영 (단일 트랜잭션)
+6. 원장 기록 + 잔고 반영 (단일 트랜잭션)
      매수: 예수금 차감, 보유 수량 증가, 평균 매수가 가중평균 재계산
      매도: 예수금 증가, 보유 수량 차감, 실현손익 계산, 전량 매도 시 잔고에서 제거
 ```
@@ -794,6 +795,7 @@ MVP는 시장가 즉시 체결만 존재한다. 접수와 체결이 분리되지
 |---|---|---|
 | `ORDER_MARKET_CLOSED` | 409 | "지금은 주문할 수 없어요 (거래 시간 09:00~15:30)" |
 | `ORDER_STOCK_SUSPENDED` | 409 | 거래정지 사유 포함 |
+| `ORDER_AI_UNSUPPORTED` | 409 | "이 종목은 지금 매수할 수 없어요" |
 | `ORDER_PRICE_UNAVAILABLE` | 503 | "시세를 불러올 수 없어 주문이 제한됩니다" |
 | `ORDER_PRICE_CHANGED` | 409 | "가격이 변동되어 주문할 수 없어요. 다시 시도해 주세요" |
 | `ORDER_INSUFFICIENT_CASH` | 409 | "예수금이 부족합니다" |
@@ -821,6 +823,7 @@ GET /api/v1/orders/available?stockCode=005930&side=BUY
 ```
 
 `tradable`이 `false`면 `reason`에 위 에러 코드 중 하나가 담긴다. 화면은 이 값으로 주문 버튼을 비활성화한다.
+AI 시세 미지원 종목은 매수일 때 `ORDER_AI_UNSUPPORTED`이며, 매도는 이 사유로 제한하지 않는다.
 
 **`currentPrice` 는 `null` 일 수 있다** — §5.1 과 같은 이유다(시세 캐시에 수신 이력 없음).
 그때는 `tradable: false` · `reason: "ORDER_PRICE_UNAVAILABLE"` 이고 `maxQuantity` 는 `0` 이다.
@@ -998,6 +1001,26 @@ GET /internal/v1/trades?cursor=&size=100
 
 > 평가손익 같은 파생 지표는 백엔드가 내려주지 않고 **AI가 계산**한다. 백엔드는 원장 원본과 현재 포트폴리오 기준값만 제공한다.
 
+### 9.3 AI 가격 유니버스 조회
+
+AI가 일별 시세를 적재할 신규 매수 가능 종목 목록이다. 사용자별 목록이 아니므로 `X-User-Id`는 받지 않는다.
+
+```http
+GET /internal/v1/ai/price-universe?size=100&cursor=...
+X-Internal-Token: {서비스 간 공유 토큰}
+```
+
+```json
+{
+  "items": [{ "stockCode": "005930" }],
+  "nextCursor": null,
+  "hasNext": false,
+  "asOf": "2026-09-09T19:00:00+09:00"
+}
+```
+
+코드는 오름차순이며 기본·최대 페이지 크기는 100이다. `hasNext`가 `true`이면 `nextCursor`가 반드시 존재한다. 목록은 `stock.ai_tradable` 기준이고, 보유 수량이 0이 되기 전에는 목록에서 제거하지 않는다. AI는 평가손익 등 파생 지표를 계산한다.
+
 ---
 
 ## 10. AI 중계 API
@@ -1132,6 +1155,7 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | `ORDER_QUANTITY_INVALID` | 400 |
 | `ORDER_MARKET_CLOSED` | 409 |
 | `ORDER_STOCK_SUSPENDED` | 409 |
+| `ORDER_AI_UNSUPPORTED` | 409 |
 | `ORDER_PRICE_CHANGED` | 409 |
 | `ORDER_INSUFFICIENT_CASH` | 409 |
 | `ORDER_INSUFFICIENT_QUANTITY` | 409 |
@@ -1194,8 +1218,8 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | GET | `/watchlist` | — | `sort` 열거값 밖 → `INVALID_REQUEST` |
 | POST | `/watchlist` | `STOCK_NOT_FOUND` · `WATCHLIST_ALREADY_EXISTS` · `WATCHLIST_LIMIT_EXCEEDED` | 판정 순서: 종목 존재 → 중복 → 한도. 이미 등록된 종목은 한도가 찼어도 `ALREADY_EXISTS` |
 | DELETE | `/watchlist/{stockCode}` | — | 대상이 없어도 `204` |
-| POST | `/orders` | `ORDER_QUANTITY_INVALID` · `STOCK_NOT_FOUND` · `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` · `ORDER_INSUFFICIENT_CASH` · `ORDER_INSUFFICIENT_QUANTITY` · `ORDER_PRICE_CHANGED` | 판정 순서: 멱등성 → `side` 열거값(`INVALID_REQUEST`) → 수량 0 이하 → 종목 존재 → §7.2 1~5단계. `ORDER_INSUFFICIENT_CASH`는 매수, `ORDER_INSUFFICIENT_QUANTITY`는 매도에서만. **`ORDER_PRICE_CHANGED`의 판정 조건은 13장 7번 확정 전까지 발행하지 않는다** |
-| GET | `/orders/available` | `STOCK_NOT_FOUND` | `side` 열거값 밖 → `INVALID_REQUEST`. `tradable: false`의 `reason`은 `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_PRICE_UNAVAILABLE` 중 하나이며 **HTTP 200**이다 (§7.3) |
+| POST | `/orders` | `ORDER_QUANTITY_INVALID` · `STOCK_NOT_FOUND` · `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_AI_UNSUPPORTED` · `ORDER_PRICE_UNAVAILABLE` · `ORDER_INSUFFICIENT_CASH` · `ORDER_INSUFFICIENT_QUANTITY` · `ORDER_PRICE_CHANGED` | 판정 순서: 멱등성 → `side` 열거값(`INVALID_REQUEST`) → 수량 0 이하 → 종목 존재 → §7.2 1~6단계. `ORDER_AI_UNSUPPORTED`는 매수에서만, 매도에는 적용하지 않는다. `ORDER_INSUFFICIENT_CASH`는 매수, `ORDER_INSUFFICIENT_QUANTITY`는 매도에서만. **`ORDER_PRICE_CHANGED`의 판정 조건은 13장 7번 확정 전까지 발행하지 않는다** |
+| GET | `/orders/available` | `STOCK_NOT_FOUND` | `side` 열거값 밖 → `INVALID_REQUEST`. `tradable: false`의 `reason`은 `ORDER_MARKET_CLOSED` · `ORDER_STOCK_SUSPENDED` · `ORDER_AI_UNSUPPORTED` · `ORDER_PRICE_UNAVAILABLE` 중 하나이며 **HTTP 200**이다 (§7.3) |
 | GET | `/portfolio` | — | `sort` 열거값 밖 → `INVALID_REQUEST`. 보유 없음은 빈 `holdings` |
 | GET | `/transactions` | — | `type` 열거값 밖 · `cursor` 손상 · `size` 범위 밖 → `INVALID_REQUEST`. 내역 없음은 빈 `items` |
 | POST | `/ai/stocks/{stockCode}/analysis` | `AI_UPSTREAM_UNAVAILABLE` · `AI_UPSTREAM_TIMEOUT` + **AI 서버 발행 코드 통과** | AI 서버 코드 목록은 [aiApiSpec §3](./aiApiSpec.md). 백엔드는 종목 존재를 미리 검사하지 않는다 — AI 서버의 `INSTRUMENT_NOT_FOUND`(404)가 그대로 내려간다. `AI_UPSTREAM_*`에는 `requestId`가 없다 (§10.4) |
@@ -1206,6 +1230,7 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | GET | `/ai/briefing` | 위와 동일 | |
 | POST | `/ai/feedback` | 위와 동일 | 모르는 `requestId`의 처리는 AI 서버 몫이다 (프론트 contracts P14) |
 | GET | `/internal/v1/portfolio` · `/internal/v1/trades` | `AUTH_INVALID_TOKEN` · `RESOURCE_NOT_FOUND` | `X-Internal-Token` 누락·불일치 → `401 AUTH_INVALID_TOKEN`. `X-User-Id`에 해당하는 사용자 없음 → `404 RESOURCE_NOT_FOUND`. 사용자 JWT 인증은 적용되지 않는다 |
+| GET | `/internal/v1/ai/price-universe` | `AUTH_INVALID_TOKEN` | `X-Internal-Token` 누락·불일치 → `401 AUTH_INVALID_TOKEN`. 전역 목록이므로 `X-User-Id`는 필요하지 않다 |
 
 **표에 없는 코드는 그 엔드포인트에서 나오지 않는다.** 구현 중 새 사유가 생기면 이 표와 §11 목록을 먼저 고치고 코드를 붙인다. 백엔드 테스트(`ErrorCodeContractTest`)가 enum 전체와 §11 목록의 일치를 검사한다.
 
