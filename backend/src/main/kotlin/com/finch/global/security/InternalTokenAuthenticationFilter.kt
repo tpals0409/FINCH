@@ -22,14 +22,15 @@ class InternalTokenAuthenticationFilter(
 	) {
 		val actualToken = request.getHeader(INTERNAL_TOKEN_HEADER)
 		val userId = request.getHeader(TRUSTED_USER_HEADER)?.trim()
-		if (!tokenMatches(actualToken) || userId.isNullOrEmpty() || userId.toLongOrNull() == null) {
+		val globalServiceRequest = request.requestURI == GLOBAL_UNIVERSE_PATH
+		if (!tokenMatches(actualToken) || (!globalServiceRequest && (userId.isNullOrEmpty() || userId.toLongOrNull() == null))) {
 			response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
 			return
 		}
 
 		val context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext()
 		context.authentication = org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
-			userId.toLong(), null, emptyList(),
+			if (globalServiceRequest) INTERNAL_PRINCIPAL else userId!!.toLong(), null, emptyList(),
 		)
 		org.springframework.security.core.context.SecurityContextHolder.setContext(context)
 		chain.doFilter(request, response)
@@ -47,5 +48,7 @@ class InternalTokenAuthenticationFilter(
 		private const val INTERNAL_PREFIX = "/internal/v1/"
 		private const val INTERNAL_TOKEN_HEADER = "X-Internal-Token"
 		private const val TRUSTED_USER_HEADER = "X-User-Id"
+		private const val GLOBAL_UNIVERSE_PATH = "/internal/v1/ai/price-universe"
+		private const val INTERNAL_PRINCIPAL = "internal-service"
 	}
 }

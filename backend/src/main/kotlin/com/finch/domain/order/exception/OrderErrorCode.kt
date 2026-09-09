@@ -19,6 +19,7 @@ enum class OrderErrorCode(
 
 	/** detail 에 거래정지 사유를 싣는다 (apiSpec 7.2). */
 	ORDER_STOCK_SUSPENDED(HttpStatus.CONFLICT, "거래정지 종목은 주문할 수 없어요"),
+	ORDER_AI_UNSUPPORTED(HttpStatus.CONFLICT, "이 종목은 지금 매수할 수 없어요"),
 	ORDER_PRICE_CHANGED(HttpStatus.CONFLICT, "가격이 변동되어 주문할 수 없어요. 다시 시도해 주세요"),
 
 	/** detail 에 {required, available} 을 싣는다 (apiSpec 1.3 예시). */
