@@ -46,18 +46,18 @@ export function RecentStocksPage() {
         </div>
       ) : isError ? (
         <Card className="mt-4">
-          <SupportingText>불러오지 못했습니다</SupportingText>
+          <SupportingText>최근 본 종목을 불러오지 못했어요</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
             className="mt-3"
           >
-            다시 시도
+            다시 불러오기
           </Button>
         </Card>
       ) : data.items.length === 0 ? (
         <Card className="mt-4">
-          <SupportingText>아직 본 종목이 없습니다</SupportingText>
+          <SupportingText>아직 본 종목이 없어요</SupportingText>
           <Link
             to={ROUTES.search}
             viewTransition

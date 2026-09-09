@@ -40,11 +40,11 @@ export function WatchlistSection() {
         </div>
       ) : isError ? (
         <Card className="mt-2">
-          <SupportingText>관심 종목을 불러오지 못했습니다</SupportingText>
+          <SupportingText>관심 종목을 불러오지 못했어요</SupportingText>
         </Card>
       ) : data.items.length === 0 ? (
         <Card className="mt-2">
-          <SupportingText>아직 담아 둔 종목이 없습니다</SupportingText>
+          <SupportingText>아직 담아 둔 종목이 없어요</SupportingText>
           <Link
             to={ROUTES.search}
             viewTransition

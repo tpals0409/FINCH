@@ -45,7 +45,7 @@ type SentRequest = {
   sentAccessToken: string | null;
 };
 
-const FALLBACK_ERROR_MESSAGE = '요청을 처리하지 못했습니다';
+const FALLBACK_ERROR_MESSAGE = '요청을 처리하지 못했어요';
 
 /**
  * `{origin}{/api/v1}{path}` 로 조립한다. 호출부는 API_PATHS 의 뒷부분만 넘긴다.
@@ -146,7 +146,7 @@ async function sendRequest(
     // 상태 코드 0 은 "응답 자체가 없었다"는 뜻으로 쓴다.
     throw new HttpError({
       status: 0,
-      message: '네트워크에 연결할 수 없습니다',
+      message: '네트워크에 연결할 수 없어요',
     });
   }
 }

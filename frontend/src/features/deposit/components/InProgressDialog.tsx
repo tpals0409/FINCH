@@ -42,14 +42,14 @@ export function InProgressDialog({ open, isRetrying, onRetry }: Props) {
           className="finch-sheet-content fixed inset-x-0 bottom-0 z-(--z-overlay) mx-auto w-full max-w-md rounded-t-sheet bg-bg-layer-default p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         >
           <Dialog.Title className="text-title-3 text-fg-neutral">
-            같은 요청을 처리하고 있습니다
+            같은 요청을 처리하고 있어요
           </Dialog.Title>
           <Dialog.Description className="text-supporting mt-2">
-            잠시 후 다시 시도해 주세요. 충전은 한 번만 처리됩니다.
+            잠시 후 결과를 다시 확인해 주세요. 충전은 한 번만 처리돼요.
           </Dialog.Description>
 
           <Button onClick={onRetry} disabled={isRetrying} className="mt-5">
-            {isRetrying ? '처리 중…' : '다시 시도'}
+            {isRetrying ? '처리하고 있어요…' : '결과 다시 확인하기'}
           </Button>
         </Dialog.Content>
       </Dialog.Portal>

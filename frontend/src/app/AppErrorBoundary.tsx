@@ -34,7 +34,7 @@ export class AppErrorBoundary extends Component<
       return (
         <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-16">
           <p className="text-base font-medium text-fg-neutral">
-            화면을 표시할 수 없습니다
+            화면을 표시할 수 없어요
           </p>
           <Button onClick={() => window.location.reload()} className="mt-4">
             새로고침

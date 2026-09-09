@@ -28,13 +28,13 @@ export function PortfolioPage() {
 
         {isError ? (
           <Card>
-            <SupportingText>잔고를 불러오지 못했습니다</SupportingText>
+            <SupportingText>잔고를 불러오지 못했어요</SupportingText>
             <Button
               onClick={() => void refetch()}
               disabled={isFetching}
               className="mt-3"
             >
-              다시 시도
+              다시 불러오기
             </Button>
           </Card>
         ) : null}

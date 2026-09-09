@@ -49,7 +49,7 @@ export function AiErrorNotice({
       ) : null}
       {retryable && onRetry !== undefined ? (
         <Button onClick={onRetry} className="mt-3">
-          다시 시도
+          다시 불러오기
         </Button>
       ) : null}
     </div>

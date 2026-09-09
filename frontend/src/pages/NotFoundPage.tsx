@@ -13,14 +13,14 @@ export function NotFoundPage() {
   return (
     <PageMain className="flex flex-col justify-center">
       <h1 className="text-lg font-semibold text-fg-neutral">
-        찾을 수 없는 화면입니다
+        페이지를 찾을 수 없어요
       </h1>
       <p className="mt-2 text-sm text-fg-neutral-subtle">
-        주소가 바뀌었거나 잘못 입력된 경로입니다
+        주소가 바뀌었거나 잘못 입력했어요
       </p>
       <div className="mt-6">
         <LinkButton to={ROUTES.home} replace>
-          홈으로
+          홈으로 돌아가기
         </LinkButton>
       </div>
     </PageMain>

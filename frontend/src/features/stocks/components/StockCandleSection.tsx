@@ -72,19 +72,19 @@ export function StockCandleSection({
           <Skeleton className="h-64 w-full" />
         ) : isError ? (
           <div className="flex min-h-64 flex-col items-center justify-center text-center">
-            <SupportingText>차트를 불러오지 못했습니다</SupportingText>
+            <SupportingText>차트를 불러오지 못했어요</SupportingText>
             <Button
               variant="secondary"
               className="mt-3 max-w-40"
               onClick={() => void refetch()}
               disabled={isFetching}
             >
-              다시 시도
+              다시 불러오기
             </Button>
           </div>
         ) : data.candles.length === 0 ? (
           <div className="flex min-h-64 items-center justify-center text-center">
-            <SupportingText>이 기간의 일봉 데이터가 없습니다</SupportingText>
+            <SupportingText>이 기간의 일봉 데이터가 없어요</SupportingText>
           </div>
         ) : (
           <LazyStockCandleChart candles={data.candles} period={period} />

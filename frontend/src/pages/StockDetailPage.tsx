@@ -61,13 +61,13 @@ export function StockDetailPage() {
     return (
       <PageMain>
         <Card>
-          <SupportingText>종목을 불러오지 못했습니다</SupportingText>
+          <SupportingText>종목 정보를 불러오지 못했어요</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
             className="mt-3"
           >
-            다시 시도
+            다시 불러오기
           </Button>
         </Card>
       </PageMain>
@@ -83,7 +83,7 @@ export function StockDetailPage() {
 
       {data.suspended ? (
         <Card className="mt-4">
-          <p className="text-body-1 text-fg-neutral">거래정지 종목입니다</p>
+          <p className="text-body-1 text-fg-neutral">거래정지 종목이에요</p>
           {data.suspendedReason ? (
             <SupportingText className="mt-1">
               {data.suspendedReason}
