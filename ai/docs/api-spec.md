@@ -211,7 +211,7 @@ LLM은 계산을 시키지 않아도 *주어진 숫자를 반올림하거나 바
 ```
 
 > **문구 규약**
-> `message`는 **사용자에게 그대로 보여도 되는 한국어 문구**다. 백엔드 명세 §1.3 이 이 값을 화면에 그대로 노출하는 전제이므로, "LLM 키가 없습니다" 같은 내부 사정은 담지 않는다. 기계가 분기할 사유는 `detail.reason`으로 보낸다. `INSUFFICIENT_DATA`에서 현재 정의된 값은 `llm_key_missing`과 `ledger_unavailable` 두 개가 전부다. 단, 보유 종목·거래일·종가가 없는 경우처럼 `reason` 없이 구체적인 `detail`만 제공할 수도 있다. `request_id`는 §1.3 에 없지만 남긴다 — `POST /feedback`이 이 값으로 응답을 찾으므로 에러에서만 빠지면 제보를 응답에 맞출 수 없다.
+> `message`는 **사용자에게 그대로 보여도 되는 한국어 문구**다. 백엔드 명세 §1.3 이 이 값을 화면에 그대로 노출하는 전제이므로, "LLM 키가 없습니다" 같은 내부 사정은 담지 않는다. 기계가 분기할 사유는 `detail.reason`으로 보낸다. `INSUFFICIENT_DATA`의 원인은 `llm_key_missing`, `ledger_unavailable`, `missing_price_history`, `stale_price_history`다. `missing_price_history`는 시세 행이 전혀 없는 종목을, `stale_price_history`는 최신 일별 종가가 설정된 허용 기간을 넘긴 경우를 뜻한다. `request_id`는 §1.3 에 없지만 남긴다 — `POST /feedback`이 이 값으로 응답을 찾으므로 에러에서만 빠지면 제보를 응답에 맞출 수 없다.
 
 | HTTP | code | 발생 조건 | 프론트 처리 |
 | --- | --- | --- | --- |

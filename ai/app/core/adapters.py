@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -112,6 +113,36 @@ class Ledger:
 
     def instrument(self, symbol: str) -> Instrument:
         return self.instruments.get(symbol) or Instrument(symbol, symbol, "미분류")
+
+
+def ledger_fingerprint(ledger: Ledger) -> str:
+    """원장 입력이 바뀌었는지 판별하는 안정적인 캐시 키."""
+    payload = {
+        "trading_days": [day.isoformat() for day in ledger.trading_days],
+        "instruments": [
+            (symbol, item.name, item.sector)
+            for symbol, item in sorted(ledger.instruments.items())
+        ],
+        "prices": [
+            (symbol, day.isoformat(), value)
+            for symbol, series in sorted(ledger.prices.items())
+            for day, value in sorted(series.items())
+        ],
+        "trades": [
+            (
+                item.trade_date.isoformat(),
+                item.symbol,
+                item.side.value,
+                item.quantity,
+                item.price,
+                item.fee,
+            )
+            for item in ledger.trades
+        ],
+        "flows": [(item.trade_date.isoformat(), item.amount) for item in ledger.flows],
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return f"ledger_{hashlib.sha256(encoded.encode()).hexdigest()[:16]}"
 
 
 class LedgerSource(Protocol):
@@ -309,6 +340,19 @@ class BackendLedgerSource:
         tickers = tuple({h["stockCode"] for h in holdings} | {t.symbol for t in trades})
         prices, sectors = await _market_data(tickers, self._sessions)
         trading_days = _common_days(prices)
+        if settings.app_env == "prod" and trading_days:
+            latest = trading_days[-1]
+            age_days = (datetime.now().date() - latest).days
+            if age_days > settings.ledger_stale_after_days:
+                raise InsufficientData(
+                    "시세 이력이 오래되어 포트폴리오를 계산할 수 없습니다.",
+                    detail={
+                        "reason": "stale_price_history",
+                        "latest_price_date": latest.isoformat(),
+                        "age_days": age_days,
+                        "max_age_days": settings.ledger_stale_after_days,
+                    },
+                )
 
         instruments = {
             h["stockCode"]: Instrument(
@@ -387,12 +431,19 @@ def _common_days(prices: Mapping[str, Mapping[date, float]]) -> tuple[date, ...]
 
     엔진은 거래일마다 보유 종목 전부의 종가를 찾는다. 빠진 날은 `Ledger.price`
     가 상한 안에서 직전 종가로 메우지만, 여기서 교집합을 쓰면 메울 일 자체가
-    없어 실제 종가만으로 계산한다. 교집합이 비면 `trading_days` 가 비고,
-    호출부는 이미 그것을 데이터 부족으로 다룬다.
+    없어 실제 종가만으로 계산한다. 한 종목의 시세가 통째로 없으면
+    포트폴리오 합계를 계산할 수 없으므로 `INSUFFICIENT_DATA`로 중단한다.
+    빈 거래일을 반환하면 호출부가 정상적인 `empty` 브리핑으로 오인한다.
     """
-    series = [set(days) for days in prices.values() if days]
-    if not series or len(series) != len(prices):
+    missing = tuple(sorted(symbol for symbol, days in prices.items() if not days))
+    if missing:
+        raise InsufficientData(
+            "일부 종목의 시세 이력이 없어 포트폴리오를 계산할 수 없습니다.",
+            detail={"reason": "missing_price_history", "tickers": list(missing)},
+        )
+    if not prices:
         return ()
+    series = [set(days) for days in prices.values()]
     return tuple(sorted(set.intersection(*series)))
 
 

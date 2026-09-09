@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 from app.api.main import create_app
 from app.core.db import get_session
 from app.core.enums import BriefingCategory, EventType, RateSensitivity
+from app.core.errors import InsufficientData
 from app.engines import briefing as briefing_engine
 from app.engines.attribution import EventRecord
 from app.engines.briefing import (
@@ -106,11 +107,13 @@ class StubSession:
         events: list[tuple] | None = None,
         documents: list[tuple] | None = None,
         payloads: list[dict] | None = None,
+        cache_metadata: list[dict] | None = None,
     ) -> None:
         self.events = events if events is not None else []
         self.documents = documents if documents is not None else []
         #: 최근 7일 브리핑 봉투. 비어 있으면 전부 신규다.
         self.payloads = payloads if payloads is not None else []
+        self.cache_metadata = cache_metadata if cache_metadata is not None else [{}] * len(self.payloads)
         self.seen: list[str] = []
         self.added: list[Any] = []
         self.commits = 0
@@ -119,7 +122,9 @@ class StubSession:
         sql = str(statement)
         self.seen.append(sql)
         if "ai_responses" in sql:
-            return StubResult([(payload,) for payload in self.payloads])
+            return StubResult(
+                list(zip(self.payloads, self.cache_metadata, strict=False))
+            )
         if "FROM documents" in sql:
             return StubResult(self.documents)
         return StubResult(self.events)
@@ -365,6 +370,23 @@ def test_원장을_못_읽으면_409가_아니라_status_empty다(client: TestCl
     assert content["items"] == []
 
 
+def test_시세_누락은_정상적인_empty와_구분한다(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def missing_price_history(_user_id: str) -> None:
+        raise InsufficientData(
+            "일부 종목의 시세 이력이 없어 포트폴리오를 계산할 수 없습니다.",
+            detail={"reason": "missing_price_history", "tickers": ["999999"]},
+        )
+
+    monkeypatch.setattr("app.api.routes.briefing._ledger", missing_price_history)
+    with _make_client(monkeypatch, StubSession()) as test_client:
+        response = _get(test_client, HOLDER)
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["code"] == "INSUFFICIENT_DATA"
+    assert body["detail"]["reason"] == "missing_price_history"
+
+
 def test_이벤트_표가_비어도_보유_등락만으로_ready가_나온다(client: TestClient) -> None:
     response = _get(client, HOLDER)
 
@@ -381,7 +403,10 @@ def test_같은_날_브리핑은_LLM_호출_없이_재사용한다(
     with _make_client(monkeypatch, StubSession()) as first_client:
         first = _get(first_client, HOLDER).json()
 
-    with _make_client(monkeypatch, StubSession(payloads=[first])) as second_client:
+    metadata = first_client.db.added[0].guardrail_result  # type: ignore[attr-defined]
+    with _make_client(
+        monkeypatch, StubSession(payloads=[first], cache_metadata=[metadata])
+    ) as second_client:
         second = _get(second_client, HOLDER).json()
 
     assert second["cached"] is True
@@ -474,7 +499,10 @@ def test_캐시된_브리핑도_원래_인용을_보존한다(
     ) as first_client:
         first = _get(first_client, HOLDER).json()
 
-    with _make_client(monkeypatch, StubSession(payloads=[first])) as cached_client:
+    metadata = first_client.db.added[0].guardrail_result  # type: ignore[attr-defined]
+    with _make_client(
+        monkeypatch, StubSession(payloads=[first], cache_metadata=[metadata])
+    ) as cached_client:
         cached = _get(cached_client, HOLDER).json()
 
     assert cached["cached"] is True

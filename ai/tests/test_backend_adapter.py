@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import pytest
@@ -19,12 +19,16 @@ from sqlalchemy.pool import NullPool
 
 from app.core.adapters import (
     BackendLedgerSource,
+    Instrument,
+    Ledger,
     SeedLedgerSource,
     _common_days,
+    ledger_fingerprint,
     ledger_source,
 )
 from app.core.config import settings
 from app.core.enums import OrderSide
+from app.core.errors import InsufficientData
 from app.core.models import PriceDaily
 
 #: 시드 시세가 들어 있는 종목. price_daily 에 60거래일 이상 있다.
@@ -135,6 +139,7 @@ def test_설정에_없는_값은_기동_때_걸린다():
 # ── 백엔드에서 오는 것 ────────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_보유_종목이_Ledger로_옮겨진다(sessions):
+    await _skip_without_prices(sessions)
     ledger = await _source(_FakeClient(), sessions).load("1")
 
     assert ledger.user_id == "1"
@@ -143,6 +148,7 @@ async def test_보유_종목이_Ledger로_옮겨진다(sessions):
 
 @pytest.mark.asyncio
 async def test_거래가_Ledger로_옮겨진다(sessions):
+    await _skip_without_prices(sessions)
     pages = [{"trades": [TRADE], "nextCursor": None, "hasNext": False}]
     ledger = await _source(_FakeClient(pages), sessions).load("1")
 
@@ -156,6 +162,7 @@ async def test_거래가_Ledger로_옮겨진다(sessions):
 
 @pytest.mark.asyncio
 async def test_커서를_끝까지_따라간다(sessions):
+    await _skip_without_prices(sessions)
     pages = [
         {"trades": [TRADE], "nextCursor": "c2", "hasNext": True},
         {"trades": [TRADE | {"tradeId": 102}], "nextCursor": None, "hasNext": False},
@@ -175,6 +182,7 @@ async def test_커서를_끝까지_따라간다(sessions):
 @pytest.mark.asyncio
 async def test_커서_없이_hasNext만_참이면_멈춘다(sessions):
     """같은 쪽을 영원히 다시 받는 것을 막는다."""
+    await _skip_without_prices(sessions)
     pages = [{"trades": [TRADE], "nextCursor": None, "hasNext": True}]
     ledger = await _source(_FakeClient(pages), sessions).load("1")
     assert len(ledger.trades) == 1
@@ -183,7 +191,9 @@ async def test_커서_없이_hasNext만_참이면_멈춘다(sessions):
 @pytest.mark.asyncio
 async def test_모든_요청에_인증_헤더_두_개가_실린다(sessions):
     client = _FakeClient()
-    await _source(client, sessions).load("42")
+    source = _source(client, sessions)
+    source._get("42", "/internal/v1/portfolio")
+    tuple(source._trades("42"))
 
     assert client.calls
     for _url, _params, headers in client.calls:
@@ -248,11 +258,8 @@ async def test_섹터는_우리_instruments에서_온다(sessions):
 
 
 @pytest.mark.asyncio
-async def test_시세가_없는_종목이면_거래일이_빈다(sessions):
-    """엔진은 거래일마다 보유 종목 전부의 종가를 찾는다. 하나도 없으면 InsufficientData 다.
-
-    비는 편이 낫다 — 호출부가 이미 그것을 데이터 부족으로 다룬다.
-    """
+async def test_시세가_없는_종목이면_명시적인_데이터_부족이다(sessions):
+    """빈 거래일은 정상적인 empty 브리핑으로 오인되므로 누락 종목을 알린다."""
     portfolio = PORTFOLIO | {
         "holdings": [PORTFOLIO["holdings"][0] | {"stockCode": "999999"}]
     }
@@ -264,17 +271,58 @@ async def test_시세가_없는_종목이면_거래일이_빈다(sessions):
                 return _Response(portfolio)
             return _Response({"trades": [], "nextCursor": None, "hasNext": False})
 
-    ledger = await _source(_NoPrice(), sessions).load("1")
-    assert ledger.trading_days == ()
+    with pytest.raises(InsufficientData) as caught:
+        await _source(_NoPrice(), sessions).load("1")
+    assert caught.value.detail == {
+        "reason": "missing_price_history",
+        "tickers": ["999999"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_운영에서_오래된_시세면_명시적인_데이터_부족이다(monkeypatch):
+    async def old_market_data(*_args, **_kwargs):
+        old_day = date.today() - timedelta(days=10)
+        return {TICKER: {old_day: 73_500.0}}, {TICKER: "반도체"}
+
+    monkeypatch.setattr("app.core.adapters._market_data", old_market_data)
+    monkeypatch.setattr(settings, "app_env", "prod")
+    monkeypatch.setattr(settings, "ledger_stale_after_days", 5)
+
+    with pytest.raises(InsufficientData) as caught:
+        await _source(_FakeClient()).load("1")
+
+    assert caught.value.detail["reason"] == "stale_price_history"
+    assert caught.value.detail["max_age_days"] == 5
 
 
 def test_거래일은_모든_종목의_교집합이다():
     a, b, c = date(2026, 8, 18), date(2026, 8, 19), date(2026, 8, 20)
     prices = {"A": {a: 1.0, b: 2.0, c: 3.0}, "B": {b: 4.0, c: 5.0}}
     assert _common_days(prices) == (b, c)
-    # 한 종목이 통째로 비면 교집합을 낼 수 없다.
-    assert _common_days({"A": {a: 1.0}, "B": {}}) == ()
+    with pytest.raises(InsufficientData) as caught:
+        _common_days({"A": {a: 1.0}, "B": {}})
+    assert caught.value.detail == {
+        "reason": "missing_price_history",
+        "tickers": ["B"],
+    }
     assert _common_days({}) == ()
+
+
+def test_원장_fingerprint는_입력이_바뀌면_달라진다():
+    first = Ledger(
+        user_id="u",
+        trading_days=(date(2025, 1, 1),),
+        instruments={"A": Instrument("A", "A", "반도체")},
+        prices={"A": {date(2025, 1, 1): 100.0}},
+    )
+    second = Ledger(
+        user_id="u",
+        trading_days=(date(2025, 1, 1),),
+        instruments={"A": Instrument("A", "A", "반도체")},
+        prices={"A": {date(2025, 1, 1): 101.0}},
+    )
+    assert ledger_fingerprint(first) != ledger_fingerprint(second)
 
 
 # ── 없는 것 ──────────────────────────────────────────────────────────────
