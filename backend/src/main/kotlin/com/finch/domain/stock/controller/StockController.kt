@@ -9,8 +9,7 @@ import com.finch.domain.stock.entity.CandlePeriod
 import com.finch.domain.stock.service.StockService
 import com.finch.domain.watchlist.service.WatchlistService
 import com.finch.global.security.LoginUser
-import jakarta.validation.constraints.Max
-import jakarta.validation.constraints.Min
+import com.finch.global.apiPayload.CursorPage
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.web.bind.annotation.GetMapping
@@ -46,10 +45,9 @@ class StockController(
 	fun search(
 		@RequestParam @Size(min = 2, message = "2글자 이상이어야 합니다") keyword: String,
 		@RequestParam(defaultValue = "10")
-		@Min(1, message = "1 이상 100 이하여야 합니다")
-		@Max(100, message = "1 이상 100 이하여야 합니다")
 		size: Int,
-	): StockSearchRes = stockService.search(keyword, size)
+		@RequestParam(required = false) cursor: String?,
+	): CursorPage<StockSearchRes.Item> = stockService.search(keyword, size, cursor)
 
 	/** 벌크 경로는 종목코드 변수 경로와 별개다. 최대 50건 제한은 관심 종목 한도와 같다. */
 	@GetMapping("/prices")

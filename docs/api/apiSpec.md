@@ -396,17 +396,17 @@ Idempotency-Key: {UUID}   ← 필수
 ### 5.1 종목 검색 · 자동완성 (명세 4장)
 
 ```
-GET /api/v1/stocks/search?keyword={검색어}&size=10
+GET /api/v1/stocks/search?keyword={검색어}&size=10&cursor={nextCursor}
 ```
 
-- 2글자 이상부터 호출한다. **서버도 같은 선을 지킨다** — `keyword` 가 2글자 미만이거나
-  `size` 가 1~100 밖이면 `400 INVALID_REQUEST` 다. 빈 목록으로 흘리지 않는 이유는 그러면
-  "못 찾았다" 와 "잘못 물었다" 가 같은 응답이 되기 때문이다.
+- 2글자 이상부터 호출한다. **서버도 같은 선을 지킨다** — `keyword` 가 2글자 미만이면
+  `400 INVALID_REQUEST` 다. `size` 는 `CursorPage` 규칙에 따라 1~100으로 자른다.
+  빈 목록으로 흘리지 않는 이유는 그러면 "못 찾았다" 와 "잘못 물었다" 가 같은 응답이 되기 때문이다.
 - 종목명은 **대소문자를 구분하지 않고 부분일치**, 종목코드는 **앞자리 일치**다.
   `sk` 로 `SK하이닉스` 가 걸리고, `593` 으로 `005930` 은 걸리지 않는다.
 - 종목명 또는 종목코드로 검색한다. 초성 검색은 확장 범위.
 
-**Response `200 OK`**
+**Response `200 OK`** — `{items, nextCursor, hasNext}` 커서 페이지이며, 정렬은 코드 정확일치·종목명·종목코드 순이다.
 ```json
 {
   "items": [
@@ -1182,7 +1182,7 @@ AI 서버가 발행하는 코드(`INSUFFICIENT_DATA`, `GUARDRAIL_BLOCKED`, `RETR
 | GET | `/account` | — | |
 | GET | `/deposits/limit` | — | |
 | POST | `/deposits` | `DEPOSIT_AMOUNT_INVALID` · `DEPOSIT_PER_REQUEST_LIMIT_EXCEEDED` · `DEPOSIT_LIMIT_EXCEEDED` | 판정 순서: 멱등성 → `paymentMethod` 열거값(`INVALID_REQUEST`) → 금액 0 이하 → 1회 한도 → 누적 한도(`detail.remainingAmount`) |
-| GET | `/stocks/search` | — | `keyword` 2글자 미만 · `size` 범위 밖 → `INVALID_REQUEST`. 결과 없음은 빈 `items` |
+| GET | `/stocks/search` | — | `keyword` 2글자 미만 → `INVALID_REQUEST`. `size`는 1~100으로 자른다. 결과 없음은 빈 `items` |
 | GET | `/stocks/{stockCode}` | `STOCK_NOT_FOUND` | 상장폐지 종목 노출 여부는 별도 확정 항목(프론트 contracts P18) |
 | GET | `/stocks/{stockCode}/candles` | `STOCK_NOT_FOUND` | `period` 열거값 밖 → `INVALID_REQUEST` |
 | GET | `/stocks/{stockCode}/price` | `STOCK_NOT_FOUND` | **시세 없음은 에러가 아니다** — `stale: true` + `null` (§5.4) |

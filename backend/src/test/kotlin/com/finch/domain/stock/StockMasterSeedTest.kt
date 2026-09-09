@@ -3,6 +3,7 @@ package com.finch.domain.stock
 import com.finch.TestcontainersConfiguration
 import com.finch.domain.stock.entity.Market
 import com.finch.domain.stock.repository.StockRepository
+import com.finch.domain.stock.util.StockSearchCursor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
@@ -67,5 +68,36 @@ class StockMasterSeedTest {
 		// AI price_daily 가 32종만 담아서다 (V5 머리말). KIS 수집이 붙으면 전종목으로 찬다.
 		assertThat(stockRepository.findByStockCode("005930")!!.previousClose).isNotNull()
 		assertThat(stockRepository.findByStockCode("000050")!!.previousClose).isNull()
+	}
+
+	@Test
+	@DisplayName("검색 커서는 관련도·종목코드 경계를 넘겨도 중복과 누락이 없다")
+	fun searchCursorHasNoDuplicatesOrGaps() {
+		val keyword = "전자"
+		val pageSize = 7
+		val seen = linkedSetOf<String>()
+		var cursor: StockSearchCursor? = null
+		var pageCount = 0
+
+		do {
+			val rows = stockRepository.searchPage(
+				keyword = keyword,
+				cursorRank = cursor?.exactRank ?: 2,
+				cursorName = cursor?.stockName.orEmpty(),
+				cursorCode = cursor?.stockCode.orEmpty(),
+				limit = pageSize + 1,
+			)
+			val hasNext = rows.size > pageSize
+			val page = if (hasNext) rows.subList(0, pageSize) else rows
+			assertThat(page).isNotEmpty()
+			page.forEach { assertThat(seen.add(it.stockCode)).isTrue() }
+			cursor = if (hasNext) {
+				page.last().let { StockSearchCursor(keyword, if (it.stockCode == keyword) 1 else 0, it.stockName, it.stockCode) }
+			} else null
+			pageCount++
+		} while (cursor != null)
+
+		assertThat(pageCount).isGreaterThan(1)
+		assertThat(seen).hasSize(stockRepository.searchPage(keyword, 2, "", "", 1000).size)
 	}
 }
