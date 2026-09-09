@@ -13,5 +13,6 @@ data class InternalPortfolioRes(
 		val quantity: Long,
 		val avgBuyPrice: Long,
 		val currentPrice: Long?,
+		val previousClose: Long?,
 	)
 }

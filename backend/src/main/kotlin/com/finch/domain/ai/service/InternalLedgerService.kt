@@ -23,7 +23,14 @@ class InternalLedgerService(
 			cashBalance = portfolio.cashBalance,
 			asOf = portfolio.asOf,
 			holdings = portfolio.holdings.map {
-				InternalPortfolioRes.Holding(it.stockCode, it.stockName, it.quantity, it.avgBuyPrice, it.currentPrice)
+				InternalPortfolioRes.Holding(
+					it.stockCode,
+					it.stockName,
+					it.quantity,
+					it.avgBuyPrice,
+					it.currentPrice,
+					it.previousClose,
+				)
 			},
 		)
 	}

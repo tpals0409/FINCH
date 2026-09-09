@@ -49,7 +49,7 @@ class PortfolioValuationService(
 		getSnapshot(accountId).let { AccountValuation(it.evaluationAmount, it.asOf) }
 
 	private fun value(row: HoldingPositionRow, currentPrice: Long?): HoldingValuation =
-		value(row.stockCode, row.stockName, row.quantity, row.avgBuyPrice, currentPrice)
+		value(row.stockCode, row.stockName, row.quantity, row.avgBuyPrice, currentPrice, row.previousClose)
 
 	private fun value(
 		stockCode: String,
@@ -57,6 +57,7 @@ class PortfolioValuationService(
 		quantity: Long,
 		avgBuyPrice: Long,
 		currentPrice: Long?,
+		previousClose: Long?,
 	): HoldingValuation {
 		val evaluationAmount = currentPrice?.let { it * quantity }
 		val evaluationProfit = currentPrice?.let { (it - avgBuyPrice) * quantity }
@@ -67,6 +68,7 @@ class PortfolioValuationService(
 			quantity = quantity,
 			avgBuyPrice = avgBuyPrice,
 			currentPrice = currentPrice,
+			previousClose = previousClose,
 			evaluationAmount = evaluationAmount,
 			evaluationProfit = evaluationProfit,
 			evaluationProfitRate = evaluationProfit?.takeIf { cost > 0 }?.let {
