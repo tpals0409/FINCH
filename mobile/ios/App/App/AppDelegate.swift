@@ -63,12 +63,12 @@ final class FinchBridgeViewController: CAPBridgeViewController {
             return
         }
 
-        webView.evaluateJavaScript("""
-        document.readyState === 'complete' &&
-        (location.hostname === 'app.finchapp.org' || location.pathname.endsWith('/offline.html'))
-        """) { [weak self] value, _ in
+        webView.evaluateJavaScript("document.readyState === 'complete'") { [weak self] value, _ in
             guard let self else { return }
-            if value as? Bool == true {
+            let serverHost = self.bridge?.config.serverURL.host
+            let loadedHost = webView.url?.host
+            let isOfflinePage = webView.url?.lastPathComponent == "offline.html"
+            if value as? Bool == true && (loadedHost == serverHost || isOfflinePage) {
                 self.hideSplash()
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
