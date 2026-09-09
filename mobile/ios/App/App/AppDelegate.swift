@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import CapacitorSplashScreen
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -46,4 +47,46 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+}
+
+final class FinchBridgeViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        pollForReadyPage(attempts: 0)
+    }
+
+    private func pollForReadyPage(attempts: Int) {
+        guard let webView else { return }
+
+        if attempts >= 60 {
+            hideSplash()
+            return
+        }
+
+        webView.evaluateJavaScript("""
+        document.readyState === 'complete' &&
+        (location.hostname === 'app.finchapp.org' || location.pathname.endsWith('/offline.html'))
+        """) { [weak self] value, _ in
+            guard let self else { return }
+            if value as? Bool == true {
+                self.hideSplash()
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    self.pollForReadyPage(attempts: attempts + 1)
+                }
+            }
+        }
+    }
+
+    private func hideSplash() {
+        guard let plugin = bridge?.plugin(withName: "SplashScreen") as? SplashScreenPlugin else { return }
+        guard let call = CAPPluginCall(
+            callbackId: "finch-splash-hide",
+            methodName: "hide",
+            options: [:],
+            success: { _, _ in },
+            error: { _ in }
+        ) else { return }
+        plugin.hide(call)
+    }
 }

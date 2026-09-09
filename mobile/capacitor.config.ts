@@ -9,11 +9,19 @@ export const config: CapacitorConfig = {
   server: {
     url: webOrigin,
     cleartext: false,
-    allowNavigation: [new URL(webOrigin).hostname],
+    allowNavigation: [new URL(webOrigin).hostname, '*.kakao.com'],
     errorPath: 'offline.html',
   },
   android: {
     allowMixedContent: false,
+  },
+  plugins: {
+    SplashScreen: {
+      backgroundColor: '#ffffff',
+      launchAutoHide: true,
+      launchShowDuration: 15000,
+      showSpinner: false,
+    },
   },
 };
 

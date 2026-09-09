@@ -1,6 +1,8 @@
 package org.finchapp.mobile;
 
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.webkit.WebView;
 import android.webkit.WebBackForwardList;
@@ -10,9 +12,13 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
+    private static final long SPLASH_POLL_INTERVAL_MS = 250L;
+    private static final int SPLASH_MAX_POLLS = 60;
+
     @Override
     protected void onCreate(android.os.Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        hideSplashAfterWebViewLoad();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_OVERLAY,
@@ -58,6 +64,46 @@ public class MainActivity extends BridgeActivity {
         } else {
             finishAndRemoveTask();
         }
+    }
+
+    private void hideSplashAfterWebViewLoad() {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            private int attempts;
+
+            @Override
+            public void run() {
+                if (attempts++ >= SPLASH_MAX_POLLS) {
+                    WebView webView = getBridge() == null ? null : getBridge().getWebView();
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                            "window.Capacitor?.Plugins?.SplashScreen?.hide?.();", null
+                        );
+                    }
+                    return;
+                }
+
+                WebView webView = getBridge() == null ? null : getBridge().getWebView();
+                if (webView == null) {
+                    handler.postDelayed(this, SPLASH_POLL_INTERVAL_MS);
+                    return;
+                }
+
+                webView.evaluateJavascript(
+                    "(document.readyState === 'complete' && " +
+                    "(location.hostname === 'app.finchapp.org' || location.pathname.endsWith('/offline.html')))" ,
+                    value -> {
+                        if ("true".equals(value)) {
+                            webView.evaluateJavascript(
+                                "window.Capacitor?.Plugins?.SplashScreen?.hide?.();", null
+                            );
+                        } else {
+                            handler.postDelayed(this, SPLASH_POLL_INTERVAL_MS);
+                        }
+                    }
+                );
+            }
+        });
     }
 
     private boolean hasBackHistory(WebView webView) {
