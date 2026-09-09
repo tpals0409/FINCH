@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import {
   getQuotePollingOptions,
@@ -26,9 +26,13 @@ export function useStockSearch(
 ) {
   const trimmed = keyword.trim();
 
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.stocks.search(trimmed),
-    queryFn: ({ signal }) => getStockSearch({ keyword: trimmed, signal }),
+    queryFn: ({ pageParam, signal }) =>
+      getStockSearch({ keyword: trimmed, cursor: pageParam, signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNext ? lastPage.nextCursor : undefined,
     enabled: trimmed.length >= MIN_SEARCH_KEYWORD_LENGTH,
     placeholderData: (previous) => previous,
     ...getQuotePollingOptions('list', polling),

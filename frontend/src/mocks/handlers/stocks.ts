@@ -136,14 +136,20 @@ export const stockHandlers = [
      */
     touchRecentSearchKeyword(keyword);
 
-    const items = MOCK_STOCKS.filter(
+    const matches = MOCK_STOCKS.filter(
       (stock) =>
         stock.stockName.includes(keyword) || stock.stockCode.includes(keyword),
-    )
-      .slice(0, size)
-      .map(toStockSummary);
+    );
+    const cursorParam = searchParam(request, 'cursor');
+    const offset = cursorParam === null ? 0 : Number(cursorParam);
+    const items = matches.slice(offset, offset + size).map(toStockSummary);
+    const nextOffset = offset + size;
 
-    return HttpResponse.json({ items });
+    return HttpResponse.json({
+      items,
+      nextCursor: nextOffset < matches.length ? String(nextOffset) : null,
+      hasNext: nextOffset < matches.length,
+    });
   }),
 
   http.get(mockPath(API_PATHS.stocks.prices), ({ request }) => {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { STOCK_PRICES_MAX_CODES } from '@/shared/config/apiContract';
 
-import { createItemsSchema } from './pagination';
+import { createCursorPageSchema, createItemsSchema } from './pagination';
 import {
   type IsoDateTime,
   type KrwAmount,
@@ -61,7 +61,8 @@ export function hasSummaryPrice(stock: StockSummary): stock is StockSummary & {
 }
 
 /** `GET /stocks/search` 응답 (apiSpec §5.1). 2글자 이상부터 호출한다. */
-export const StockSearchResponseSchema = createItemsSchema(StockSummarySchema);
+export const StockSearchResponseSchema =
+  createCursorPageSchema(StockSummarySchema);
 export type StockSearchResponse = z.infer<typeof StockSearchResponseSchema>;
 
 /** 종목 상세의 보유 정보 (apiSpec §5.2 종목 상세). 보유하지 않으면 상위에서 `null` 이다. */
