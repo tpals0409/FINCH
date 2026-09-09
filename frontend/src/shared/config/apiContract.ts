@@ -77,11 +77,29 @@ export const QUOTE_POLLING_INTERVAL_MS = {
   order: 3_000,
 } as const;
 
-/** 폴링 주기의 80%로 두는 시세 쿼리 신선도 임계 (apiSpec §5.6 권장 관계식). */
-export const QUOTE_STALE_TIME_MS = {
-  list: QUOTE_POLLING_INTERVAL_MS.list * 0.8,
-  order: QUOTE_POLLING_INTERVAL_MS.order * 0.8,
-} as const;
+export type QuotePollingTier = keyof typeof QUOTE_POLLING_INTERVAL_MS;
+
+export interface QuotePollingOverrides {
+  intervalMs?: number;
+  staleTimeMs?: number;
+}
+
+/**
+ * 시세 쿼리의 주기를 호출부에서 주입할 수 있게 한다.
+ * 운영 기본값은 이 파일에 두되, 개장 실측·테스트에서는 서버 응답 지연에 맞춰
+ * 쿼리마다 별도 주기를 넣을 수 있다.
+ */
+export function getQuotePollingOptions(
+  tier: QuotePollingTier,
+  overrides: QuotePollingOverrides = {},
+) {
+  const intervalMs = overrides.intervalMs ?? QUOTE_POLLING_INTERVAL_MS[tier];
+
+  return {
+    refetchInterval: intervalMs,
+    staleTime: overrides.staleTimeMs ?? intervalMs * 0.8,
+  } as const;
+}
 
 /**
  * STOMP 하트비트 (apiSpec §5.6 웹소켓 · contracts C39).

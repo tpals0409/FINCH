@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
 import {
-  QUOTE_POLLING_INTERVAL_MS,
-  QUOTE_STALE_TIME_MS,
+  getQuotePollingOptions,
+  type QuotePollingOverrides,
 } from '@/shared/config/apiContract';
 import { queryKeys } from '@/shared/config/queryKeys';
 
@@ -20,7 +20,10 @@ export const MIN_SEARCH_KEYWORD_LENGTH = 2;
  * `placeholderData` 로 이전 결과를 유지한다. 글자를 하나 더 칠 때마다 목록이 비었다가
  * 다시 차면 눈이 따라가지 못한다 — 새 결과가 올 때까지 옛 목록을 두는 편이 읽기 편하다.
  */
-export function useStockSearch(keyword: string) {
+export function useStockSearch(
+  keyword: string,
+  polling?: QuotePollingOverrides,
+) {
   const trimmed = keyword.trim();
 
   return useQuery({
@@ -28,7 +31,6 @@ export function useStockSearch(keyword: string) {
     queryFn: ({ signal }) => getStockSearch({ keyword: trimmed, signal }),
     enabled: trimmed.length >= MIN_SEARCH_KEYWORD_LENGTH,
     placeholderData: (previous) => previous,
-    refetchInterval: QUOTE_POLLING_INTERVAL_MS.list,
-    staleTime: QUOTE_STALE_TIME_MS.list,
+    ...getQuotePollingOptions('list', polling),
   });
 }
