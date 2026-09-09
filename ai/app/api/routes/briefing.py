@@ -55,6 +55,10 @@ _SHIFT_LOOKBACK_DAYS = 30
 
 _ENDPOINT = "briefing"
 
+# 캐시 봉투의 시각 규약이 바뀌면 새 봉투를 만들고, 구버전 봉투는 읽을 때
+# 정규화한다. 기존 행을 일괄 삭제하지 않고도 배포 직후 캐시를 안전하게 소진한다.
+_CACHE_SCHEMA_VERSION = 2
+
 
 class BriefingItem(BaseModel):
     rank: int
@@ -134,7 +138,7 @@ async def build_briefing(
             cached,
             user_id=user_id,
             endpoint=_ENDPOINT,
-            guardrail_result={"ledger_fingerprint": fingerprint},
+            guardrail_result=_cache_metadata(fingerprint),
         )
         return cached
 
@@ -245,7 +249,7 @@ async def build_briefing(
         envelope,
         user_id=user_id,
         endpoint=_ENDPOINT,
-        guardrail_result={"ledger_fingerprint": fingerprint},
+        guardrail_result=_cache_metadata(fingerprint),
     )
     return envelope
 
@@ -274,6 +278,9 @@ async def _cached_briefing(
     for payload, metadata in payloads:
         if not isinstance(metadata, dict) or metadata.get("ledger_fingerprint") != fingerprint:
             continue
+        version = metadata.get("cache_schema_version")
+        if version is not None and version != _CACHE_SCHEMA_VERSION:
+            continue
         if not isinstance(payload, dict):
             continue
         content = payload.get("content")
@@ -284,9 +291,11 @@ async def _cached_briefing(
         except (TypeError, ValueError):
             continue
         return Envelope[BriefingContent](
-            content=previous.content,
+            content=previous.content.model_copy(
+                update={"generated_at": _as_kst(previous.content.generated_at)}
+            ),
             citations=previous.citations,
-            data_as_of=previous.data_as_of,
+            data_as_of=_normalize_data_as_of(previous.data_as_of),
             cached=True,
         )
     return None
@@ -316,10 +325,34 @@ async def _empty(
         user_id=user_id,
         endpoint=_ENDPOINT,
         guardrail_result=(
-            {"ledger_fingerprint": fingerprint} if fingerprint is not None else None
+            _cache_metadata(fingerprint) if fingerprint is not None else None
         ),
     )
     return envelope
+
+
+def _cache_metadata(fingerprint: str) -> dict[str, str | int]:
+    return {
+        "ledger_fingerprint": fingerprint,
+        "cache_schema_version": _CACHE_SCHEMA_VERSION,
+    }
+
+
+def _as_kst(value: datetime) -> datetime:
+    """구버전 캐시의 naive 시각을 기존 계약인 KST로 해석한다."""
+    if value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=timezone(timedelta(hours=KST_OFFSET_HOURS)))
+
+
+def _normalize_data_as_of(data: DataAsOf) -> DataAsOf:
+    return DataAsOf(
+        price=_as_kst(data.price) if data.price is not None else None,
+        portfolio=_as_kst(data.portfolio) if data.portfolio is not None else None,
+        filings=_as_kst(data.filings) if data.filings is not None else None,
+        news=_as_kst(data.news) if data.news is not None else None,
+        macro=_as_kst(data.macro) if data.macro is not None else None,
+    )
 
 
 def _item_payload(

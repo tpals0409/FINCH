@@ -415,6 +415,43 @@ def test_같은_날_브리핑은_LLM_호출_없이_재사용한다(
     assert second_client.llm.calls == []  # type: ignore[attr-defined]
 
 
+def test_캐시_히트에서도_구버전_data_as_of에_KST_오프셋을_붙인다(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with _make_client(monkeypatch, StubSession()) as first_client:
+        first = _get(first_client, HOLDER).json()
+
+    metadata = first_client.db.added[0].guardrail_result  # type: ignore[attr-defined]
+    first["data_as_of"]["price"] = "2025-09-12T15:30:00"
+    first["data_as_of"]["portfolio"] = "2025-09-12T15:30:00"
+    with _make_client(
+        monkeypatch, StubSession(payloads=[first], cache_metadata=[metadata])
+    ) as cached_client:
+        cached = _get(cached_client, HOLDER).json()
+
+    assert cached["cached"] is True
+    assert cached["data_as_of"]["price"].endswith("+09:00")
+    assert cached["data_as_of"]["portfolio"].endswith("+09:00")
+    assert cached_client.llm.calls == []  # type: ignore[attr-defined]
+
+
+def test_캐시_스키마가_다르면_구버전_봉투를_재사용하지_않는다(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with _make_client(monkeypatch, StubSession()) as first_client:
+        first = _get(first_client, HOLDER).json()
+
+    metadata = dict(first_client.db.added[0].guardrail_result)  # type: ignore[attr-defined]
+    metadata["cache_schema_version"] = 1
+    with _make_client(
+        monkeypatch, StubSession(payloads=[first], cache_metadata=[metadata])
+    ) as regenerated_client:
+        regenerated = _get(regenerated_client, HOLDER).json()
+
+    assert regenerated["cached"] is False
+    assert regenerated_client.llm.calls  # type: ignore[attr-defined]
+
+
 def test_이벤트_문서를_항목과_봉투의_같은_인용으로_연결한다(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
