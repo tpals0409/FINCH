@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from '@/app/App';
+import { installPreloadErrorRecovery } from '@/app/preloadErrorRecovery';
 import { installAuthBridge } from '@/features/auth';
 import '@/styles/index.css';
 
@@ -28,6 +29,7 @@ if (rootElement === null) {
 
 // 렌더보다 먼저 꽂는다. 컴포넌트 안에서 꽂으면 그보다 먼저 나간 요청에 토큰이 안 붙는다.
 installAuthBridge();
+installPreloadErrorRecovery();
 
 void enableMocking().then(() => {
   createRoot(rootElement).render(

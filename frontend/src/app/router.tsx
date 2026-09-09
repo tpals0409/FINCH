@@ -10,6 +10,7 @@ import { ROUTES, ROUTE_PATTERNS } from '@/shared/config/routes';
 import { RootLayout } from './layouts/RootLayout';
 import { StockCodeGuard } from './layouts/StockCodeGuard';
 import { TabBarLayout } from './layouts/TabBarLayout';
+import { RouteErrorPage } from './RouteErrorPage';
 import { RoutePlaceholder } from './RoutePlaceholder';
 
 /**
@@ -98,6 +99,7 @@ export const router = createBrowserRouter([
   {
     // 스크롤 복원과 lazy 폴백을 한 곳에서 건다.
     element: <RootLayout />,
+    errorElement: <RouteErrorPage />,
     children: [
       // ── 비보호 ────────────────────────────────────────────────────────
       { path: ROUTES.login, element: <LoginPage /> },
