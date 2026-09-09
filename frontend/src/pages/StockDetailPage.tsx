@@ -17,6 +17,7 @@ import {
   type CandlePeriod,
   type StockHoldingSummary,
 } from '@/shared/types/stock';
+import { BackButton } from '@/shared/ui/BackButton';
 import { Button, LinkButton } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { NumericValue } from '@/shared/ui/NumericValue';
@@ -40,11 +41,14 @@ export function StockDetailPage() {
     useStockDetail(stockCode);
 
   const handlePeriodChange = (nextPeriod: CandlePeriod) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set('period', nextPeriod);
-      return next;
-    });
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set('period', nextPeriod);
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   if (isPending) {
@@ -76,6 +80,7 @@ export function StockDetailPage() {
 
   return (
     <PageMain>
+      <BackButton fallbackTo={ROUTES.search} />
       <h1 className="text-title-2 text-fg-neutral">{data.stockName}</h1>
       <SupportingText className="mt-1 tabular-nums">
         {data.stockCode} · {data.market}
