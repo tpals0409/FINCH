@@ -13,7 +13,7 @@ import { BottomTabBar } from './BottomTabBar';
  * 탭 바는 `BottomTabBar` 가 그리고 목록은 `BOTTOM_TAB_ROUTES` 가 갖는다.
  *
  * 탭 바가 `fixed` 라 본문 마지막 요소가 그 밑에 깔린다. 아래 래퍼에 탭 바 높이(56px)와
- * `env(safe-area-inset-bottom)` 만큼 하단 여백을 준다 — 이걸 빠뜨리면 마지막 버튼이
+ * 탭 바 높이(64px)와 `env(safe-area-inset-bottom)` 만큼 하단 여백을 준다 — 이걸 빠뜨리면 마지막 버튼이
  * 탭 바에 가려 눌리지 않고, 그 증상이 화면마다 다르게 나타나 원인을 찾기 어렵다.
  *
  * Suspense 를 RootLayout 과 별개로 한 번 더 두는 이유 — 탭 바가 들어온 뒤
@@ -21,7 +21,7 @@ import { BottomTabBar } from './BottomTabBar';
  */
 export function TabBarLayout() {
   return (
-    <div className="min-h-dvh pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-dvh pb-[calc(4rem+env(safe-area-inset-bottom))]">
       <Suspense fallback={<RouteFallback />}>
         <Outlet />
       </Suspense>
