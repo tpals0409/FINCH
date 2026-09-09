@@ -22,7 +22,7 @@ export function PortfolioPage() {
     <PageMain>
       <AppBar title="포트폴리오" />
 
-      <div className="mt-4 space-y-4">
+      <div className="space-y-4">
         {isPending ? <AccountSummaryCardSkeleton /> : null}
 
         {isError ? (

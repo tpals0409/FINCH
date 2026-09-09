@@ -44,7 +44,7 @@ export function TransactionsPage() {
     <PageMain>
       <AppBar title="매매 내역" />
 
-      <div className="mt-4">
+      <div>
         <TransactionFilterTabs value={filter} onChange={setFilter} />
       </div>
 

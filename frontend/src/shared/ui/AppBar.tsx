@@ -21,7 +21,7 @@ export function AppBar({
   const isTabRoot = BOTTOM_TAB_ROUTES.some((tab) => tab.path === pathname);
 
   return (
-    <header className="sticky top-0 z-(--z-sticky) -mx-5 -mt-[calc(1.5rem+env(safe-area-inset-top))] mb-2 flex min-h-16 items-center bg-bg-layer-default px-5 pt-[calc(1.5rem+env(safe-area-inset-top))]">
+    <header className="sticky top-0 z-(--z-sticky) -mx-5 -mt-[calc(1.5rem+env(safe-area-inset-top))] mb-2 flex h-[calc(4rem+env(safe-area-inset-top))] shrink-0 items-center bg-bg-layer-default px-5 pt-[calc(1.5rem+env(safe-area-inset-top))]">
       {isTabRoot ? null : <BackButton fallbackTo={fallbackTo} />}
       <h1 className="min-w-0 flex-1 truncate text-title-2 text-fg-neutral">
         {title}

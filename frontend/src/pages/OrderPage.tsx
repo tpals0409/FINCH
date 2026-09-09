@@ -73,7 +73,7 @@ export function OrderPage() {
       <PageMain>
         <AppBar title={`${stockCode} 주문`} />
         <Skeleton className="h-7 w-32" />
-        <Skeleton className="mt-4 h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
       </PageMain>
     );
   }
@@ -102,7 +102,7 @@ export function OrderPage() {
     <PageMain>
       <AppBar title={`${stockCode} 주문`} />
 
-      <div className="mt-4 flex gap-2" role="group" aria-label="주문 방향">
+      <div className="flex gap-2" role="group" aria-label="주문 방향">
         {(['BUY', 'SELL'] as const).map((value) => (
           <button
             key={value}

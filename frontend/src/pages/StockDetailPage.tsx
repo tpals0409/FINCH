@@ -56,7 +56,7 @@ export function StockDetailPage() {
       <PageMain>
         <AppBar title="종목 상세" />
         <Skeleton className="h-7 w-40" />
-        <Skeleton className="mt-4 h-12 w-56" />
+        <Skeleton className="h-12 w-56" />
         <Skeleton className="mt-6 h-24 w-full" />
       </PageMain>
     );
@@ -83,7 +83,7 @@ export function StockDetailPage() {
   return (
     <PageMain>
       <AppBar title={data.stockName} fallbackTo={ROUTES.search} />
-      <SupportingText className="mt-1 tabular-nums">
+      <SupportingText className="tabular-nums">
         {data.stockCode} · {data.market}
       </SupportingText>
 

@@ -35,7 +35,7 @@ export function BriefingPage() {
       <AppBar title="오늘의 브리핑" />
 
       {isPending ? (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
         </div>

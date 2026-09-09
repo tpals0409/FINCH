@@ -28,7 +28,7 @@ export function MyPage() {
     <PageMain>
       <AppBar title="내 정보" />
 
-      <ul className="mt-4">
+      <ul>
         {MENU.map((item) => (
           <li key={item.path}>
             <Link
