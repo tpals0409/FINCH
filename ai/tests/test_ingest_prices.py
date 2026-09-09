@@ -7,10 +7,17 @@ from __future__ import annotations
 
 from datetime import date
 
+import httpx
 import pandas as pd
 import pytest
 
-from ingest.prices import COLUMN_MAP, _target_tickers, _to_rows, _yyyymmdd
+from ingest.prices import (
+    COLUMN_MAP,
+    _fetch_price_universe,
+    _target_tickers,
+    _to_rows,
+    _yyyymmdd,
+)
 
 
 def _df(rows: list[tuple]) -> pd.DataFrame:
@@ -144,3 +151,62 @@ async def test_existing_only_rejects_other_target_modes(tickers, limit) -> None:
         await _target_tickers(
             session, tickers, limit, existing_only=True  # type: ignore[arg-type]
         )
+
+
+def test_price_universe_follows_cursor_and_preserves_as_of() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.url.params.get("cursor") is None:
+            return httpx.Response(
+                200,
+                json={
+                    "items": [{"stockCode": "000660"}],
+                    "nextCursor": "000660",
+                    "hasNext": True,
+                    "asOf": "2026-09-09T10:00:00+09:00",
+                },
+            )
+        return httpx.Response(
+            200,
+            json={
+                "items": [{"stockCode": "005930"}],
+                "nextCursor": None,
+                "hasNext": False,
+                "asOf": "2026-09-09T10:00:00+09:00",
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        universe = _fetch_price_universe(client)
+
+    assert universe.tickers == ("000660", "005930")
+    assert universe.as_of == "2026-09-09T10:00:00+09:00"
+    assert [request.url.params.get("cursor") for request in seen] == [None, "000660"]
+
+
+def test_empty_price_universe_fails_without_touching_existing_data() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "items": [],
+                "nextCursor": None,
+                "hasNext": False,
+                "asOf": "2026-09-09T10:00:00+09:00",
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(RuntimeError, match="비어 있다"):
+            _fetch_price_universe(client)
+
+
+def test_price_universe_http_error_is_propagated() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            _fetch_price_universe(client)
