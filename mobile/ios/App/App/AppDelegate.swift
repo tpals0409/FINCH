@@ -52,6 +52,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 final class FinchBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        webView?.allowsBackForwardNavigationGestures = true
         pollForReadyPage(attempts: 0)
     }
 
