@@ -10,6 +10,7 @@ import {
 } from '@/shared/lib/formatNumber';
 import type { Holding, PortfolioResponse } from '@/shared/types/portfolio';
 import { PercentSchema } from '@/shared/types/primitives';
+import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { SupportingText } from '@/shared/ui/SupportingText';
@@ -218,7 +219,7 @@ function PortfolioContent({ portfolio }: { portfolio: PortfolioResponse }) {
 }
 
 export function PortfolioSection() {
-  const { data, isPending, isError } = usePortfolio();
+  const { data, isPending, isError, refetch, isFetching } = usePortfolio();
 
   if (isPending) {
     return (
@@ -242,6 +243,13 @@ export function PortfolioSection() {
         </h2>
         <Card className="mt-2">
           <SupportingText>투자 정보를 불러오지 못했어요</SupportingText>
+          <Button
+            onClick={() => void refetch()}
+            disabled={isFetching}
+            className="mt-3"
+          >
+            다시 불러오기
+          </Button>
         </Card>
       </section>
     );
