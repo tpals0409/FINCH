@@ -41,7 +41,7 @@ class SecurityConfig {
 		http: HttpSecurity,
 		jwtProvider: JwtProvider,
 		objectMapper: ObjectMapper,
-		@Value("\${finch.ai.internal-token:}") internalToken: String,
+		@Value("\${finch.ai.internal-token}") internalToken: String,
 	): SecurityFilterChain =
 		http
 			.csrf { csrf -> csrf.disable() }
