@@ -18,6 +18,7 @@ import {
   DEPOSIT_ERROR_CODES,
 } from '@/shared/types/errorCodes';
 import type { IdempotencyKey } from '@/shared/types/primitives';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
@@ -120,7 +121,7 @@ export function DepositPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">충전</h1>
+      <AppBar title="충전" />
 
       {/*
         시트가 열린 동안 본문을 `inert` 로 만든다.

@@ -6,6 +6,7 @@ import {
   AiSectionText,
   useAiBriefing,
 } from '@/features/ai';
+import { AppBar } from '@/shared/ui/AppBar';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
 import { Skeleton } from '@/shared/ui/Skeleton';
@@ -31,7 +32,7 @@ export function BriefingPage() {
 
   return (
     <PageMain>
-      <h1 className="text-title-2 text-fg-neutral">오늘의 브리핑</h1>
+      <AppBar title="오늘의 브리핑" />
 
       {isPending ? (
         <div className="mt-4 space-y-3">
