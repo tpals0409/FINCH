@@ -278,7 +278,7 @@ Refresh Token은 `HttpOnly` 쿠키라 JS에서 보이지 않으므로 프론트�
 코드가 와도 세션을 건드리지 않으므로 이 사고가 나지 않는다.
 
 이 방식은 **`AUTH_` 접두 코드가 우리 서비스 사용자 인증 전용**이라는 전제 위에 있다. GitLab 이슈
-[#18](https://lab.ssafy.com/s15-fintech-finance-sub1/S15P21A101/-/issues/18)에서 AI 파트가
+#18에서 AI 파트가
 2026-08-28에 "앞으로 `AUTH_` 접두 코드를 발행하지 않겠다"고 확인했다([`contracts.md`](./contracts.md) C68).
 같은 이슈에서 AI 서버의 `UNAUTHORIZED`(401)도 백엔드-AI 서버 사이의 내부 인증 문제이지 사용자
 로그인 만료가 아니라고 확인됐으므로([`contracts.md`](./contracts.md) C67), 화이트리스트 밖 코드로
@@ -518,7 +518,7 @@ AI로 들어가는 진입점은 탭이 아니라 전역 오버레이 레이어�
 - **노출 판정은 `app/layouts/AiFloatingOverlay.tsx`의 배열 한 곳에서만 한다.** 화면을 추가할 때
   이 화면에서 버튼을 띄우고 싶으면 그 배열에 경로 패턴을 더한다. 다른 파일이 같은 판정을 다시 만들지 않는다
 - **그 배치는 아직 미확정이다** (ia.md §7 · GitLab 이슈
-  [#26](https://lab.ssafy.com/s15-fintech-finance-sub1/S15P21A101/-/issues/26) 4번). PRD 문구와
+  #26 4번). PRD 문구와
   프로토타입 구현이 어느 화면에 뜰지 자체가 다르고, 버튼이 넘기는 맥락의 범위와 채팅 요청
   `context.screen` 열거값도 함께 회신 대기다. 답이 오면 그 배열 한 곳만 고친다
 

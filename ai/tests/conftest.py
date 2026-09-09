@@ -21,6 +21,9 @@ from app.llm.client import get_llm_client
 @pytest.fixture(autouse=True)
 def _no_live_api(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(settings, "gms_key", "")
+    # 주소는 배포 환경에서만 오고 소스에 기본값이 없다. 공급자 구현 테스트가
+    # 클라이언트를 만들 수 있도록 여기서 가짜 주소를 채운다.
+    monkeypatch.setattr(settings, "gms_base_url", "https://gms.test/v1")
     monkeypatch.setattr(settings, "naver_client_id", "")
     monkeypatch.setattr(settings, "naver_client_secret", "")
     get_llm_client.cache_clear()

@@ -5,7 +5,7 @@
 #
 # 외부에 포트를 열지 않는다. Grafana·Prometheus 는 127.0.0.1 에만 바인딩하므로
 # 서버 밖에서는 SSH 터널로만 접근된다 (infra/README "관측 스택" 절).
-#   ssh -i J15A101T.pem -L 3000:127.0.0.1:3000 ubuntu@j15a101.p.ssafy.io
+#   ssh -i <키>.pem -L 3000:127.0.0.1:3000 <사용자>@<서버 호스트>
 name: a101-observability
 
 x-logging: &default-logging
@@ -48,8 +48,8 @@ services:
   #
   # 대신 이렇게 메운다:
   #  - 지금: 호스트 전체 자원(node-exporter) + 백엔드 애플리케이션 지표(micrometer)
-  #  - S15P21A101-59(리소스 실측) 진행 시: 부하를 걸고 docker stats 로 직접 측정
-  #  - S15P21A101-39(k3s 전환) 이후: kubelet 이 cAdvisor 를 내장 노출하므로 자연히 해결된다
+  #  - 옛 팀 이슈 59(리소스 실측) 진행 시: 부하를 걸고 docker stats 로 직접 측정
+  #  - 옛 팀 이슈 39(k3s 전환) 이후: kubelet 이 cAdvisor 를 내장 노출하므로 자연히 해결된다
   #    (쿠버네티스에서는 컨테이너 지표가 별도 구성 요소가 아니라 kubelet 의 기본 기능이다)
 
   # 호스트 자원. 디스크 잔량이 여기서 나온다 — 백업·이미지·로그가 쌓여
@@ -114,7 +114,7 @@ services:
       TZ: ${TZ:-Asia/Seoul}
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       # 기본값을 두지 않는다. 값이 없으면 기동을 거부한다 — ai 의 APP_ENV 와 같은 원칙으로,
-      # "설정을 빠뜨린 배포"가 admin/admin 으로 뜨는 일을 막는다 (S15P21A101-99 참고).
+      # "설정을 빠뜨린 배포"가 admin/admin 으로 뜨는 일을 막는다 (옛 팀 이슈 99 참고).
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?infra/.env 에 GRAFANA_ADMIN_PASSWORD 를 설정하세요}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"

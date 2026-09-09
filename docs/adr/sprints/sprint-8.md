@@ -152,7 +152,7 @@ frontend         npm ci 0 · typecheck 0 · test 5 files 20 passed · lint 0
 - **알림함 화면** — 유일하게 남은 `RoutePlaceholder`. `featureSpec` §12 어느 표에도 없다
 - **Finch-Wiki 초안 저장** — 사서 역할 활성화 대기
 - **AI 316.6ms 구간 계측** — `ai_responses` 비캐시 표본 0건
-- **SSAFY 디자인 브랜치 4개** — 캐릭터 에셋을 건지기 전에는 지우지 않는다
+- **이전 팀 디자인 브랜치 4개** — 캐릭터 에셋을 건지기 전에는 지우지 않는다
 - **`monitoring` stale 마커** — 클러스터 변경이라 우리 몫이 아니고, 앱이 없어져 무해하다
 
 ## 교훈

@@ -20,10 +20,10 @@
 | `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | NAVER API HUB Application 인증정보. **NCP IAM Access Key 가 아니다** | ai | 뉴스 | ❌ |
 | `ECOS_API_KEY` | [한국은행 ECOS](https://ecos.bok.or.kr) | ai | 거시지표 | ❌ |
 | `KRX_API_KEY` | KRX OpenAPI (`data-dbg.krx.co.kr`) | ai | 지수·시가총액 | ❌ |
-| `GMS_KEY` · `GMS_BASE_URL` | **SSAFY GMS** (OpenAI 호환) | ai | LLM | ⚠️ 아래 참고 |
+| `GMS_KEY` · `GMS_BASE_URL` | **GMS 게이트웨이** (OpenAI 호환) | ai | LLM | ⚠️ 아래 참고 |
 
-> ⚠️ **`GMS_KEY` 는 SSAFY 인프라에 묶여 있다.** 개인 ver2 인데 LLM 게이트웨이가 교육기관 것이라
-> 수료하면 끊긴다. OpenAI 호환 인터페이스라 교체는 `GMS_BASE_URL` · `LLM_MODEL` · 키 셋만 바꾸면
+> ⚠️ **`GMS_KEY` 는 외부 기관 인프라에 묶여 있다.** 개인 ver2 인데 LLM 게이트웨이가 우리 것이 아니라
+> 이용 자격이 끝나면 끊긴다. OpenAI 호환 인터페이스라 교체는 `GMS_BASE_URL` · `LLM_MODEL` · 키 셋만 바꾸면
 > 되지만, 끊기고 나서 알면 AI 기능 전체가 멈춘 상태에서 대응하게 된다.
 
 ## 2. 직접 만드는 것

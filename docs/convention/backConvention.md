@@ -22,7 +22,7 @@
   - 인스턴스 1개 + DB 2개 — 백엔드 `finch_db` / AI `ai_invest`. 스키마 관리 도구가 달라(Flyway vs Alembic) DB를 나눠야 마이그레이션 이력이 충돌 없이 공존한다
   - 운영 이미지 `pgvector/pgvector:pg17` (infraSpec† 결정 #10). `ddl-auto`는 `validate` 고정, 스키마 변경은 Flyway 전용 (infraSpec† §3.2)
 
-> † **`infraSpec` 은 이 저장소에 없다.** SSAFY 팀 저장소에 있던 인프라 명세이고 ver2 로 옮겨오지 않았다.
+> † **`infraSpec` 은 이 저장소에 없다.** 이전 팀 저장소에 있던 인프라 명세이고 ver2 로 옮겨오지 않았다.
 > 위 항목들이 무엇을 근거로 정해졌는지가 사라지지 않도록 참조는 남긴다. 배포 구성의 현재 사실은
 > `infra/CLAUDE.md` 와 finch-gitops 가 갖고 있고, 둘이 어긋나면 그쪽이 진실이다.
 

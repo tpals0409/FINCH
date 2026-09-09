@@ -54,7 +54,7 @@ docs/adr/sprints/                 관련 스프린트 결정. grep 으로 찾는
 ```
 Python / FastAPI / uvicorn
 SQLAlchemy async + asyncpg / PostgreSQL + pgvector / Alembic
-LLM: SSAFY GMS gpt-5.4-mini (기본), 임베딩도 GMS
+LLM: GMS 게이트웨이 gpt-5.4-mini (기본), 임베딩도 GMS
 외부 데이터: DART 공시, NAVER API HUB 뉴스, KIS 시세
 pytest / Ruff
 ```
