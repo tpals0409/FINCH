@@ -5,6 +5,7 @@ import {
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
 import type { StockDetailResponse } from '@/shared/types/stock';
+import { RollingValue } from '@/shared/ui/RollingValue';
 import { SupportingText } from '@/shared/ui/SupportingText';
 
 const DIRECTION_CLASS = {
@@ -30,12 +31,13 @@ export function StockDetailPrice({ stock }: { stock: StockDetailResponse }) {
       {hasPrice ? (
         <>
           <p className="text-display text-fg-neutral tabular-nums">
-            {formatKrw(currentPrice)}
+            <RollingValue value={formatKrw(currentPrice)} />
           </p>
           <p
             className={`mt-1 text-body-1 tabular-nums ${DIRECTION_CLASS[getPriceDirection(changeRate)]}`}
           >
-            {formatKrw(changeAmount)} ({formatSignedPercent(changeRate)})
+            <RollingValue value={formatKrw(changeAmount)} /> (
+            <RollingValue value={formatSignedPercent(changeRate)} />)
           </p>
         </>
       ) : (
