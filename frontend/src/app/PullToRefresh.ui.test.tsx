@@ -49,7 +49,7 @@ describe('PullToRefresh', () => {
 
     act(() => window.dispatchEvent(touchEvent('touchstart', 0)));
     act(() => window.dispatchEvent(touchEvent('touchmove', 120)));
-    expect(host.textContent).toContain('놓아서 새로고침');
+    expect(host.textContent).toContain('놓으면 새로고침해요');
 
     await act(async () => {
       window.dispatchEvent(touchEvent('touchend'));

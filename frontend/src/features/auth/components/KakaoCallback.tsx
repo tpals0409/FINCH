@@ -18,12 +18,12 @@ function describeFailure(failure: CallbackFailure): string {
   switch (failure.kind) {
     case 'kakaoRejected':
       return failure.isCancelled
-        ? '카카오 로그인을 취소했습니다'
-        : '카카오 인가에 실패했습니다';
+        ? '카카오 로그인을 취소했어요'
+        : '카카오 인증을 완료하지 못했어요';
     case 'missingCode':
-      return '인가 코드가 없습니다. 로그인 화면에서 다시 시작해 주세요';
+      return '인증 코드가 없어요. 로그인 화면에서 다시 시작해 주세요';
     case 'stateMismatch':
-      return '로그인 요청을 확인하지 못했습니다. 처음부터 다시 시도해 주세요';
+      return '로그인 요청을 확인하지 못했어요. 처음부터 다시 시작해 주세요';
     case 'exchangeFailed':
       return failure.message;
   }
@@ -81,7 +81,7 @@ export function KakaoCallback() {
             kind: 'exchangeFailed',
             message: isHttpError(error)
               ? error.message
-              : '로그인을 완료하지 못했습니다',
+              : '로그인을 완료하지 못했어요',
           }),
       },
     );

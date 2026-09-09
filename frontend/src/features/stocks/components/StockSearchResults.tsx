@@ -33,7 +33,7 @@ export function StockSearchResults({ keyword, stocks, isPending }: Props) {
   if (stocks.length === 0) {
     return (
       <SupportingText className="mt-8 text-center">
-        &lsquo;{keyword}&rsquo; 검색 결과가 없습니다
+        &lsquo;{keyword}&rsquo; 검색 결과가 없어요
       </SupportingText>
     );
   }

@@ -82,9 +82,9 @@ export function PullToRefresh() {
     >
       <output className="rounded-full border border-stroke-neutral-subtle bg-bg-layer-default px-3 py-2 text-caption text-fg-neutral shadow-sm">
         {refreshing
-          ? '새로고침 중…'
+          ? '새로고침하고 있어요…'
           : ready
-            ? '놓아서 새로고침'
+            ? '놓으면 새로고침해요'
             : '당겨서 새로고침'}
       </output>
     </div>

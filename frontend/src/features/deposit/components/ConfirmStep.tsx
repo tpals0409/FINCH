@@ -101,7 +101,7 @@ export function ConfirmStep({
         </div>
       ) : (
         <Button className="mt-5" onClick={onSubmit} disabled={isSubmitting}>
-          {isSubmitting ? '처리 중…' : `${formatKrw(amount)} 충전하기`}
+          {isSubmitting ? '충전하고 있어요…' : `${formatKrw(amount)} 충전하기`}
         </Button>
       )}
     </Card>

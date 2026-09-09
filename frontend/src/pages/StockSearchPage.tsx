@@ -44,17 +44,17 @@ export function StockSearchPage() {
 
       {!isReady ? (
         <SupportingText className="mt-8 text-center">
-          두 글자 이상 입력해 주세요
+          두 글자 이상 입력하면 검색할 수 있어요
         </SupportingText>
       ) : isError ? (
         <Card className="mt-4">
-          <SupportingText>검색에 실패했습니다</SupportingText>
+          <SupportingText>검색 결과를 불러오지 못했어요</SupportingText>
           <Button
             onClick={() => void refetch()}
             disabled={isFetching}
             className="mt-3"
           >
-            다시 시도
+            다시 불러오기
           </Button>
         </Card>
       ) : (

@@ -14,12 +14,12 @@ import type { TransactionFilter } from '@/shared/types/portfolio';
 export function emptyTransactionsMessage(filter: TransactionFilter): string {
   switch (filter) {
     case 'DEPOSIT':
-      return '충전 내역이 없습니다';
+      return '충전 내역이 없어요';
     case 'BUY':
-      return '매수 내역이 없습니다';
+      return '매수 내역이 없어요';
     case 'SELL':
-      return '매도 내역이 없습니다';
+      return '매도 내역이 없어요';
     case 'ALL':
-      return '내역이 없습니다';
+      return '내역이 없어요';
   }
 }

@@ -80,9 +80,9 @@ export function OrderPage() {
     return (
       <PageMain>
         <Card>
-          <SupportingText>주문 정보를 불러오지 못했습니다</SupportingText>
+          <SupportingText>주문 정보를 불러오지 못했어요</SupportingText>
           <Button onClick={() => void available.refetch()} className="mt-3">
-            다시 시도
+            다시 불러오기
           </Button>
         </Card>
       </PageMain>
@@ -174,7 +174,7 @@ export function OrderPage() {
 
       {!info.tradable ? (
         <Card className="mt-4">
-          <SupportingText>지금은 주문할 수 없습니다</SupportingText>
+          <SupportingText>지금은 주문할 수 없어요</SupportingText>
           {/* 코드를 그대로 보여준다. 문구 매핑은 서버 메시지가 오는 실패 응답에서만 한다. */}
           <SupportingText className="mt-1">{info.reason}</SupportingText>
         </Card>
@@ -182,14 +182,14 @@ export function OrderPage() {
 
       {overMax ? (
         <p className="mt-2 text-body-2 text-fg-down">
-          최대 {info.maxQuantity}주까지 주문할 수 있습니다
+          최대 {info.maxQuantity}주까지 주문할 수 있어요
         </p>
       ) : null}
 
       {order.isError ? (
         <Card className="mt-4">
           <SupportingText>
-            주문이 처리되지 않았습니다. 다시 시도해 주세요
+            주문을 처리하지 못했어요. 주문 내역을 확인해 주세요
           </SupportingText>
         </Card>
       ) : null}
@@ -197,7 +197,7 @@ export function OrderPage() {
       {order.isSuccess ? (
         <Card className="mt-4">
           <p className="text-body-1 text-fg-neutral">
-            {order.data.side === 'BUY' ? '매수' : '매도'} 체결됐습니다
+            {order.data.side === 'BUY' ? '매수' : '매도'} 체결됐어요
           </p>
           <SupportingText className="mt-1 tabular-nums">
             {order.data.quantity}주 · {formatKrw(order.data.executedPrice)} · 총{' '}
@@ -217,7 +217,7 @@ export function OrderPage() {
       ) : (
         <Button onClick={submit} disabled={!canSubmit} className="mt-6 w-full">
           {order.isPending
-            ? '주문 중…'
+            ? '주문하고 있어요…'
             : `${side === 'BUY' ? '매수' : '매도'}하기`}
         </Button>
       )}

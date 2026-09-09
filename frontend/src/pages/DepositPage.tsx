@@ -154,13 +154,13 @@ export function DepositPage() {
             </Card>
           ) : limit.isError ? (
             <Card>
-              <SupportingText>충전 한도를 불러오지 못했습니다</SupportingText>
+              <SupportingText>충전 한도를 불러오지 못했어요</SupportingText>
               <Button
                 onClick={() => void limit.refetch()}
                 disabled={limit.isFetching}
                 className="mt-3"
               >
-                다시 시도
+                다시 불러오기
               </Button>
             </Card>
           ) : (

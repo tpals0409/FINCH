@@ -116,15 +116,15 @@ describe('StockCandleSection', () => {
       candles: [],
     });
     renderSection();
-    expect(host.textContent).toContain('이 기간의 일봉 데이터가 없습니다');
+    expect(host.textContent).toContain('이 기간의 일봉 데이터가 없어요');
 
     queryState.data = undefined;
     queryState.isError = true;
     renderSection();
     const retry = [...host.querySelectorAll('button')].find(
-      (button) => button.textContent === '다시 시도',
+      (button) => button.textContent === '다시 불러오기',
     );
-    expect(host.textContent).toContain('차트를 불러오지 못했습니다');
+    expect(host.textContent).toContain('차트를 불러오지 못했어요');
     act(() => retry?.click());
     expect(queryState.refetch).toHaveBeenCalledOnce();
   });

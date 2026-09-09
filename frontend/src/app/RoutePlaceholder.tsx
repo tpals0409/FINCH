@@ -24,7 +24,7 @@ export function RoutePlaceholder({ screen }: RoutePlaceholderProps) {
     <PageMain>
       <h1 className="text-lg font-semibold text-fg-neutral">{screen}</h1>
       <p className="mt-1 text-sm text-fg-neutral-subtle">
-        아직 구현되지 않은 화면입니다. 라우트 자리만 잡혀 있습니다.
+        아직 준비 중인 화면이에요. 조금만 기다려 주세요.
       </p>
       <p className="mt-4 text-xs text-fg-neutral-subtle">
         <code>{`${location.pathname}${location.search}`}</code>

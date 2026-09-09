@@ -12,9 +12,9 @@ import { SupportingText } from '@/shared/ui/SupportingText';
 export function EmptyHoldings() {
   return (
     <Card className="text-center">
-      <p className="text-body-1 text-fg-neutral">보유 중인 종목이 없습니다</p>
+      <p className="text-body-1 text-fg-neutral">보유 중인 종목이 없어요</p>
       <SupportingText size="caption" className="mt-1">
-        종목을 매수하면 평가금액과 함께 여기에 표시됩니다
+        종목을 매수하면 평가금액과 함께 여기에 보여요
       </SupportingText>
     </Card>
   );
