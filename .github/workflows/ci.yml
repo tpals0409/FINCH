@@ -25,6 +25,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
       ai: ${{ steps.filter.outputs.ai }}
+      mobile: ${{ steps.filter.outputs.mobile }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -39,6 +40,9 @@ jobs:
               - '.github/workflows/ci.yml'
             ai:
               - 'ai/**'
+              - '.github/workflows/ci.yml'
+            mobile:
+              - 'mobile/**'
               - '.github/workflows/ci.yml'
 
   frontend:
@@ -138,4 +142,28 @@ jobs:
       # check.sh 는 도구·DB 가 없으면 알려주고 건너뛰는 게 아니라 종료 코드 1로 죽는다
       # (예: ruff·alembic·pytest 미설치, DB 미기동). 방금 설치·기동했으니 여기서
       # 조용히 건너뛰는 단계는 있을 수 없다 — 있다면 그게 곧 CI 설정 실수다.
+      - run: ./scripts/check.sh
+
+  # PR #98 은 이 잡이 없어서 모든 검사가 skipping 인 채로 올라왔다. 셸 로직이
+  # APK 에 안 실린 것도, 테스트가 그걸 못 잡은 것도 CI 가 한 개도 안 돈 뒤였다.
+  mobile:
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - run: npm ci
+
+      # mobile/scripts/check.sh 가 검사 SSOT 다 — 다른 파트와 같은 규약이다.
+      # Android APK 빌드는 여기 넣지 않는다: 러너에 SDK 를 깔아야 하고 느리다.
+      # APK 가 릴리스 산출물이 되는 시점에 별도 워크플로로 뺀다.
       - run: ./scripts/check.sh
