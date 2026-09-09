@@ -1,5 +1,7 @@
-import { Suspense } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import { Outlet, ScrollRestoration } from 'react-router-dom';
+
+import { PullOffsetProvider } from '@/shared/ui/PullOffsetProvider';
 
 import { PullToRefresh } from '../PullToRefresh';
 import { RouteFallback } from '../RouteFallback';
@@ -21,13 +23,25 @@ import { AiFloatingOverlay } from './AiFloatingOverlay';
  *    배치가 아직 미확정이므로(ia.md §7) 고칠 자리를 한 곳으로 모아 둔 것이다.
  */
 export function RootLayout() {
+  const [pullOffset, setPullOffset] = useState({
+    distance: 0,
+    dragging: false,
+  });
+  const onPullChange = useCallback(
+    (distance: number, dragging: boolean) =>
+      setPullOffset({ distance, dragging }),
+    [],
+  );
+
   return (
     <>
       <ScrollRestoration />
-      <PullToRefresh />
-      <Suspense fallback={<RouteFallback />}>
-        <Outlet />
-      </Suspense>
+      <PullToRefresh onPullChange={onPullChange} />
+      <PullOffsetProvider value={pullOffset}>
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet />
+        </Suspense>
+      </PullOffsetProvider>
       <AiFloatingOverlay />
     </>
   );
