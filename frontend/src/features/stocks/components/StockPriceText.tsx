@@ -4,6 +4,7 @@ import {
   getPriceDirection,
 } from '@/shared/lib/formatNumber';
 import type { KrwAmount, Percent } from '@/shared/types/primitives';
+import { RollingValue } from '@/shared/ui/RollingValue';
 import { SupportingText } from '@/shared/ui/SupportingText';
 
 const DIRECTION_CLASS = {
@@ -39,12 +40,12 @@ export function StockPriceText({
   return (
     <span className="flex flex-col items-end">
       <span className="text-body-1 text-fg-neutral tabular-nums">
-        {formatKrw(currentPrice)}
+        <RollingValue value={formatKrw(currentPrice)} />
       </span>
       <span
         className={`text-body-2 tabular-nums ${DIRECTION_CLASS[getPriceDirection(changeRate)]}`}
       >
-        {formatSignedPercent(changeRate)}
+        <RollingValue value={formatSignedPercent(changeRate)} />
       </span>
     </span>
   );

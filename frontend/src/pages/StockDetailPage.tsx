@@ -80,7 +80,9 @@ export function StockDetailPage() {
 
   return (
     <PageMain>
-      <BackButton fallbackTo={ROUTES.search} />
+      <header className="sticky top-0 z-(--z-sticky) -mx-5 -mt-[calc(1.5rem+env(safe-area-inset-top))] mb-2 bg-bg-layer-default px-5 pt-[calc(1.5rem+env(safe-area-inset-top))]">
+        <BackButton fallbackTo={ROUTES.search} />
+      </header>
       <h1 className="text-title-2 text-fg-neutral">{data.stockName}</h1>
       <SupportingText className="mt-1 tabular-nums">
         {data.stockCode} · {data.market}
