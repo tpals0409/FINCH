@@ -14,6 +14,8 @@ import pytest
 from ingest.prices import (
     COLUMN_MAP,
     _fetch_price_universe,
+    _latest_market_date,
+    _require_trade_date,
     _target_tickers,
     _to_rows,
     _yyyymmdd,
@@ -98,6 +100,30 @@ def test_nan_in_optional_columns_becomes_none() -> None:
     assert len(rows) == 1
     assert rows[0]["volume"] is None
     assert rows[0]["close"] == 105
+
+
+def test_close_gate_requires_the_requested_trade_date() -> None:
+    rows = _to_rows("005930", _df([("2026-08-18", 1, 1, 1, 1, 1)]))
+
+    with pytest.raises(ValueError, match="기준일 2026-08-19"):
+        _require_trade_date(rows, date(2026, 8, 19))
+
+
+def test_close_gate_accepts_the_requested_trade_date() -> None:
+    rows = _to_rows("005930", _df([("2026-08-19", 1, 1, 1, 1, 1)]))
+
+    _require_trade_date(rows, date(2026, 8, 19))
+
+
+@pytest.mark.asyncio
+async def test_latest_market_date_uses_krx_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_latest_payload(client, candidates):
+        assert len(candidates) == 5
+        return date(2026, 8, 19), []
+
+    monkeypatch.setattr("ingest.krx._latest_stock_payload", fake_latest_payload)
+
+    assert await _latest_market_date() == date(2026, 8, 19)
 
 
 @pytest.mark.parametrize("empty", [None, pd.DataFrame()])
