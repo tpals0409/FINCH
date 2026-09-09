@@ -21,7 +21,7 @@ import asyncio
 import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any
 
 from pydantic import ValidationError
@@ -50,7 +50,7 @@ from app.api.routes.portfolio import (
 from app.core.adapters import Ledger, ledger_source
 from app.core.enums import DocumentType, MetricSource, OrderSide, Period, Screen, WikiSource
 from app.core.errors import AppError
-from app.core.schemas import Segment
+from app.core.schemas import KST_OFFSET_HOURS, Segment
 from app.engines.attribution import ContributorRow, attribute
 from app.engines.portfolio import PortfolioEngine, PortfolioSnapshot
 from app.engines.risk import Finding, assess
@@ -276,7 +276,7 @@ async def _snapshot(user_id: str) -> PortfolioSnapshot | None:
 
 def _as_datetime(day: date) -> datetime:
     """기준일을 장 마감 시각으로 본다. 종가 기준이기 때문이다."""
-    return datetime.combine(day, time(15, 30))
+    return datetime.combine(day, time(15, 30), timezone(timedelta(hours=KST_OFFSET_HOURS)))
 
 
 def _put(ctx: ToolContext, key: str, segment: Segment) -> tuple[str, str]:
