@@ -1,18 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 
 import {
-  QUOTE_POLLING_INTERVAL_MS,
-  QUOTE_STALE_TIME_MS,
+  getQuotePollingOptions,
+  type QuotePollingOverrides,
 } from '@/shared/config/apiContract';
 import { queryKeys } from '@/shared/config/queryKeys';
 
 import { getStockDetail } from './getStockDetail';
 
-export function useStockDetail(stockCode: string) {
+export function useStockDetail(
+  stockCode: string,
+  polling?: QuotePollingOverrides,
+) {
   return useQuery({
     queryKey: queryKeys.stocks.detail(stockCode),
     queryFn: ({ signal }) => getStockDetail(stockCode, signal),
-    refetchInterval: QUOTE_POLLING_INTERVAL_MS.list,
-    staleTime: QUOTE_STALE_TIME_MS.list,
+    ...getQuotePollingOptions('list', polling),
   });
 }
