@@ -103,6 +103,7 @@ internal class KisWebSocketCollector(
 				onConnected = { connected ->
 					connectionAttempt = null
 					connection = connected
+					log.info("KIS 웹소켓 연결됨")
 					connecting.set(false)
 					subscribed.clear()
 					pending.clear()
@@ -113,6 +114,7 @@ internal class KisWebSocketCollector(
 				},
 				onMessage = ::handleMessage,
 				onClosed = {
+					log.info("KIS 웹소켓 연결 끊김")
 					connectionAttempt = null
 					connection = null
 					connecting.set(false)
@@ -166,6 +168,7 @@ internal class KisWebSocketCollector(
 		if (ack.success && type == SubscriptionType.SUBSCRIBE) subscribed.add(ack.stockCode)
 		if (ack.success && type == SubscriptionType.UNSUBSCRIBE) subscribed.remove(ack.stockCode)
 		streamCoverage.replace(subscribed.toSet())
+		if (ack.success) log.info("KIS 웹소켓 구독 ACK 성공 subscribedCount={}", subscribed.size)
 		if (!ack.success) {
 			log.warn("KIS 웹소켓 구독 실패 stockCode={} type={}", ack.stockCode, type)
 		}
