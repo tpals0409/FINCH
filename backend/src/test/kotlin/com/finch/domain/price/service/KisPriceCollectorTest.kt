@@ -85,7 +85,7 @@ internal class KisPriceCollectorTest {
 				status = 400,
 				code = "EGW00201",
 				kisMsgCd = "EGW00201",
-				kisMsg = "종목코드 오류",
+				kisMsg = "초당 거래건수를 초과하였습니다.",
 			),
 		)
 		val collector = collector()
@@ -94,7 +94,7 @@ internal class KisPriceCollectorTest {
 
 		assertThat(output).contains(
 			"KIS 시세 수집 실패 stockCode=005930 retryable=false retryAfter=null " +
-				"kisMsgCd=EGW00201 kisMsg=종목코드 오류",
+				"kisMsgCd=EGW00201 kisMsg=초당 거래건수를 초과하였습니다.",
 		)
 		assertThat(output).contains("KIS API 실패 status=400 code=EGW00201")
 	}
