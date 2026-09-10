@@ -2,6 +2,7 @@ package com.finch.domain.stock.controller
 
 import com.finch.domain.price.dto.response.PriceRes
 import com.finch.domain.price.dto.response.PricesRes
+import com.finch.domain.recent.service.RecentViewedStockService
 import com.finch.domain.stock.dto.response.CandlesRes
 import com.finch.domain.stock.dto.response.StockDetailRes
 import com.finch.domain.stock.dto.response.StockSearchRes
@@ -12,6 +13,7 @@ import com.finch.global.security.LoginUser
 import com.finch.global.apiPayload.CursorPage
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
+import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -21,10 +23,6 @@ import org.springframework.web.bind.annotation.RestController
 /**
  * 종목 API (apiSpec 5장).
  *
- * ⚠️ **상세 응답의 "최근 본 종목 자동 기록" 은 아직 없다** (apiSpec 5.2). `recent_viewed_stock`
- * 테이블은 있지만 엔티티가 없고, 읽는 쪽인 `GET /stocks/recent` 도 없다. 기록만 먼저 넣으면
- * 아무도 안 읽는 행이 쌓인다.
- *
  * `watched` 를 여기서 조립해 넘기는 이유는 `WatchlistService` 주석에 있다 — 도메인끼리 순환한다.
  */
 @RestController
@@ -32,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController
 class StockController(
 	private val stockService: StockService,
 	private val watchlistService: WatchlistService,
+	private val recentViewedStockService: RecentViewedStockService,
 ) {
 
 	/**
@@ -64,12 +63,27 @@ class StockController(
 	fun price(@PathVariable stockCode: String): PriceRes = stockService.getPrice(stockCode)
 
 	@GetMapping("/{stockCode}")
-	fun detail(@LoginUser userId: Long, @PathVariable stockCode: String): StockDetailRes =
-		stockService.getDetail(userId, stockCode, watchlistService.isWatched(userId, stockCode))
+	fun detail(@LoginUser userId: Long, @PathVariable stockCode: String): StockDetailRes {
+		val detail = stockService.getDetail(userId, stockCode, watchlistService.isWatched(userId, stockCode))
+		try {
+			recentViewedStockService.record(userId, stockCode)
+		} catch (e: RuntimeException) {
+			log.warn(
+				"최근 본 종목 기록 실패 stockCode={} cause={}",
+				stockCode,
+				e::class.simpleName,
+			)
+		}
+		return detail
+	}
 
 	@GetMapping("/{stockCode}/candles")
 	fun candles(
 		@PathVariable stockCode: String,
 		@RequestParam(defaultValue = "1M") period: CandlePeriod,
 	): CandlesRes = stockService.getCandles(stockCode, period)
+
+	companion object {
+		private val log = LoggerFactory.getLogger(StockController::class.java)
+	}
 }
