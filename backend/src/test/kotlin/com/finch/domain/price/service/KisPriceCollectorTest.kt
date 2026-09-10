@@ -39,6 +39,9 @@ internal class KisPriceCollectorTest {
 	@Mock
 	private lateinit var pacer: KisRequestPacer
 
+	@Mock
+	private lateinit var streamCoverage: KisStreamCoverage
+
 	private val clock = Clock.fixed(Instant.parse("2026-09-07T06:30:00Z"), ZoneOffset.UTC)
 	private val tick = PriceTick(73_500, OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
 
@@ -56,6 +59,30 @@ internal class KisPriceCollectorTest {
 		verify(cacheWriter).write("005930", tick)
 		verify(cacheWriter).write("000660", tick)
 		verify(pacer, times(2)).awaitPermit()
+	}
+
+	@Test
+	fun `웹소켓 구독 성공 종목은 REST 폴백에서 제외한다`() {
+		given(lease.acquireOrRenew()).willReturn(true)
+		given(targetRepository.findAfter("", 2)).willReturn(listOf("005930"))
+		given(streamCoverage.covers("005930")).willReturn(true)
+		val collector = KisPriceCollector(
+			client,
+			targetRepository,
+			cacheWriter,
+			lease,
+			pacer,
+			batchSize = 2,
+			minRequestInterval = Duration.ofMillis(50),
+			cycleInterval = Duration.ofSeconds(3),
+			staleAfter = Duration.ofSeconds(15),
+			clock = clock,
+			streamCoverage = streamCoverage,
+		)
+
+		collector.collect()
+
+		verifyNoInteractions(client, cacheWriter)
 	}
 
 	@Test

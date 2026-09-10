@@ -108,6 +108,12 @@ finch:
       # KIS_MIN_REQUEST_INTERVAL과 KIS_PRICE_BATCH_SIZE는 같은 배포 변경으로 주입한다.
       # 초기 운영값은 보수적으로 선택한 500ms·6건이며, fixed-rate 배치는 주기 ÷ 호출 간격 이하이어야 한다.
       cycle-interval: 3s
+      websocket:
+        # 모의 KIS WebSocket은 실측 후 별도 활성화한다. 켜면 URL이 없을 때 기동에서 실패한다.
+        enabled: ${KIS_WEBSOCKET_ENABLED:false}
+        url: ${KIS_WEBSOCKET_URL:}
+        tr-id: H0STCNT0
+        reconcile-interval: 3s
 
   ai:
     # 클러스터 안의 AI 서비스. 외부에 노출되지 않으므로 평문 http 다 (aiApiSpec 4장 배포 조건).

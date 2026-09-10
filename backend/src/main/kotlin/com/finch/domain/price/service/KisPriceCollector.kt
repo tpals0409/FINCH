@@ -31,6 +31,7 @@ internal class KisPriceCollector internal constructor(
 	private val cycleInterval: Duration,
 	private val staleAfter: Duration,
 	private val clock: Clock,
+	private val streamCoverage: KisStreamCoverage = KisStreamCoverage.NONE,
 ) {
 
 	@Autowired
@@ -40,6 +41,7 @@ internal class KisPriceCollector internal constructor(
 		cacheWriter: PriceCacheWriter,
 		lease: PriceCollectorLease,
 		pacer: KisRequestPacer,
+		streamCoverage: KisStreamCoverage,
 		@Value("\${KIS_PRICE_BATCH_SIZE}") batchSize: Int,
 		@Value("\${KIS_MIN_REQUEST_INTERVAL}") minRequestInterval: Duration,
 		@Value("\${finch.price.kis.cycle-interval}") cycleInterval: Duration,
@@ -55,6 +57,7 @@ internal class KisPriceCollector internal constructor(
 		cycleInterval,
 		staleAfter,
 		Clock.systemUTC(),
+		streamCoverage,
 	)
 
 	private var cursor = ""
@@ -76,6 +79,10 @@ internal class KisPriceCollector internal constructor(
 		val targets = findNextTargets()
 
 		for (stockCode in targets) {
+			if (streamCoverage.covers(stockCode)) {
+				cursor = stockCode
+				continue
+			}
 			if (!lease.acquireOrRenew()) return
 			if (!pacer.awaitPermit()) return
 			try {
