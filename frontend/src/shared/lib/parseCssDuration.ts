@@ -1,4 +1,4 @@
-const DEFAULT_DURATION_MS = 200;
+const DEFAULT_DURATION_MS = 260;
 
 export function parseCssDuration(
   value: string,
