@@ -2,6 +2,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { parseCssDuration } from '@/shared/lib/parseCssDuration';
+
 import { RollingValue } from './RollingValue';
 
 (
@@ -36,6 +38,15 @@ afterEach(() => {
 });
 
 describe('RollingValue', () => {
+  it.each([
+    ['.2s', 200],
+    ['0.2s', 200],
+    ['200ms', 200],
+    ['', 200],
+  ])('CSS 시간 %s를 %sms로 해석한다', (value, expected) => {
+    expect(parseCssDuration(value)).toBe(expected);
+  });
+
   it('값이 바뀌면 transform 기반 애니메이션을 실행한다', () => {
     act(() => root.render(<RollingValue value="73,500원" />));
     act(() => root.render(<RollingValue value="73,600원" />));

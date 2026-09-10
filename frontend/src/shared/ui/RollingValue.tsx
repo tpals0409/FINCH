@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 
+import { parseCssDuration } from '@/shared/lib/parseCssDuration';
+
 type RollingValueProps = {
   value: string;
   className?: string;
@@ -45,7 +47,7 @@ export function RollingValue({
       computedStyle
         .getPropertyValue('--finch-timing-function-standard')
         .trim() || 'ease';
-    const duration = Number.parseFloat(durationValue) || 200;
+    const duration = parseCssDuration(durationValue);
 
     const previousColor = computedStyle.color;
     const flashClass =
