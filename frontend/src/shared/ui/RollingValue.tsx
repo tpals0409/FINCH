@@ -1,94 +1,101 @@
+import NumberFlow, {
+  type Format,
+  type NumberFlowElement,
+} from '@number-flow/react';
 import { useEffect, useRef } from 'react';
 
 import { parseCssDuration } from '@/shared/lib/parseCssDuration';
 
 type RollingValueProps = {
   value: string;
+  numericValue: number;
+  format?: Format;
+  prefix?: string;
+  suffix?: string;
   className?: string;
-  numericValue?: number;
   flashClasses?: Partial<Record<'rise' | 'fall', string>>;
 };
 
 /**
- * 시세가 갱신될 때 숫자 전체가 짧게 위에서 굴러온다.
- * Web Animations API의 transform과 색상만 사용해 레이아웃을 바꾸지 않으며,
- * reduced-motion 환경에서는 값만 즉시 바꾼다.
+ * 시세가 갱신될 때 변경된 숫자 자릿수만 굴러온다.
+ * NumberFlow가 숫자 포맷과 자릿수별 전환을 담당하고, 방향 색상은 짧게 감쇠한다.
+ * reduced-motion 환경에서는 NumberFlow와 색상 효과 모두 즉시 값을 표시한다.
  */
 export function RollingValue({
   value,
-  className = '',
   numericValue,
+  format,
+  prefix,
+  suffix,
+  className = '',
   flashClasses,
 }: RollingValueProps) {
-  const valueRef = useRef<HTMLSpanElement>(null);
-  const previousValueRef = useRef(value);
-  const previousNumericValueRef = useRef(numericValue);
+  const valueRef = useRef<NumberFlowElement>(null);
+  const previousValueRef = useRef(numericValue);
 
   useEffect(() => {
     const element = valueRef.current;
     const previousValue = previousValueRef.current;
-    const previousNumericValue = previousNumericValueRef.current;
-    previousValueRef.current = value;
-    previousNumericValueRef.current = numericValue;
+    previousValueRef.current = numericValue;
 
     if (
       element === null ||
-      previousValue === value ||
+      previousValue === numericValue ||
       (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
     ) {
       return;
     }
 
     const computedStyle = getComputedStyle(element);
-    const durationValue = computedStyle
-      .getPropertyValue('--motion-sheet')
-      .trim();
+    const duration = parseCssDuration(
+      computedStyle.getPropertyValue('--motion-sheet').trim(),
+    );
     const easing =
       computedStyle
         .getPropertyValue('--finch-timing-function-standard')
         .trim() || 'ease';
-    const duration = parseCssDuration(durationValue);
+    const flashClass =
+      numericValue > previousValue
+        ? flashClasses?.rise
+        : numericValue < previousValue
+          ? flashClasses?.fall
+          : undefined;
+
+    if (flashClass === undefined) {
+      return;
+    }
 
     const previousColor = computedStyle.color;
-    const flashClass =
-      numericValue !== undefined && previousNumericValue !== undefined
-        ? numericValue > previousNumericValue
-          ? flashClasses?.rise
-          : numericValue < previousNumericValue
-            ? flashClasses?.fall
-            : undefined
-        : undefined;
-    let flashColor: string | undefined;
-    if (flashClass) {
-      element.classList.add(flashClass);
-      flashColor = getComputedStyle(element).color || undefined;
-      element.classList.remove(flashClass);
+    element.classList.add(flashClass);
+    const flashColor = getComputedStyle(element).color;
+    element.classList.remove(flashClass);
+
+    if (
+      previousColor === '' ||
+      flashColor === '' ||
+      previousColor === flashColor
+    ) {
+      return;
     }
 
     element.getAnimations?.().forEach((animation) => animation.cancel());
-    const keyframes: Keyframe[] =
-      flashColor && previousColor && flashColor !== previousColor
-        ? [
-            {
-              transform: 'translateY(-0.35em)',
-              opacity: 0,
-              color: flashColor,
-            },
-            { transform: 'translateY(0)', opacity: 1, color: previousColor },
-          ]
-        : [
-            { transform: 'translateY(-0.35em)', opacity: 0 },
-            { transform: 'translateY(0)', opacity: 1 },
-          ];
-    element.animate(keyframes, {
+    element.animate([{ color: flashColor }, { color: previousColor }], {
       duration,
       easing,
     });
-  }, [flashClasses, numericValue, value]);
+  }, [flashClasses, numericValue]);
 
   return (
-    <span ref={valueRef} aria-live="polite" className={className}>
-      {value}
-    </span>
+    <NumberFlow
+      ref={valueRef}
+      aria-label={value}
+      aria-live="polite"
+      className={className}
+      format={format}
+      locales="ko-KR"
+      prefix={prefix}
+      suffix={suffix}
+      value={numericValue}
+    />
   );
 }

@@ -1,10 +1,25 @@
-import { act } from 'react';
+import { act, createElement, forwardRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseCssDuration } from '@/shared/lib/parseCssDuration';
 
 import { RollingValue } from './RollingValue';
+
+vi.mock('@number-flow/react', () => ({
+  default: forwardRef<HTMLElement, Record<string, unknown>>((props, ref) => {
+    const { format, locales, prefix, suffix, value, ...attributes } = props;
+    const formatted = new Intl.NumberFormat(
+      locales as Intl.LocalesArgument,
+      format as Intl.NumberFormatOptions,
+    ).format(value as number);
+    return createElement(
+      'span',
+      { ...attributes, ref },
+      `${prefix ?? ''}${formatted}${suffix ?? ''}`,
+    );
+  }),
+}));
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -49,18 +64,19 @@ describe('RollingValue', () => {
     expect(parseCssDuration(value)).toBe(expected);
   });
 
-  it('값이 바뀌면 transform 기반 애니메이션을 실행한다', () => {
-    act(() => root.render(<RollingValue value="73,500원" />));
-    act(() => root.render(<RollingValue value="73,600원" />));
-
-    expect(animate).toHaveBeenCalledOnce();
-    expect(animate.mock.calls[0]?.[0]).toEqual([
-      { transform: 'translateY(-0.35em)', opacity: 0 },
-      { transform: 'translateY(0)', opacity: 1 },
-    ]);
-    expect(animate.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({ duration: 260 }),
+  it('기존 포맷 문자열과 같은 접근 가능한 값을 렌더한다', () => {
+    act(() =>
+      root.render(
+        <RollingValue
+          value="73,500원"
+          numericValue={73500}
+          format={{ maximumFractionDigits: 0, useGrouping: true }}
+          suffix="원"
+        />,
+      ),
     );
+
+    expect(host.textContent).toBe('73,500원');
   });
 
   it('직전 숫자 값의 방향에 맞는 색상으로 변화 신호를 표시한다', () => {
@@ -98,20 +114,24 @@ describe('RollingValue', () => {
     );
 
     expect(animate.mock.calls[0]?.[0]).toEqual([
-      {
-        transform: 'translateY(-0.35em)',
-        opacity: 0,
-        color: '#3f75dd',
-      },
-      { transform: 'translateY(0)', opacity: 1, color: '#121417' },
+      { color: '#3f75dd' },
+      { color: '#121417' },
     ]);
   });
 
   it('reduced-motion이면 애니메이션 없이 새 값을 표시한다', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true }));
 
-    act(() => root.render(<RollingValue value="73,500원" />));
-    act(() => root.render(<RollingValue value="73,600원" />));
+    act(() =>
+      root.render(
+        <RollingValue value="73,500원" numericValue={73500} suffix="원" />,
+      ),
+    );
+    act(() =>
+      root.render(
+        <RollingValue value="73,600원" numericValue={73600} suffix="원" />,
+      ),
+    );
 
     expect(host.textContent).toBe('73,600원');
     expect(animate).not.toHaveBeenCalled();
