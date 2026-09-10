@@ -111,3 +111,18 @@ def test_검색_평가셋이_읽힌다() -> None:
     assert all(c.id and c.query for c in cases)
     assert any(c.expect_empty for c in cases), "오탐 관찰용 케이스가 있어야 한다"
     assert any(c.ticker for c in cases), "종목 한정 케이스가 있어야 한다"
+
+
+def test_운영_검색_8개_질의_기준선이_고정된다() -> None:
+    """운영에서 비교한 8개 질의의 입력과 기대값이 조용히 바뀌지 않게 한다."""
+    cases = _load_cases()
+    assert [(c.id, c.query, c.ticker, c.expect_title_contains, c.expect_empty) for c in cases] == [
+        ("treasury-cancel", "자기주식을 소각하기로 한 곳이 있나요?", None, ["주식소각결정"], False),
+        ("shareholder-holding", "대량보유 상황이 보고된 종목이 있나요?", None, ["주식등의대량보유상황보고서"], False),
+        ("rumor-clarification", "시장에 돈 풍문에 대해 회사가 해명한 사례를 찾아줘", None, ["풍문또는보도에대한해명"], False),
+        ("derivatives-loss", "파생상품 거래에서 손실이 발생한 공시가 있나요?", None, ["파생상품거래손실발생"], False),
+        ("rights-issue", "유상증자를 결정한 종목은 어디야?", None, ["유상증자결정"], False),
+        ("major-shareholder-change", "최대주주의 지분 변동이 신고된 종목이 있나요?", None, ["최대주주등소유주식변동신고서"], False),
+        ("半期-사업내용", "반기보고서에서 회사의 주요 사업 내용을 설명한 부분", "005930", ["반기보고서"], False),
+        ("absent-launch", "우주 발사체 사업에 진출한다는 공시가 있나요?", None, [], True),
+    ]
