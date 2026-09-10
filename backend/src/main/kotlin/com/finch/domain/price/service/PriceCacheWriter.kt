@@ -3,6 +3,8 @@ package com.finch.domain.price.service
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Service
 import tools.jackson.databind.ObjectMapper
+import java.time.Duration
+import java.time.Instant
 
 /** KIS 수신값을 PriceService가 이미 읽는 Redis 형식으로 적재한다. */
 @Service
@@ -15,6 +17,13 @@ internal class PriceCacheWriter(
 		require(STOCK_CODE.matches(stockCode)) { "종목코드는 6자리 문자열이어야 합니다" }
 		// 마지막 수신값은 stale 상태에서도 유지해야 하므로 틱 키에는 TTL을 두지 않는다.
 		redisTemplate.opsForValue().set(KEY_PREFIX + stockCode, objectMapper.writeValueAsString(tick))
+	}
+
+	fun ageOf(stockCode: String, now: Instant): Duration {
+		val raw = redisTemplate.opsForValue().get(KEY_PREFIX + stockCode) ?: return Duration.ofSeconds(Long.MAX_VALUE)
+		val tick = runCatching { objectMapper.readValue(raw, PriceTick::class.java) }.getOrNull()
+			?: return Duration.ofSeconds(Long.MAX_VALUE)
+		return Duration.between(tick.asOf.toInstant(), now)
 	}
 
 	companion object {

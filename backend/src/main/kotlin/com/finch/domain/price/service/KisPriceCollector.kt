@@ -76,10 +76,10 @@ internal class KisPriceCollector internal constructor(
 	fun collect() {
 		if (!isMarketOpen() || clock.instant().isBefore(pausedUntil) || !lease.acquireOrRenew()) return
 
-		val targets = findNextTargets()
+		val selection = findNextTargets()
 
-		for (stockCode in targets) {
-			if (streamCoverage.covers(stockCode)) {
+		for (stockCode in selection.targets) {
+			if (streamCoverage.covers(stockCode) && stockCode !in selection.staleStreamTargets) {
 				cursor = stockCode
 				continue
 			}
@@ -108,15 +108,33 @@ internal class KisPriceCollector internal constructor(
 		}
 	}
 
-	private fun findNextTargets(): List<String> {
+	private fun findNextTargets(): TargetSelection {
 		if (cursor.isEmpty()) warnIfPassExceedsFreshness()
-		val targets = targetRepository.findAfter(cursor, batchSize)
-		if (targets.isNotEmpty() || cursor.isEmpty()) return targets
+		val allTargets = targetRepository.findAllHotSet()
+		val now = clock.instant()
+		val staleStreamTargets = allTargets
+			.filter(streamCoverage::covers)
+			.map { it to cacheWriter.ageOf(it, now) }
+			.filter { it.second > staleAfter }
+			.sortedByDescending { it.second }
+			.take(batchSize)
+			.map { it.first }
+		val regularLimit = batchSize - staleStreamTargets.size
+		val targets = allTargets
+			.filter { !streamCoverage.covers(it) }
+			.filter { it > cursor }
+			.take(regularLimit)
+		val result = staleStreamTargets + targets
+		if (result.isNotEmpty() || cursor.isEmpty()) {
+			return TargetSelection(result, staleStreamTargets.toSet())
+		}
 
 		cursor = ""
 		warnIfPassExceedsFreshness()
-		return targetRepository.findAfter(cursor, batchSize)
+		return findNextTargets()
 	}
+
+	private data class TargetSelection(val targets: List<String>, val staleStreamTargets: Set<String>)
 
 	private fun warnIfPassExceedsFreshness() {
 		val targetCount = targetRepository.countHotSet()
