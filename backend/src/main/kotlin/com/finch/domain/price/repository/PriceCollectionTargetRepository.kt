@@ -36,6 +36,26 @@ internal class PriceCollectionTargetRepository(private val jdbcClient: JdbcClien
 			.query { resultSet, _ -> checkNotNull(resultSet.getString("stock_code")) }
 			.list()
 
+	fun findAllHotSet(): List<String> =
+		jdbcClient.sql(
+			"""
+			WITH hot_stock AS (
+			    SELECT stock_code FROM holding WHERE quantity > 0
+			    UNION
+			    SELECT stock_code FROM watchlist_item
+			    UNION
+			    SELECT stock_code FROM recent_viewed_stock
+			)
+			SELECT hot_stock.stock_code
+			FROM hot_stock
+			JOIN stock ON stock.stock_code = hot_stock.stock_code
+			WHERE stock.is_active = true
+			ORDER BY hot_stock.stock_code
+			""".trimIndent(),
+		)
+			.query { resultSet, _ -> checkNotNull(resultSet.getString("stock_code")) }
+			.list()
+
 	fun countHotSet(): Long =
 		jdbcClient.sql(
 			"""
