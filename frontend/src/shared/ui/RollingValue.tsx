@@ -41,7 +41,7 @@ export function RollingValue({
 
     const computedStyle = getComputedStyle(element);
     const durationValue = computedStyle
-      .getPropertyValue('--motion-normal')
+      .getPropertyValue('--motion-sheet')
       .trim();
     const easing =
       computedStyle

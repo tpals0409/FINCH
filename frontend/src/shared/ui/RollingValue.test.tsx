@@ -42,7 +42,9 @@ describe('RollingValue', () => {
     ['.2s', 200],
     ['0.2s', 200],
     ['200ms', 200],
-    ['', 200],
+    ['.26s', 260],
+    ['260ms', 260],
+    ['', 260],
   ])('CSS 시간 %s를 %sms로 해석한다', (value, expected) => {
     expect(parseCssDuration(value)).toBe(expected);
   });
@@ -57,7 +59,7 @@ describe('RollingValue', () => {
       { transform: 'translateY(0)', opacity: 1 },
     ]);
     expect(animate.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({ duration: 200 }),
+      expect.objectContaining({ duration: 260 }),
     );
   });
 
@@ -72,7 +74,7 @@ describe('RollingValue', () => {
       return {
         color: hasRiseClass ? '#a01015' : hasFallClass ? '#3f75dd' : '#121417',
         getPropertyValue: (property: string) =>
-          property === '--motion-normal' ? '200ms' : '',
+          property === '--motion-sheet' ? '260ms' : '',
       } as CSSStyleDeclaration;
     });
 
