@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
+import org.slf4j.LoggerFactory
 import tools.jackson.databind.ObjectMapper
 
 /** KIS OAuth 토큰과 국내주식 현재가 REST 호출을 한곳에서 관리한다. */
@@ -137,8 +138,15 @@ internal class KisPriceClient internal constructor(
 			)
 		}
 
-		val refreshIn = (expiresIn - TOKEN_REFRESH_AHEAD.seconds).coerceAtLeast(1)
-		cachedToken = CachedToken(token, now.plusSeconds(refreshIn))
+		val expiresAt = now.plusSeconds(expiresIn)
+		val refreshAt = expiresAt.minus(TOKEN_REFRESH_AHEAD).coerceAtLeast(now.plusSeconds(1))
+		cachedToken = CachedToken(token, refreshAt)
+		log.info(
+			"KIS 토큰 발급 성공 expiresAt={} refreshAt={} refreshAhead={}",
+			expiresAt,
+			refreshAt,
+			Duration.between(refreshAt, expiresAt),
+		)
 		return token
 	}
 
@@ -185,7 +193,10 @@ internal class KisPriceClient internal constructor(
 		return ErrorDetails(body?.messageCode ?: body?.errorCode, body?.message)
 	}
 
-	private data class CachedToken(val value: String, val refreshAt: java.time.Instant)
+	private data class CachedToken(
+		val value: String,
+		val refreshAt: java.time.Instant,
+	)
 
 	private data class HttpResponse(val status: Int, val body: String, val retryAfter: String?)
 
@@ -224,6 +235,7 @@ internal class KisPriceClient internal constructor(
 	)
 
 	companion object {
+		private val log = LoggerFactory.getLogger(KisPriceClient::class.java)
 		private const val TOKEN_PATH = "/oauth2/tokenP"
 		private const val PRICE_PATH = "/uapi/domestic-stock/v1/quotations/inquire-price"
 		private const val PRICE_TR_ID = "FHKST01010100"
