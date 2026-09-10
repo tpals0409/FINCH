@@ -2,6 +2,7 @@ package com.finch.domain.stock.controller
 
 import com.finch.domain.price.dto.response.PriceRes
 import com.finch.domain.price.dto.response.PricesRes
+import com.finch.domain.recent.service.RecentViewedStockService
 import com.finch.domain.stock.service.StockService
 import com.finch.domain.watchlist.service.WatchlistService
 import java.math.BigDecimal
@@ -33,6 +34,9 @@ class StockPriceControllerTest {
 
 	@MockitoBean
 	private lateinit var watchlistService: WatchlistService
+
+	@MockitoBean
+	private lateinit var recentViewedStockService: RecentViewedStockService
 
 	@Test
 	@DisplayName("/stocks/prices 는 stockCode=prices 상세가 아니라 다건 현재가 핸들러로 간다")
