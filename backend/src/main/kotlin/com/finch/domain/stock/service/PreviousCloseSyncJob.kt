@@ -23,7 +23,7 @@ internal class PreviousCloseSyncJob internal constructor(
 		repository: PreviousCloseRepository,
 	) : this(client, repository, Clock.systemUTC())
 
-	@Scheduled(cron = "0 30 8 * * *", zone = "Asia/Seoul")
+	@Scheduled(cron = "\${finch.stock.previous-close.sync-cron:0 30 8 * * *}", zone = "Asia/Seoul")
 	fun sync() {
 		val batch = client.fetchLatest()
 		if (batch.items.isEmpty()) {
