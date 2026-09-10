@@ -9,6 +9,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.reactive.function.client.ClientRequest
@@ -17,6 +20,7 @@ import org.springframework.web.reactive.function.client.WebClient
 import reactor.core.publisher.Mono
 import tools.jackson.databind.ObjectMapper
 
+@ExtendWith(OutputCaptureExtension::class)
 internal class KisPriceClientTest {
 
 	private val clock = Clock.fixed(Instant.parse("2026-09-07T06:30:00Z"), ZoneOffset.UTC)
@@ -24,7 +28,7 @@ internal class KisPriceClientTest {
 
 	@Test
 	@DisplayName("토큰을 한 번 발급해 재사용하고 현재가를 KST 수신 시각과 함께 읽는다")
-	fun fetchesPriceAndReusesToken() {
+	fun fetchesPriceAndReusesToken(output: CapturedOutput) {
 		val requests = mutableListOf<ClientRequest>()
 		val client = clientOf { request ->
 			requests += request
@@ -39,6 +43,8 @@ internal class KisPriceClientTest {
 		assertThat(first.asOf.toString()).isEqualTo("2026-09-07T15:30+09:00")
 		assertThat(second.currentPrice).isEqualTo(73_500)
 		assertThat(requests.count { it.method().name() == "POST" }).isEqualTo(1)
+		assertThat(output).contains("KIS 토큰 발급 성공", "refreshAhead=PT1M")
+		assertThat(output).doesNotContain("<redacted>", "app-secret")
 		assertThat(requests.count { it.method().name() == "GET" }).isEqualTo(2)
 		assertThat(requests.last().headers().getFirst("tr_id")).isEqualTo("FHKST01010100")
 		assertThat(requests.last().url().query).contains("FID_INPUT_ISCD=000660")
@@ -122,6 +128,21 @@ internal class KisPriceClientTest {
 		assertThatThrownBy { client.fetch("005930") }
 			.isInstanceOf(KisApiException::class.java)
 			.hasMessageNotContaining("do-not-log")
+	}
+
+	@Test
+	@DisplayName("전송 예외는 NETWORK_ERROR로 감싸도 원인 예외를 보존한다")
+	fun preservesTransportCause() {
+		val transportFailure = IllegalStateException("connection prematurely closed")
+		val webClient = WebClient.builder()
+			.exchangeFunction { Mono.error(transportFailure) }
+			.build()
+		val client = KisPriceClient(webClient, objectMapper, "app-key", "app-secret", clock)
+
+		assertThatThrownBy { client.fetch("005930") }
+			.isInstanceOf(KisApiException::class.java)
+			.hasMessageContaining("NETWORK_ERROR")
+			.hasRootCause(transportFailure)
 	}
 
 	private fun clientOf(responder: (ClientRequest) -> ClientResponse): KisPriceClient {
