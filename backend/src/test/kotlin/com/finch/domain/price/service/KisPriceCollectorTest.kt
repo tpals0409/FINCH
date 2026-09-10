@@ -49,7 +49,7 @@ internal class KisPriceCollectorTest {
 	fun `한 배치의 활성 종목을 순서대로 수집해 캐시에 쓴다`() {
 		given(lease.acquireOrRenew()).willReturn(true)
 		given(pacer.awaitPermit()).willReturn(true)
-		given(targetRepository.findAfter("", 2)).willReturn(listOf("005930", "000660"))
+		given(targetRepository.findAllHotSet()).willReturn(listOf("005930", "000660"))
 		given(client.fetch("005930")).willReturn(tick)
 		given(client.fetch("000660")).willReturn(tick)
 		val collector = collector()
@@ -64,8 +64,9 @@ internal class KisPriceCollectorTest {
 	@Test
 	fun `웹소켓 구독 성공 종목은 REST 폴백에서 제외한다`() {
 		given(lease.acquireOrRenew()).willReturn(true)
-		given(targetRepository.findAfter("", 2)).willReturn(listOf("005930"))
+		given(targetRepository.findAllHotSet()).willReturn(listOf("005930"))
 		given(streamCoverage.covers("005930")).willReturn(true)
+		given(cacheWriter.ageOf("005930", clock.instant())).willReturn(Duration.ofSeconds(1))
 		val collector = KisPriceCollector(
 			client,
 			targetRepository,
@@ -82,14 +83,45 @@ internal class KisPriceCollectorTest {
 
 		collector.collect()
 
-		verifyNoInteractions(client, cacheWriter)
+		verifyNoInteractions(client)
+	}
+
+	@Test
+	fun `웹소켓 종목 중 stale 시간이 긴 순서로 REST 폴백한다`() {
+		given(lease.acquireOrRenew()).willReturn(true)
+		given(pacer.awaitPermit()).willReturn(true)
+		given(targetRepository.findAllHotSet()).willReturn(listOf("005930", "000660"))
+		given(streamCoverage.covers("005930")).willReturn(true)
+		given(streamCoverage.covers("000660")).willReturn(true)
+		given(cacheWriter.ageOf("005930", clock.instant())).willReturn(Duration.ofSeconds(20))
+		given(cacheWriter.ageOf("000660", clock.instant())).willReturn(Duration.ofSeconds(40))
+		given(client.fetch("005930")).willReturn(tick)
+		given(client.fetch("000660")).willReturn(tick)
+
+		KisPriceCollector(
+			client,
+			targetRepository,
+			cacheWriter,
+			lease,
+			pacer,
+			batchSize = 2,
+			minRequestInterval = Duration.ofMillis(50),
+			cycleInterval = Duration.ofSeconds(3),
+			staleAfter = Duration.ofSeconds(15),
+			clock = clock,
+			streamCoverage = streamCoverage,
+		).collect()
+
+		val order = org.mockito.Mockito.inOrder(client)
+		order.verify(client).fetch("000660")
+		order.verify(client).fetch("005930")
 	}
 
 	@Test
 	fun `Retry-After 동안 다음 스케줄에서도 KIS를 다시 부르지 않는다`() {
 		given(lease.acquireOrRenew()).willReturn(true)
 		given(pacer.awaitPermit()).willReturn(true)
-		given(targetRepository.findAfter("", 2)).willReturn(listOf("005930"))
+		given(targetRepository.findAllHotSet()).willReturn(listOf("005930"))
 		given(client.fetch("005930")).willThrow(
 			KisApiException(retryable = true, retryAfter = Duration.ofMinutes(1), status = 429),
 		)
@@ -105,7 +137,7 @@ internal class KisPriceCollectorTest {
 	fun `KIS 실패 로그에 상태 코드와 응답 메시지를 남긴다`(output: CapturedOutput) {
 		given(lease.acquireOrRenew()).willReturn(true)
 		given(pacer.awaitPermit()).willReturn(true)
-		given(targetRepository.findAfter("", 2)).willReturn(listOf("005930"))
+		given(targetRepository.findAllHotSet()).willReturn(listOf("005930"))
 		given(client.fetch("005930")).willThrow(
 			KisApiException(
 				retryable = false,
@@ -172,7 +204,7 @@ internal class KisPriceCollectorTest {
 	fun `핫셋 한 바퀴 예상 시간이 stale 허용 시간을 넘으면 경고한다`(output: CapturedOutput) {
 		given(lease.acquireOrRenew()).willReturn(true)
 		given(targetRepository.countHotSet()).willReturn(301)
-		given(targetRepository.findAfter("", 60)).willReturn(emptyList())
+		given(targetRepository.findAllHotSet()).willReturn(emptyList())
 		val collector = KisPriceCollector(
 			client,
 			targetRepository,
