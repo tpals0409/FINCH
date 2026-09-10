@@ -35,13 +35,32 @@ export function StockDetailPrice({ stock }: { stock: StockDetailResponse }) {
           <p className="text-display text-fg-neutral tabular-nums">
             <RollingValue
               value={formatKrw(currentPrice)}
-              numericValue={currentPrice}
+              numericValue={Math.round(currentPrice)}
+              format={{ maximumFractionDigits: 0, useGrouping: true }}
+              suffix="원"
               flashClasses={DIRECTION_CLASS}
             />
           </p>
           <p className={`mt-1 text-body-1 tabular-nums ${directionClass}`}>
-            <RollingValue value={formatKrw(changeAmount)} /> (
-            <RollingValue value={formatSignedPercent(changeRate)} />)
+            <RollingValue
+              value={formatKrw(changeAmount)}
+              numericValue={changeAmount}
+              format={{ maximumFractionDigits: 0, useGrouping: true }}
+              suffix="원"
+            />{' '}
+            (
+            <RollingValue
+              value={formatSignedPercent(changeRate)}
+              numericValue={changeRate}
+              format={{
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                signDisplay: 'exceptZero',
+                useGrouping: false,
+              }}
+              suffix="%"
+            />
+            )
           </p>
         </>
       ) : (

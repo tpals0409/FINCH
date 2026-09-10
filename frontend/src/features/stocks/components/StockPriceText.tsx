@@ -45,12 +45,24 @@ export function StockPriceText({
       <span className="text-body-1 text-fg-neutral tabular-nums">
         <RollingValue
           value={formatKrw(currentPrice)}
-          numericValue={currentPrice}
+          numericValue={Math.round(currentPrice)}
+          format={{ maximumFractionDigits: 0, useGrouping: true }}
+          suffix="원"
           flashClasses={DIRECTION_CLASS}
         />
       </span>
       <span className={`text-body-2 tabular-nums ${directionClass}`}>
-        <RollingValue value={formatSignedPercent(changeRate)} />
+        <RollingValue
+          value={formatSignedPercent(changeRate)}
+          numericValue={changeRate}
+          format={{
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+            signDisplay: 'exceptZero',
+            useGrouping: false,
+          }}
+          suffix="%"
+        />
       </span>
     </span>
   );
