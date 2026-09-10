@@ -104,7 +104,20 @@ jobs:
 
   build:
     needs: changes
-    if: needs.changes.outputs.services != '[]'
+    # `!cancelled()` 가 없으면 이 잡이 PR 에서 영영 skip 된다. `changes` 는 always() 로 스킵
+    # 전파를 끊었지만, PR 에서 skipped 인 `wait-for-ci` 의 상태가 의존 그래프를 타고 여기까지
+    # 내려온다 — `changes` 가 success 인데도 그렇다 (FINCH #115).
+    #
+    # 그래서 **PR 빌드 안전망이 한 번도 돈 적이 없었다.** 실패가 아니라 skip 이라 조용했고,
+    # Dockerfile 이 깨진 채 머지되면 master push 의 이 잡에서 처음 터진다 — CI 는 초록인데
+    # 그 코드가 든 이미지가 없는 상태다.
+    #
+    # `always()` 가 아니라 `!cancelled()` + `needs.changes.result` 로 쓴다. always() 만 붙이면
+    # `changes` 가 실패했을 때 services 가 빈 문자열이 되고 `'' != '[]'` 이 참이라 잡이 돌아
+    # `fromJSON('')` 에서 죽는다 — 게이트가 아니라 다른 실패로 바뀌는 것이다.
+    if: |
+      !cancelled() && needs.changes.result == 'success'
+      && needs.changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     strategy:
       # 한 서비스가 깨져도 나머지가 어떤 상태인지는 같은 실행에서 알아야 한다.
