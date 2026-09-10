@@ -71,12 +71,12 @@ internal class PreviousCloseSyncJobTest {
 	}
 
 	@Test
-	@DisplayName("스케줄은 거래일 달력 없이 매일 08:30 KST로 고정한다")
+	@DisplayName("스케줄은 기본값을 유지하면서 프로퍼티로 조정할 수 있다")
 	fun schedulesBeforeMarketOpen() {
 		val scheduled = PreviousCloseSyncJob::class.java.getDeclaredMethod("sync")
 			.getAnnotation(Scheduled::class.java)
 
-		assertThat(scheduled.cron).isEqualTo("0 30 8 * * *")
+		assertThat(scheduled.cron).isEqualTo("\${finch.stock.previous-close.sync-cron:0 30 8 * * *}")
 		assertThat(scheduled.zone).isEqualTo("Asia/Seoul")
 	}
 }
