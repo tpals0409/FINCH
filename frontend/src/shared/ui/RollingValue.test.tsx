@@ -2,7 +2,9 @@ import { act, createElement, forwardRef } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { formatKrw, formatSignedPercent } from '@/shared/lib/formatNumber';
 import { parseCssDuration } from '@/shared/lib/parseCssDuration';
+import type { Percent } from '@/shared/types/primitives';
 
 import { RollingValue } from './RollingValue';
 
@@ -64,11 +66,14 @@ describe('RollingValue', () => {
     expect(parseCssDuration(value)).toBe(expected);
   });
 
-  it('기존 포맷 문자열과 같은 접근 가능한 값을 렌더한다', () => {
+  it('기존 포맷터와 같은 원화·퍼센트 문자열을 렌더한다', () => {
+    const krwValue = formatKrw(73500);
+    const percentValue = formatSignedPercent(1234.5 as Percent);
+
     act(() =>
       root.render(
         <RollingValue
-          value="73,500원"
+          value={krwValue}
           numericValue={73500}
           format={{ maximumFractionDigits: 0, useGrouping: true }}
           suffix="원"
@@ -76,7 +81,25 @@ describe('RollingValue', () => {
       ),
     );
 
-    expect(host.textContent).toBe('73,500원');
+    expect(host.textContent).toBe(krwValue);
+
+    act(() =>
+      root.render(
+        <RollingValue
+          value={percentValue}
+          numericValue={1234.5}
+          format={{
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+            signDisplay: 'exceptZero',
+            useGrouping: false,
+          }}
+          suffix="%"
+        />,
+      ),
+    );
+
+    expect(host.textContent).toBe(percentValue);
   });
 
   it('직전 숫자 값의 방향에 맞는 색상으로 변화 신호를 표시한다', () => {

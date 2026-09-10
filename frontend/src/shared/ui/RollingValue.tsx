@@ -1,7 +1,4 @@
-import NumberFlow, {
-  type Format,
-  type NumberFlowElement,
-} from '@number-flow/react';
+import NumberFlow, { type Format } from '@number-flow/react';
 import { useEffect, useRef } from 'react';
 
 import { parseCssDuration } from '@/shared/lib/parseCssDuration';
@@ -30,11 +27,11 @@ export function RollingValue({
   className = '',
   flashClasses,
 }: RollingValueProps) {
-  const valueRef = useRef<NumberFlowElement>(null);
+  const flashRef = useRef<HTMLSpanElement>(null);
   const previousValueRef = useRef(numericValue);
 
   useEffect(() => {
-    const element = valueRef.current;
+    const element = flashRef.current;
     const previousValue = previousValueRef.current;
     previousValueRef.current = numericValue;
 
@@ -86,16 +83,19 @@ export function RollingValue({
   }, [flashClasses, numericValue]);
 
   return (
-    <NumberFlow
-      ref={valueRef}
+    <span
+      ref={flashRef}
       aria-label={value}
       aria-live="polite"
       className={className}
-      format={format}
-      locales="ko-KR"
-      prefix={prefix}
-      suffix={suffix}
-      value={numericValue}
-    />
+    >
+      <NumberFlow
+        format={format}
+        locales="ko-KR"
+        prefix={prefix}
+        suffix={suffix}
+        value={numericValue}
+      />
+    </span>
   );
 }

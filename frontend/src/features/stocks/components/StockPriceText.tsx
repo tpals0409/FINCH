@@ -45,7 +45,7 @@ export function StockPriceText({
       <span className="text-body-1 text-fg-neutral tabular-nums">
         <RollingValue
           value={formatKrw(currentPrice)}
-          numericValue={currentPrice}
+          numericValue={Math.round(currentPrice)}
           format={{ maximumFractionDigits: 0, useGrouping: true }}
           suffix="원"
           flashClasses={DIRECTION_CLASS}
@@ -59,6 +59,7 @@ export function StockPriceText({
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
             signDisplay: 'exceptZero',
+            useGrouping: false,
           }}
           suffix="%"
         />
