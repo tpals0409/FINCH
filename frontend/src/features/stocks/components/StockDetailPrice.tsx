@@ -25,17 +25,21 @@ export function StockDetailPrice({ stock }: { stock: StockDetailResponse }) {
   const { currentPrice, changeAmount, changeRate } = stock;
   const hasPrice =
     currentPrice !== null && changeAmount !== null && changeRate !== null;
+  const direction = changeRate === null ? null : getPriceDirection(changeRate);
+  const directionClass = direction ? DIRECTION_CLASS[direction] : undefined;
 
   return (
     <div className="mt-4">
       {hasPrice ? (
         <>
           <p className="text-display text-fg-neutral tabular-nums">
-            <RollingValue value={formatKrw(currentPrice)} />
+            <RollingValue
+              value={formatKrw(currentPrice)}
+              numericValue={currentPrice}
+              flashClasses={DIRECTION_CLASS}
+            />
           </p>
-          <p
-            className={`mt-1 text-body-1 tabular-nums ${DIRECTION_CLASS[getPriceDirection(changeRate)]}`}
-          >
+          <p className={`mt-1 text-body-1 tabular-nums ${directionClass}`}>
             <RollingValue value={formatKrw(changeAmount)} /> (
             <RollingValue value={formatSignedPercent(changeRate)} />)
           </p>
