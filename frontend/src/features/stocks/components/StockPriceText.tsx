@@ -37,14 +37,19 @@ export function StockPriceText({
     return <SupportingText as="span">시세 없음</SupportingText>;
   }
 
+  const direction = getPriceDirection(changeRate);
+  const directionClass = DIRECTION_CLASS[direction];
+
   return (
     <span className="flex flex-col items-end">
       <span className="text-body-1 text-fg-neutral tabular-nums">
-        <RollingValue value={formatKrw(currentPrice)} />
+        <RollingValue
+          value={formatKrw(currentPrice)}
+          numericValue={currentPrice}
+          flashClasses={DIRECTION_CLASS}
+        />
       </span>
-      <span
-        className={`text-body-2 tabular-nums ${DIRECTION_CLASS[getPriceDirection(changeRate)]}`}
-      >
+      <span className={`text-body-2 tabular-nums ${directionClass}`}>
         <RollingValue value={formatSignedPercent(changeRate)} />
       </span>
     </span>

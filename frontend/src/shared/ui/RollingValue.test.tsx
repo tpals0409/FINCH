@@ -31,6 +31,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -43,6 +44,53 @@ describe('RollingValue', () => {
     expect(animate.mock.calls[0]?.[0]).toEqual([
       { transform: 'translateY(-0.35em)', opacity: 0 },
       { transform: 'translateY(0)', opacity: 1 },
+    ]);
+    expect(animate.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ duration: 200 }),
+    );
+  });
+
+  it('직전 숫자 값의 방향에 맞는 색상으로 변화 신호를 표시한다', () => {
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
+      const hasRiseClass = (element as HTMLElement).classList.contains(
+        'text-fg-up',
+      );
+      const hasFallClass = (element as HTMLElement).classList.contains(
+        'text-fg-down',
+      );
+      return {
+        color: hasRiseClass ? '#a01015' : hasFallClass ? '#3f75dd' : '#121417',
+        getPropertyValue: (property: string) =>
+          property === '--motion-normal' ? '200ms' : '',
+      } as CSSStyleDeclaration;
+    });
+
+    act(() =>
+      root.render(
+        <RollingValue
+          value="73,500원"
+          numericValue={73500}
+          flashClasses={{ rise: 'text-fg-up', fall: 'text-fg-down' }}
+        />,
+      ),
+    );
+    act(() =>
+      root.render(
+        <RollingValue
+          value="73,400원"
+          numericValue={73400}
+          flashClasses={{ rise: 'text-fg-up', fall: 'text-fg-down' }}
+        />,
+      ),
+    );
+
+    expect(animate.mock.calls[0]?.[0]).toEqual([
+      {
+        transform: 'translateY(-0.35em)',
+        opacity: 0,
+        color: '#3f75dd',
+      },
+      { transform: 'translateY(0)', opacity: 1, color: '#121417' },
     ]);
   });
 
