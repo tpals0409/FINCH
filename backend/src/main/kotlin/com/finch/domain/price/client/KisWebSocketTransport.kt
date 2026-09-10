@@ -1,6 +1,7 @@
 package com.finch.domain.price.client
 
 import java.net.URI
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
@@ -60,6 +61,15 @@ internal class ReactorKisWebSocketTransport(
 				.then()
 			val send = session.send(outbound.asFlux().map(session::textMessage))
 			Mono.`when`(receive, send)
-		}).doFinally { onClosed() }.subscribe()
+		})
+			.doOnError { exception ->
+				log.warn("KIS 웹소켓 비동기 오류 exceptionType={}", exception::class.simpleName)
+			}
+			.doFinally { onClosed() }
+			.subscribe({}, {})
+	}
+
+	companion object {
+		private val log = LoggerFactory.getLogger(ReactorKisWebSocketTransport::class.java)
 	}
 }
