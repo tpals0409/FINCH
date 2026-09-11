@@ -174,56 +174,58 @@ export function PortfolioDiagnosisSection() {
   }, [attribution, diagnosis]);
 
   return (
-    <section className="mt-6" aria-labelledby="portfolio-diagnosis-heading">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2
-            id="portfolio-diagnosis-heading"
-            className="text-title-3 text-fg-neutral"
+    <section aria-labelledby="portfolio-diagnosis-heading">
+      <Card>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2
+              id="portfolio-diagnosis-heading"
+              className="text-title-3 text-fg-neutral"
+            >
+              포트폴리오 진단
+            </h2>
+            <SupportingText size="caption" className="mt-1">
+              내 투자 상태와 수익률 원인을 확인해요
+            </SupportingText>
+          </div>
+          <Button
+            onClick={runDiagnosis}
+            disabled={isPending}
+            className="w-auto shrink-0 px-3"
           >
-            포트폴리오 진단
-          </h2>
-          <SupportingText size="caption" className="mt-1">
-            내 투자 상태와 수익률 원인을 확인해요
-          </SupportingText>
+            {isPending ? '분석 중…' : '진단받기'}
+          </Button>
         </div>
-        <Button
-          onClick={runDiagnosis}
-          disabled={isPending}
-          className="w-auto shrink-0 px-3"
-        >
-          {isPending ? '분석 중…' : '진단받기'}
-        </Button>
-      </div>
 
-      {hasInsufficientData ? (
-        <Card className="mt-3">
-          <p className="text-body-1 text-fg-neutral">담은 종목이 없어요</p>
-          <SupportingText size="caption" className="mt-1">
-            종목을 담으면 포트폴리오 진단을 받을 수 있어요
+        {hasInsufficientData ? (
+          <div className="mt-3">
+            <p className="text-body-1 text-fg-neutral">담은 종목이 없어요</p>
+            <SupportingText size="caption" className="mt-1">
+              종목을 담으면 포트폴리오 진단을 받을 수 있어요
+            </SupportingText>
+          </div>
+        ) : null}
+
+        {diagnosis.data !== undefined ? (
+          <div className="mt-3">
+            <DiagnosisResult content={diagnosis.data.content} />
+            {attribution.data !== undefined ? (
+              <AttributionResult content={attribution.data.content} />
+            ) : null}
+          </div>
+        ) : null}
+
+        {diagnosis.error !== null && !hasInsufficientData ? (
+          <SupportingText as="p" role="alert" className="mt-3">
+            진단을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </SupportingText>
-        </Card>
-      ) : null}
-
-      {diagnosis.data !== undefined ? (
-        <Card className="mt-3">
-          <DiagnosisResult content={diagnosis.data.content} />
-          {attribution.data !== undefined ? (
-            <AttributionResult content={attribution.data.content} />
-          ) : null}
-        </Card>
-      ) : null}
-
-      {diagnosis.error !== null && !hasInsufficientData ? (
-        <SupportingText as="p" role="alert" className="mt-3">
-          진단을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
-        </SupportingText>
-      ) : null}
-      {attribution.error !== null && diagnosis.data !== undefined ? (
-        <SupportingText as="p" role="alert" className="mt-3">
-          수익률 기여도를 불러오지 못했어요.
-        </SupportingText>
-      ) : null}
+        ) : null}
+        {attribution.error !== null && diagnosis.data !== undefined ? (
+          <SupportingText as="p" role="alert" className="mt-3">
+            수익률 기여도를 불러오지 못했어요.
+          </SupportingText>
+        ) : null}
+      </Card>
     </section>
   );
 }

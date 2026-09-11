@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
+import { formatKrw } from '@/shared/lib/formatNumber';
 import { AccountSummaryResponseSchema } from '@/shared/types/account';
 
 import { AccountSummaryCard } from './AccountSummaryCard';
@@ -47,8 +48,9 @@ describe('AccountSummaryCard 평가금액', () => {
       asOf: '2026-08-20T14:30:00+09:00',
     });
 
-    expect(card.textContent).toContain('1,985,000원');
-    expect(card.textContent).toContain('735,000원');
+    expect(card.textContent).toContain(formatKrw(1_985_000));
+    expect(card.textContent).toContain(formatKrw(735_000));
+    expect(card.querySelector('.tabular-nums')).not.toBeNull();
     expect(card.textContent).toContain('2026-08-20 14:30 기준');
   });
 });
