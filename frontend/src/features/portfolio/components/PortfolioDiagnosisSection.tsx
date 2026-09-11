@@ -176,8 +176,8 @@ export function PortfolioDiagnosisSection() {
   return (
     <section aria-labelledby="portfolio-diagnosis-heading">
       <Card>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
+        <div className="space-y-3">
+          <div>
             <h2
               id="portfolio-diagnosis-heading"
               className="text-title-3 text-fg-neutral"
@@ -188,11 +188,7 @@ export function PortfolioDiagnosisSection() {
               내 투자 상태와 수익률 원인을 확인해요
             </SupportingText>
           </div>
-          <Button
-            onClick={runDiagnosis}
-            disabled={isPending}
-            className="w-auto shrink-0 px-3"
-          >
+          <Button onClick={runDiagnosis} disabled={isPending}>
             {isPending ? '분석 중…' : '진단받기'}
           </Button>
         </div>
