@@ -427,7 +427,9 @@ async def attribution(
         raise InsufficientData("수익률을 낼 수 있는 거래일이 없습니다.")
 
     window = [
-        row for row in rows if row.trade_date >= _period_start(body.period, rows[-1].trade_date)
+        row
+        for row in rows
+        if row.trade_date >= _period_start(body.period, rows[0].trade_date, rows[-1].trade_date)
     ]
     if not window:
         raise InsufficientData(f"{body.period.value} 구간에 거래일이 없습니다.")
@@ -532,8 +534,10 @@ _PERIOD_DAYS: dict[Period, int] = {
 }
 
 
-def _period_start(period: Period, last: date) -> date:
-    """구간 시작일. `ytd`는 올해 1월 1일이다."""
+def _period_start(period: Period, first: date, last: date) -> date:
+    """구간 시작일. `ytd`는 올해 1월 1일, `all`은 원장 첫 거래일이다."""
+    if period is Period.ALL:
+        return first
     if period is Period.YTD:
         return date(last.year, 1, 1)
     span = _PERIOD_DAYS.get(period)

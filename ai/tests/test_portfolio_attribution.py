@@ -16,6 +16,8 @@ from fastapi.testclient import TestClient
 
 from app.api.deps import get_session
 from app.api.main import create_app
+from app.api.routes.portfolio import _period_start
+from app.core.enums import Period
 from app.core.models import AIFeedback, AIResponse
 from app.engines.attribution import (
     BenchmarkDay,
@@ -409,6 +411,17 @@ def test_계약대로_돌려준다(client: TestClient) -> None:
     assert content["summary"]["text"]
     assert content["text"] == content["summary"]["text"]
     assert body["data_as_of"]["price"]
+
+
+def test_all은_원장_첫_거래일부터_계산한다(client: TestClient) -> None:
+    content = _post(client, HOLDER, "all").json()["content"]
+    assert content["period"] == "all"
+    assert content["start"] == DAYS[1].isoformat()
+    assert content["trading_days"] > 1
+
+
+def test_all의_시작일은_첫_거래일이다() -> None:
+    assert _period_start(Period.ALL, DAYS[0], DAYS[-1]) == DAYS[0]
 
 
 def test_응답을_저장해_피드백을_받는다(client: TestClient) -> None:

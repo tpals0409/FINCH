@@ -166,6 +166,7 @@ class Period(StrEnum):
     M1 = "1m"
     M3 = "3m"
     YTD = "ytd"
+    ALL = "all"
 
 
 class Screen(StrEnum):

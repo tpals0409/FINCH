@@ -602,7 +602,11 @@ async def _calc_attribution(ctx: ToolContext, args: dict[str, Any]) -> dict[str,
     rows = engine.daily_returns()
     if not rows:
         return {"unavailable": "수익률을 낼 수 있는 거래일이 없습니다."}
-    window = [row for row in rows if row.trade_date >= _period_start(period, rows[-1].trade_date)]
+    window = [
+        row
+        for row in rows
+        if row.trade_date >= _period_start(period, rows[0].trade_date, rows[-1].trade_date)
+    ]
     if not window:
         return {"unavailable": f"{period.value} 구간에 거래일이 없습니다."}
 
