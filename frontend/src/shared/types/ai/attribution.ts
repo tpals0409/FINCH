@@ -31,6 +31,7 @@ export const AiAttributionPeriodSchema = z.enum([
   '1m',
   '3m',
   'ytd',
+  'all',
 ]);
 export type AiAttributionPeriod = z.infer<typeof AiAttributionPeriodSchema>;
 

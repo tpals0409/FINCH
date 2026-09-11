@@ -8,4 +8,3 @@ export {
 export { AiErrorNotice } from './components/AiErrorNotice';
 export { AiFloatingButton } from './components/AiFloatingButton';
 export { AiResponseFooter } from './components/AiResponseFooter';
-export { AiSectionText } from './components/AiSectionText';

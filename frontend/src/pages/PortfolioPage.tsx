@@ -3,6 +3,7 @@ import {
   AccountSummaryCardSkeleton,
   useAccountSummary,
 } from '@/features/account';
+import { PortfolioDiagnosisSection } from '@/features/portfolio/components/PortfolioDiagnosisSection';
 import { PortfolioSection } from '@/features/portfolio/components/PortfolioSection';
 import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
@@ -42,6 +43,7 @@ export function PortfolioPage() {
           <>
             <AccountSummaryCard summary={data} />
             <PortfolioSection />
+            <PortfolioDiagnosisSection />
           </>
         ) : null}
       </div>
