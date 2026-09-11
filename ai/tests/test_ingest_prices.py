@@ -13,6 +13,7 @@ import pytest
 
 from ingest.prices import (
     COLUMN_MAP,
+    _auto_status,
     _fetch_price_universe,
     _latest_market_date,
     _require_trade_date,
@@ -20,6 +21,19 @@ from ingest.prices import (
     _to_rows,
     _yyyymmdd,
 )
+
+
+@pytest.mark.parametrize(
+    ("source", "stored", "target", "expected"),
+    [
+        (date(2026, 8, 22), None, date(2026, 8, 22), "no_session"),
+        (date(2026, 8, 18), date(2026, 8, 18), date(2026, 8, 20), "pending_source"),
+        (date(2026, 8, 20), date(2026, 8, 19), date(2026, 8, 21), "loaded"),
+        (date(2026, 8, 6), date(2026, 8, 6), date(2026, 8, 10), "pending_source"),
+    ],
+)
+def test_auto_status_distinguishes_weekend_and_source_delay(source, stored, target, expected):
+    assert _auto_status(source_date=source, stored_date=stored, today=target) == expected
 
 
 def _df(rows: list[tuple]) -> pd.DataFrame:
