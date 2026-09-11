@@ -177,7 +177,7 @@ export function PortfolioDiagnosisSection() {
     <section aria-labelledby="portfolio-diagnosis-heading">
       <Card>
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2
               id="portfolio-diagnosis-heading"
               className="text-title-3 text-fg-neutral"
