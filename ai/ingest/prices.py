@@ -255,6 +255,20 @@ async def _latest_market_date() -> date:
     return trade_date
 
 
+def _auto_status(*, source_date: date | None, stored_date: date | None, today: date) -> str:
+    """원천 최신일과 DB 최신일로 자동 적재 상태를 구분한다."""
+    if today.weekday() >= 5:
+        return "no_session"
+    previous = today - timedelta(days=1)
+    while previous.weekday() >= 5:
+        previous -= timedelta(days=1)
+    if source_date is not None and (stored_date is None or source_date > stored_date):
+        return "loaded"
+    if previous.weekday() < 5 and (source_date is None or source_date < previous):
+        return "pending_source"
+    return "no_session"
+
+
 async def _last_date(session: AsyncSession, ticker: str) -> date | None:
     return await session.scalar(
         select(func.max(PriceDaily.trade_date)).where(PriceDaily.ticker == ticker)
@@ -288,19 +302,24 @@ async def ingest(
     full: bool = False,
     existing_only: bool = False,
     as_of: date | None = None,
-) -> dict[str, int]:
+) -> dict[str, int | str]:
     """시세를 적재하고 요약을 돌려준다.
 
     full=False면 종목별 마지막 적재일 다음날부터만 받는다. 재실행 비용이 낮아
     cron으로 매일 돌려도 된다.
     """
-    if existing_only and as_of is None:
-        as_of = await _latest_market_date()
-        logger.info("KRX 확정 기준일 %s를 사용한다", as_of)
-
     end = as_of or date.today()
     start = end - timedelta(days=days)
-    stats = {"tickers": 0, "rows": 0, "skipped": 0, "failed": 0}
+    stats = {
+        "tickers": 0,
+        "rows": 0,
+        "skipped": 0,
+        "failed": 0,
+        "status": "pending_source" if existing_only and as_of is None else "loaded",
+    }
+    if existing_only and as_of is None and end.weekday() >= 5:
+        stats["status"] = "no_session"
+        return stats
 
     universe: PriceUniverse | None = None
     if existing_only:
@@ -321,13 +340,16 @@ async def ingest(
 
         logger.info("대상 %d종목 · %s ~ %s", len(targets), start, end)
 
+        pending: list[tuple[str, list[dict], date | None]] = []
         for i, ticker in enumerate(targets, 1):
             fetch_start = start
+            last: date | None = None
             if not full:
                 last = await _last_date(session, ticker)
                 if last is not None:
                     if last >= end:
                         stats["skipped"] += 1
+                        pending.append((ticker, [], last))
                         continue
                     fetch_start = max(start, last + timedelta(days=1))
 
@@ -336,13 +358,9 @@ async def ingest(
                 rows = _to_rows(ticker, df)
                 if as_of is not None:
                     _require_trade_date(rows, as_of)
-                n = await _upsert(session, rows)
-                await session.commit()
-                stats["tickers"] += 1
-                stats["rows"] += n
+                latest = max((row["trade_date"] for row in rows), default=last)
+                pending.append((ticker, rows, latest))
             except Exception:
-                # 한 종목이 실패해도 전체를 멈추지 않는다. 재실행하면 이어서 받는다.
-                await session.rollback()
                 stats["failed"] += 1
                 logger.exception("적재 실패: %s", ticker)
 
@@ -351,6 +369,36 @@ async def ingest(
                     "진행 %d/%d · 누적 %d행", i, len(targets), stats["rows"]
                 )
             await asyncio.sleep(REQUEST_DELAY_S)
+
+        common_date = min(
+            (latest for _, _, latest in pending if latest is not None),
+            default=None,
+        )
+        stored_date = max(
+            (latest for _, _, latest in pending if latest is not None and not rows),
+            default=None,
+        )
+        if (
+            stats["failed"]
+            or len(pending) != len(targets)
+            or any(latest is None for _, _, latest in pending)
+        ):
+            stats["status"] = "pending_source"
+        elif existing_only and as_of is None:
+            stats["status"] = _auto_status(
+                source_date=common_date, stored_date=stored_date, today=end
+            )
+        if stats["status"] == "pending_source":
+            await session.rollback()
+            return stats
+
+        for _ticker, rows, latest in pending:
+            if as_of is not None and latest is not None and latest < as_of:
+                _require_trade_date(rows, as_of)
+            n = await _upsert(session, rows)
+            stats["tickers"] += int(bool(rows))
+            stats["rows"] += n
+        await session.commit()
 
     return stats
 
@@ -401,13 +449,14 @@ async def _main() -> None:
             as_of=args.as_of,
         )
         logger.info(
-            "완료 — 적재 %d종목 / %d행 · 건너뜀 %d · 실패 %d",
+            "완료 — status=%s · 적재 %d종목 / %d행 · 건너뜀 %d · 실패 %d",
+            stats["status"],
             stats["tickers"],
             stats["rows"],
             stats["skipped"],
             stats["failed"],
         )
-        if stats["failed"]:
+        if stats["failed"] or stats["status"] == "pending_source":
             raise SystemExit(1)
     finally:
         await engine.dispose()

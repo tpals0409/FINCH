@@ -16,7 +16,7 @@ import re
 from datetime import date, timedelta
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -88,6 +88,19 @@ def _parse_krx_date(value: object) -> date:
     return date.fromisoformat(f"{text[:4]}-{text[4:6]}-{text[6:8]}")
 
 
+def _auto_status(source_date: date | None, stored_date: date | None, today: date) -> str:
+    if today.weekday() >= 5:
+        return "no_session"
+    previous = today - timedelta(days=1)
+    while previous.weekday() >= 5:
+        previous -= timedelta(days=1)
+    if source_date is not None and (stored_date is None or source_date > stored_date):
+        return "loaded"
+    if previous.weekday() < 5 and (source_date is None or source_date < previous):
+        return "pending_source"
+    return "no_session"
+
+
 async def _known_tickers(session: AsyncSession) -> set[str]:
     return set((await session.scalars(select(Instrument.ticker))).all())
 
@@ -111,19 +124,28 @@ async def _upsert(session: AsyncSession, rows: list[dict]) -> int:
 async def ingest(*, requested_date: date | None = None) -> dict[str, int | str | None]:
     """하루치 스냅샷을 멱등 upsert하고 집계를 반환한다."""
     end = requested_date or date.today()
-    candidates = [end - timedelta(days=offset) for offset in range(5)]
     stats: dict[str, int | str | None] = {
         "trade_date": None,
         "rows": 0,
         "unknown": 0,
         "halted": 0,
+        "status": "pending_source",
     }
+    if requested_date is None and end.weekday() >= 5:
+        stats["status"] = "no_session"
+        return stats
 
     async with SessionFactory() as session:
+        stored_date = await session.scalar(select(func.max(PriceSnapshotDaily.trade_date)))
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            trade_date, payload = await _latest_stock_payload(client, candidates)
+            if requested_date is None:
+                candidates = [end - timedelta(days=offset) for offset in range(5)]
+                trade_date, payload = await _latest_stock_payload(client, candidates)
+            else:
+                candidates = [end - timedelta(days=offset) for offset in range(5)]
+                trade_date, payload = await _latest_stock_payload(client, candidates)
         if trade_date is None:
-            logger.error("최근 5일 어디에도 KRX 전 종목 응답이 없어 적재를 중단함")
+            logger.warning("최근 KRX 응답이 없어 pending_source로 종료함")
             return stats
         stats["trade_date"] = trade_date.isoformat()
 
@@ -134,6 +156,15 @@ async def ingest(*, requested_date: date | None = None) -> dict[str, int | str |
         rows, unknown, halted = _to_rows(trade_date, payload, known)
         stats["unknown"] = unknown
         stats["halted"] = halted
+        stats["status"] = (
+            "loaded"
+            if requested_date is not None
+            else _auto_status(trade_date, stored_date, end)
+        )
+        if stats["status"] != "loaded":
+            stats["rows"] = 0
+            stats["trade_date"] = None
+            return stats
         try:
             stats["rows"] = await _upsert(session, rows)
             await session.commit()
@@ -162,12 +193,15 @@ async def _main() -> None:
     try:
         stats = await ingest(requested_date=args.date)
         logger.info(
-            "완료 — %s · 적재 %d행 · 마스터 밖 %d · 거래정지 %d",
+            "완료 — status=%s · %s · 적재 %d행 · 마스터 밖 %d · 거래정지 %d",
+            stats["status"],
             stats["trade_date"],
             stats["rows"],
             stats["unknown"],
             stats["halted"],
         )
+        if stats["status"] == "pending_source":
+            raise SystemExit(1)
     finally:
         await engine.dispose()
 
