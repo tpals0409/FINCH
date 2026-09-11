@@ -2184,7 +2184,8 @@
           "1w",
           "1m",
           "3m",
-          "ytd"
+          "ytd",
+          "all"
         ],
         "title": "Period",
         "type": "string"
