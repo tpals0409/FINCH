@@ -1,12 +1,8 @@
 import { type FormEvent, useRef, useState } from 'react';
 
-import {
-  AiErrorNotice,
-  AiResponseFooter,
-  AiSectionText,
-  useAiChat,
-} from '@/features/ai';
+import { AiErrorNotice, AiResponseFooter, useAiChat } from '@/features/ai';
 import type { AiChatResponse } from '@/shared/types/ai/chat';
+import { AiSectionText } from '@/shared/ui/AiSectionText';
 import { AppBar } from '@/shared/ui/AppBar';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';

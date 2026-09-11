@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import {
-  AiErrorNotice,
-  AiResponseFooter,
-  AiSectionText,
-  useAiBriefing,
-} from '@/features/ai';
+import { AiErrorNotice, AiResponseFooter, useAiBriefing } from '@/features/ai';
+import { AiSectionText } from '@/shared/ui/AiSectionText';
 import { AppBar } from '@/shared/ui/AppBar';
 import { Card } from '@/shared/ui/Card';
 import { PageMain } from '@/shared/ui/PageMain';
