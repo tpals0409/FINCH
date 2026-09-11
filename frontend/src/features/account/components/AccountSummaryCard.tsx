@@ -5,6 +5,7 @@ import { formatKstDateTime } from '@/shared/lib/formatDate';
 import { formatKrw } from '@/shared/lib/formatNumber';
 import type { AccountSummaryResponse } from '@/shared/types/account';
 import { Card } from '@/shared/ui/Card';
+import { RollingValue } from '@/shared/ui/RollingValue';
 import { SeparatedGroup } from '@/shared/ui/SeparatedGroup';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { SupportingText } from '@/shared/ui/SupportingText';
@@ -24,8 +25,17 @@ export function AccountSummaryCard({ summary }: Props) {
   return (
     <Card>
       <SupportingText size="caption">총자산</SupportingText>
-      <p className="mt-1 text-display text-fg-neutral">
-        {summary.totalAsset === null ? '—' : formatKrw(summary.totalAsset)}
+      <p className="mt-1 text-display text-fg-neutral tabular-nums">
+        {summary.totalAsset === null ? (
+          '—'
+        ) : (
+          <RollingValue
+            value={formatKrw(summary.totalAsset)}
+            numericValue={Math.round(summary.totalAsset)}
+            format={{ maximumFractionDigits: 0, useGrouping: true }}
+            suffix="원"
+          />
+        )}
       </p>
       {summary.asOf === null ? null : (
         <SupportingText size="caption" className="mt-1">
@@ -57,10 +67,17 @@ export function AccountSummaryCard({ summary }: Props) {
 
         <div className="flex items-center justify-between gap-3">
           <SupportingText as="dt">평가금액</SupportingText>
-          <dd className="text-body-1 text-fg-neutral">
-            {summary.evaluationAmount === null
-              ? '—'
-              : formatKrw(summary.evaluationAmount)}
+          <dd className="text-body-1 text-fg-neutral tabular-nums">
+            {summary.evaluationAmount === null ? (
+              '—'
+            ) : (
+              <RollingValue
+                value={formatKrw(summary.evaluationAmount)}
+                numericValue={Math.round(summary.evaluationAmount)}
+                format={{ maximumFractionDigits: 0, useGrouping: true }}
+                suffix="원"
+              />
+            )}
           </dd>
         </div>
       </SeparatedGroup>

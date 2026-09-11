@@ -17,6 +17,7 @@ import { PercentSchema } from '@/shared/types/primitives';
 import { BottomSheetSelect } from '@/shared/ui/BottomSheetSelect';
 import { Button } from '@/shared/ui/Button';
 import { Card } from '@/shared/ui/Card';
+import { RollingValue } from '@/shared/ui/RollingValue';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { SupportingText } from '@/shared/ui/SupportingText';
 
@@ -79,21 +80,53 @@ function Performance({ portfolio }: { portfolio: PortfolioResponse }) {
     <div className="mt-5 flex items-end justify-between gap-4">
       <div>
         <SupportingText size="caption">평가액</SupportingText>
-        <p className="mt-1 text-title-1 text-fg-neutral">
-          {portfolio.evaluationAmount === null
-            ? '—'
-            : formatKrw(portfolio.evaluationAmount)}
+        <p className="mt-1 text-title-1 text-fg-neutral tabular-nums">
+          {portfolio.evaluationAmount === null ? (
+            '—'
+          ) : (
+            <RollingValue
+              value={formatKrw(portfolio.evaluationAmount)}
+              numericValue={Math.round(portfolio.evaluationAmount)}
+              format={{ maximumFractionDigits: 0, useGrouping: true }}
+              suffix="원"
+            />
+          )}
         </p>
       </div>
-      <div className={`text-right ${DIRECTION_CLASS[direction]}`}>
+      <div className={`text-right tabular-nums ${DIRECTION_CLASS[direction]}`}>
         <SupportingText as="p" size="caption">
           평가 손익
         </SupportingText>
         <p className="mt-1 text-body-1">
-          {profit === null ? '—' : formatKrw(profit)}
+          {profit === null ? (
+            '—'
+          ) : (
+            <RollingValue
+              value={formatKrw(profit)}
+              numericValue={Math.round(profit)}
+              format={{ maximumFractionDigits: 0, useGrouping: true }}
+              suffix="원"
+              flashClasses={DIRECTION_CLASS}
+            />
+          )}
         </p>
         <p className="text-body-2">
-          {rate === null ? '—' : formatSignedPercent(rate)}
+          {rate === null ? (
+            '—'
+          ) : (
+            <RollingValue
+              value={formatSignedPercent(rate)}
+              numericValue={rate}
+              format={{
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+                signDisplay: 'exceptZero',
+                useGrouping: false,
+              }}
+              suffix="%"
+              flashClasses={DIRECTION_CLASS}
+            />
+          )}
         </p>
       </div>
     </div>
@@ -130,11 +163,37 @@ function HoldingRow({
           </SupportingText>
         </span>
         <span className="shrink-0 text-right">
-          <span className="block text-body-1 text-fg-neutral">
-            {value === null ? '—' : formatKrw(value)}
+          <span className="block text-body-1 text-fg-neutral tabular-nums">
+            {value === null ? (
+              '—'
+            ) : (
+              <RollingValue
+                value={formatKrw(value)}
+                numericValue={Math.round(value)}
+                format={{ maximumFractionDigits: 0, useGrouping: true }}
+                suffix="원"
+              />
+            )}
           </span>
-          <span className={`text-body-2 ${DIRECTION_CLASS[direction]}`}>
-            {rate === null ? '시세 없음' : formatSignedPercent(rate)}
+          <span
+            className={`text-body-2 tabular-nums ${DIRECTION_CLASS[direction]}`}
+          >
+            {rate === null ? (
+              '시세 없음'
+            ) : (
+              <RollingValue
+                value={formatSignedPercent(rate)}
+                numericValue={rate}
+                format={{
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                  signDisplay: 'exceptZero',
+                  useGrouping: false,
+                }}
+                suffix="%"
+                flashClasses={DIRECTION_CLASS}
+              />
+            )}
           </span>
         </span>
       </Link>
